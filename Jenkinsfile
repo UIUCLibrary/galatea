@@ -50,5 +50,34 @@ pipeline {
                 }
             }
         }
+        stage('Package'){
+            agent {
+                dockerfile {
+                    filename 'ci/docker/linux/jenkins/Dockerfile'
+                    label 'docker && linux'
+                }
+            }
+            steps{
+                sh(
+                    label: 'Package',
+                    script: '''python3 -m venv venv && venv/bin/pip install uv
+                               . ./venv/bin/activate
+                               uv pip sync requirements-dev.txt
+                               python -m build
+                            '''
+                )
+            }
+            post{
+                success{
+                    archiveArtifacts artifacts: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', fingerprint: true
+                }
+                cleanup{
+                    cleanWs(patterns: [
+                            [pattern: 'venv/', type: 'INCLUDE'],
+                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                    ])
+                }
+            }
+        }
     }
 }
