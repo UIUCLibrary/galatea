@@ -1,2 +1,2 @@
 # galatea
-Used for cleaning up metadata used by UIUC me
+Used for cleaning up metadata used by UIUC metadata.
