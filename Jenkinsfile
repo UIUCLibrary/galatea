@@ -37,14 +37,31 @@ pipeline {
                                             '''
                                 )
                             }
+                            post{
+                                always{
+                                    junit(allowEmptyResults: true, testResults: 'reports/tests/pytest/pytest-junit.xml')
+                                }
+                            }
                         }
                     }
                 }
             }
             post{
+                always{
+                    sh(
+                        label: 'Combining coverage data and generating report',
+                        script: '''. ./venv/bin/activate
+                                  coverage combine
+                                  coverage xml -o reports/coverage.xml
+                                  coverage html -d reports/coverage
+                                  '''
+                    )
+                    recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
+                }
                 cleanup{
                     cleanWs(patterns: [
                             [pattern: 'venv/', type: 'INCLUDE'],
+                            [pattern: 'reports/', type: 'INCLUDE'],
                             [pattern: '**/__pycache__/', type: 'INCLUDE'],
                     ])
                 }
