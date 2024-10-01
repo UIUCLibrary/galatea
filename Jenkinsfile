@@ -49,6 +49,7 @@ standaloneVersions = []
 pipeline {
     agent none
     parameters{
+        booleanParam(name: 'RUN_CHECKS', defaultValue: true, description: 'Run checks on code')
         booleanParam(name: 'PACKAGE_STANDALONE_WINDOWS_INSTALLER', defaultValue: false, description: 'Create a standalone Windows version that does not require a user to install python first')
         booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_X86_64', defaultValue: false, description: 'Create a standalone version for MacOS X86_64 (m1) machines')
         booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_ARM64', defaultValue: false, description: 'Create a standalone version for MacOS ARM64 (Intel) machines')
@@ -61,6 +62,10 @@ pipeline {
                     filename 'ci/docker/linux/jenkins/Dockerfile'
                     label 'docker && linux'
                 }
+            }
+            when{
+                equals expected: true, actual: params.RUN_CHECKS
+                beforeAgent true
             }
             stages{
                 stage('Setup Testing Environment'){
@@ -80,7 +85,7 @@ pipeline {
                             )
                     }
                 }
-                stage('Run tests'){
+                stage('Run Tests'){
                     parallel{
                         stage('Pytest'){
                             steps{
@@ -94,6 +99,41 @@ pipeline {
                             post{
                                 always{
                                     junit(allowEmptyResults: true, testResults: 'reports/tests/pytest/pytest-junit.xml')
+                                }
+                            }
+                        }
+                        stage('MyPy'){
+                            steps{
+                                catchError(buildResult: 'SUCCESS', message: 'MyPy found issues', stageResult: 'UNSTABLE') {
+                                    tee('logs/mypy.log'){
+                                        sh(label: 'Running MyPy',
+                                           script: '. ./venv/bin/activate && mypy -p galatea --html-report reports/mypy/html'
+                                        )
+                                    }
+                                }
+                            }
+                            post {
+                                always {
+                                    recordIssues(tools: [myPy(pattern: 'logs/mypy.log')])
+                                    publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
+                                }
+                            }
+                        }
+                        stage('Ruff') {
+                            steps{
+                                catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
+                                    sh(
+                                     label: 'Running Ruff',
+                                     script: '''. ./venv/bin/activate
+                                                ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
+                                                ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
+                                            '''
+                                     )
+                                }
+                            }
+                            post{
+                                always{
+                                    recordIssues(tools: [pyLint(pattern: 'reports/ruffoutput.txt', name: 'Ruff')])
                                 }
                             }
                         }
@@ -115,6 +155,7 @@ pipeline {
                 cleanup{
                     cleanWs(patterns: [
                             [pattern: 'venv/', type: 'INCLUDE'],
+                            [pattern: 'logs/', type: 'INCLUDE'],
                             [pattern: 'reports/', type: 'INCLUDE'],
                             [pattern: '**/__pycache__/', type: 'INCLUDE'],
                     ])
@@ -136,7 +177,7 @@ pipeline {
                             script: '''python3 -m venv venv && venv/bin/pip install uv
                                        . ./venv/bin/activate
                                        uv pip sync requirements-dev.txt
-                                       python -m build
+                                       python -m build --installer=uv
                                     '''
                         )
                     }
