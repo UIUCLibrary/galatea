@@ -22,5 +22,7 @@ pyproject-hooks==1.2.0
     # via build
 pytest==8.3.3
     # via -r requirements/requirements-dev.in
+ruff==0.6.8
+    # via -r requirements/requirements-dev.in
 typing-extensions==4.12.2
     # via mypy

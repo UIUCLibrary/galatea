@@ -119,6 +119,24 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Ruff') {
+                            steps{
+                                catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
+                                    sh(
+                                     label: 'Running Ruff',
+                                     script: '''. ./venv/bin/activate
+                                                ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
+                                                ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
+                                            '''
+                                     )
+                                }
+                            }
+                            post{
+                                always{
+                                    recordIssues(tools: [pyLint(pattern: 'reports/ruffoutput.txt', name: 'Ruff')])
+                                }
+                            }
+                        }
                     }
                 }
             }
