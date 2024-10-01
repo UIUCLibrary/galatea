@@ -1,6 +1,7 @@
 [project]
 name = "galatea"
 version = "0.0.1-dev0"
+requires-python = ">= 3.10"
 
 [project.scripts]
 galatea = "galatea.cli:main"
