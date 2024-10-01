@@ -85,7 +85,7 @@ pipeline {
                             )
                     }
                 }
-                stage('Run tests'){
+                stage('Run Tests'){
                     parallel{
                         stage('Pytest'){
                             steps{
@@ -99,6 +99,23 @@ pipeline {
                             post{
                                 always{
                                     junit(allowEmptyResults: true, testResults: 'reports/tests/pytest/pytest-junit.xml')
+                                }
+                            }
+                        }
+                        stage('MyPy'){
+                            steps{
+                                catchError(buildResult: 'SUCCESS', message: 'MyPy found issues', stageResult: 'UNSTABLE') {
+                                    tee('logs/mypy.log'){
+                                        sh(label: 'Running MyPy',
+                                           script: '. ./venv/bin/activate && mypy -p galatea --html-report reports/mypy/html'
+                                        )
+                                    }
+                                }
+                            }
+                            post {
+                                always {
+                                    recordIssues(tools: [myPy(pattern: 'logs/mypy.log')])
+                                    publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
                                 }
                             }
                         }
@@ -120,6 +137,7 @@ pipeline {
                 cleanup{
                     cleanWs(patterns: [
                             [pattern: 'venv/', type: 'INCLUDE'],
+                            [pattern: 'logs/', type: 'INCLUDE'],
                             [pattern: 'reports/', type: 'INCLUDE'],
                             [pattern: '**/__pycache__/', type: 'INCLUDE'],
                     ])
