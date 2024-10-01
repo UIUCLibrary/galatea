@@ -49,6 +49,7 @@ standaloneVersions = []
 pipeline {
     agent none
     parameters{
+        booleanParam(name: 'RUN_CHECKS', defaultValue: true, description: 'Run checks on code')
         booleanParam(name: 'PACKAGE_STANDALONE_WINDOWS_INSTALLER', defaultValue: false, description: 'Create a standalone Windows version that does not require a user to install python first')
         booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_X86_64', defaultValue: false, description: 'Create a standalone version for MacOS X86_64 (m1) machines')
         booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_ARM64', defaultValue: false, description: 'Create a standalone version for MacOS ARM64 (Intel) machines')
@@ -61,6 +62,10 @@ pipeline {
                     filename 'ci/docker/linux/jenkins/Dockerfile'
                     label 'docker && linux'
                 }
+            }
+            when{
+                equals expected: true, actual: params.RUN_CHECKS
+                beforeAgent true
             }
             stages{
                 stage('Setup Testing Environment'){
