@@ -177,7 +177,7 @@ pipeline {
                             script: '''python3 -m venv venv && venv/bin/pip install uv
                                        . ./venv/bin/activate
                                        uv pip sync requirements-dev.txt
-                                       python -m build
+                                       python -m build --installer=uv
                                     '''
                         )
                     }
