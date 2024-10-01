@@ -1,6 +1,6 @@
 [project]
 name = "galatea"
-version = "0.0.1"
+version = "0.0.1-dev0"
 
 [project.scripts]
 galatea = "galatea.cli:main"
