@@ -30,16 +30,19 @@ import tomllib
 with open('pyproject.toml', 'rb') as f:
     print(tomllib.load(f)['project']['version'])
 '''
+def run_get_version_script(){
+    return sh(
+        label:'Getting package version from pyproject.toml',
+        script: GET_VERSION_PYTHON_SCRIPT,
+        returnStdout: true
+    ).trim()
+}
 
 def get_version(){
     node('linux && docker'){
         docker.image('python').inside {
             checkout scm
-            return sh(
-                label:'Getting package version from pyproject.toml',
-                script: GET_VERSION_PYTHON_SCRIPT,
-                returnStdout: true
-            ).trim()
+            return run_get_version_script()
         }
     }
 }
@@ -50,6 +53,8 @@ pipeline {
     agent none
     parameters{
         booleanParam(name: 'RUN_CHECKS', defaultValue: true, description: 'Run checks on code')
+        booleanParam(name: 'USE_SONARQUBE', defaultValue: true, description: 'Send data test data to SonarQube')
+        credentials(name: 'SONARCLOUD_TOKEN', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: 'sonarcloud_token', required: false)
         booleanParam(name: 'PACKAGE_STANDALONE_WINDOWS_INSTALLER', defaultValue: false, description: 'Create a standalone Windows version that does not require a user to install python first')
         booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_X86_64', defaultValue: false, description: 'Create a standalone version for MacOS X86_64 (m1) machines')
         booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_ARM64', defaultValue: false, description: 'Create a standalone version for MacOS ARM64 (Intel) machines')
@@ -61,6 +66,7 @@ pipeline {
                 dockerfile {
                     filename 'ci/docker/linux/jenkins/Dockerfile'
                     label 'docker && linux'
+                    args '--mount source=sonar-cache-galatea,target=/opt/sonar/.sonar/cache'
                 }
             }
             when{
@@ -138,20 +144,61 @@ pipeline {
                             }
                         }
                     }
+                    post{
+                        always{
+                            sh(
+                                label: 'Combining coverage data and generating report',
+                                script: '''. ./venv/bin/activate
+                                          coverage combine
+                                          coverage xml -o reports/coverage.xml
+                                          coverage html -d reports/coverage
+                                          '''
+                            )
+                            recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
+                        }
+                    }
+                }
+                stage('Submit results to SonarQube'){
+                    options{
+                        lock('galatea-sonarscanner')
+                    }
+                    environment{
+                        VERSION=run_get_version_script()
+                    }
+                    when{
+                        allOf{
+                            equals expected: true, actual: params.USE_SONARQUBE
+                            expression{
+                                try{
+                                    withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'dddd')]) {
+                                        echo 'Found credentials for sonarqube'
+                                    }
+                                } catch(e){
+                                    return false
+                                }
+                                return true
+                            }
+                        }
+                    }
+                    steps{
+                        withSonarQubeEnv(installationName: 'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
+                            script{
+                                def sourceInstruction
+                                if (env.CHANGE_ID){
+                                    sourceInstruction = "-Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.BRANCH_NAME}"
+                                } else{
+                                    sourceInstruction = "-Dsonar.branch.name=${env.BRANCH_NAME}"
+                                }
+                                sh(
+                                    label: 'Running Sonar Scanner',
+                                    script: "sonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${sourceInstruction}"
+                                )
+                            }
+                        }
+                    }
                 }
             }
             post{
-                always{
-                    sh(
-                        label: 'Combining coverage data and generating report',
-                        script: '''. ./venv/bin/activate
-                                  coverage combine
-                                  coverage xml -o reports/coverage.xml
-                                  coverage html -d reports/coverage
-                                  '''
-                    )
-                    recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
-                }
                 cleanup{
                     cleanWs(patterns: [
                             [pattern: 'venv/', type: 'INCLUDE'],
