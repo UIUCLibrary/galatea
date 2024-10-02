@@ -2,11 +2,14 @@
 
 import argparse
 import pathlib
+import sys
 from importlib import metadata
-from typing import Optional
+from typing import Optional, List
+import typing
 from galatea import clean_tsv
 
 __doc__ = "Galatea is a tool for manipulating tsv data."
+__all__ = ['main']
 
 
 def get_versions_from_package() -> Optional[str]:
@@ -22,7 +25,6 @@ DEFAULT_VERSION_STRATEGIES = [get_versions_from_package]
 
 def get_version() -> str:
     """Get the version of current application."""
-
     for strategy in DEFAULT_VERSION_STRATEGIES:
         version = strategy()
         if version:
@@ -56,19 +58,21 @@ def get_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
-    """Main entry point."""
+def clean_tsv_command(args: argparse.Namespace) -> None:
+    # if no output is explicitly selected, the changes are handled
+    # inplace instead of creating a new file
+    output: pathlib.Path = args.output_tsv or args.source_tsv
+    clean_tsv.clean_tsv(typing.cast(pathlib.Path, args.source_tsv), output)
+
+
+def main(cli_args: Optional[List[str]] = None) -> None:
+    """Run main entry point."""
     arg_parser = get_arg_parser()
-    args = arg_parser.parse_args()
+    args = arg_parser.parse_args(cli_args or sys.argv[1:])
 
     match args.command:
         case "clean-tsv":
-            # if no output is explicitly selected, the changes are handled
-            # inplace instead of creating a new file
-            output = args.output_tsv or args.source_tsv
-            clean_tsv.clean_tsv(args.source_tsv, output)
-        case _:
-            arg_parser.print_usage()
+            clean_tsv_command(args)
 
 
 if __name__ == "__main__":
