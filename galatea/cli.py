@@ -6,6 +6,8 @@ from importlib import metadata
 from typing import Optional
 from galatea import clean_tsv
 
+__doc__ = "Galatea is a tool for manipulating tsv data."
+
 
 def get_versions_from_package() -> Optional[str]:
     """Get version information from the package metadata."""
@@ -32,7 +34,7 @@ def get_version() -> str:
 
 def get_arg_parser() -> argparse.ArgumentParser:
     """Argument parser for galatea cli."""
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         '--version',
         action='version',
@@ -54,7 +56,8 @@ def get_arg_parser() -> argparse.ArgumentParser:
     )
 
     clean_tsv_cmd.add_argument(
-        "output_tsv",
+        "--output",
+        dest="output_tsv",
         type=pathlib.Path,
         help="Output tsv file"
     )
@@ -68,7 +71,12 @@ def main() -> None:
 
     match(args.command):
         case "clean-tsv":
-            clean_tsv.clean_tsv(args.source_tsv, args.output_tsv)
+            # if no output is explicitly selected, the changes are handled
+            # inplace instead of creating a new file
+            output = args.output_tsv or args.source_tsv
+            clean_tsv.clean_tsv(args.source_tsv, output)
+        case _:
+            arg_parser.print_usage()
 
 
 if __name__ == '__main__':
