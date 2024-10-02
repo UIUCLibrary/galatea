@@ -2,6 +2,6 @@ build
 coverage
 lxml
 mypy
+pre-commit
 pytest
 ruff
-
