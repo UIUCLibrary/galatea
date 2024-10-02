@@ -1,7 +1,12 @@
-# See https://pre-commit.com for more information
-# See https://pre-commit.com/hooks.html for more hooks
 repos:
--   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.8
-    hooks:
-    -   id: ruff
+- hooks:
+  - id: ruff
+  repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.6.8
+- hooks:
+  - id: commitizen
+  - id: commitizen-branch
+    stages:
+    - push
+  repo: https://github.com/commitizen-tools/commitizen
+  rev: v3.29.1
