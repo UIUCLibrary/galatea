@@ -1,4 +1,3 @@
-
 def remove_duplicates(entry: str) -> str:
     values = entry.split("||")
     new_values = []
