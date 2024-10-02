@@ -13,6 +13,10 @@ create_standalone(){
     uv_path=$1
     echo 'create_standalone'
     shift;
+
+#     Generates the galatea.egg-info needed for the version metadata
+    $uv_path build --wheel
+
     $uv_path run $FREEZE_SCRIPT galatea ./galatea/__main__.py
 }
 
