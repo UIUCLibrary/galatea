@@ -1,7 +1,8 @@
 build
+commitizen
 coverage
 lxml
 mypy
+pre-commit
 pytest
 ruff
-

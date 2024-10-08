@@ -30,7 +30,7 @@ a = Analysis(
     binaries=[],
     datas=[],
     hiddenimports=[],
-    hookspath=[],
+    hookspath=['%(hooks_path)s'],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
@@ -84,7 +84,8 @@ def generate_spec_file(output_file: str, script_name: str, entry_point: str):
 
     specs = {
         "entry_points": [entry_point],
-        "name": script_name
+        "name": script_name,
+        "hooks_path": pathlib.Path(__file__).parent / "hooks"
     }
     specs_files = pathlib.Path(output_file)
     dist_path = specs_files.parent
