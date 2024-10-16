@@ -25,25 +25,10 @@ def deployStandalone(glob, url) {
     }
 }
 
-GET_VERSION_PYTHON_SCRIPT = '''#!/usr/bin/env python3
-import tomllib
-with open('pyproject.toml', 'rb') as f:
-    print(tomllib.load(f)['project']['version'])
-'''
-def run_get_version_script(){
-    return sh(
-        label:'Getting package version from pyproject.toml',
-        script: GET_VERSION_PYTHON_SCRIPT,
-        returnStdout: true
-    ).trim()
-}
-
 def get_version(){
-    node('linux && docker'){
-        docker.image('python').inside {
-            checkout scm
-            return run_get_version_script()
-        }
+    node(){
+        checkout scm
+        return readTOML( file: 'pyproject.toml')['project'].version
     }
 }
 
@@ -163,7 +148,7 @@ pipeline {
                         lock('galatea-sonarscanner')
                     }
                     environment{
-                        VERSION=run_get_version_script()
+                        VERSION="${readTOML( file: 'pyproject.toml')['project'].version}"
                     }
                     when{
                         allOf{
@@ -191,7 +176,9 @@ pipeline {
                                 }
                                 sh(
                                     label: 'Running Sonar Scanner',
-                                    script: "sonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${sourceInstruction}"
+                                    script: """. ./venv/bin/activate
+                                                uvx pysonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${sourceInstruction}
+                                            """
                                 )
                             }
                         }
