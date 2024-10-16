@@ -1,6 +1,6 @@
 ARG PIP_DOWNLOAD_CACHE=/.cache/pip
 ARG UV_CACHE_DIR=/.cache/uv
-
+ARG UV_TOOL_DIR=/.local/share/uv/tools
 
 FROM ubuntu:24.04 AS base_image
 RUN rm -f /etc/apt/apt.conf.d/docker-clean
@@ -23,4 +23,8 @@ RUN mkdir -p ${PIP_DOWNLOAD_CACHE} && \
     mkdir -p ${UV_CACHE_DIR} && \
     chmod -R 777 ${UV_CACHE_DIR}
 ENV UV_CACHE_DIR=${UV_CACHE_DIR}
+ARG UV_TOOL_DIR
+RUN mkdir -p ${UV_TOOL_DIR} && \
+    chmod -R 777 ${UV_TOOL_DIR}
+ARG UV_TOOL_DIR=${UV_TOOL_DIR}
 ENV UV_INDEX_STRATEGY=unsafe-best-match
