@@ -51,7 +51,8 @@ pipeline {
                 dockerfile {
                     filename 'ci/docker/linux/jenkins/Dockerfile'
                     label 'docker && linux'
-                    args '--mount source=sonar-cache-galatea,target=/opt/sonar/.sonar/cache'
+                    additionalBuildArgs '--build-arg UV_CACHE_DIR=/.cache/uv'
+                    args '--mount source=sonar-cache-galatea,target=/opt/sonar/.sonar/cache --mount source=uv-cache-galatea,target=/.cache/uv'
                 }
             }
             when{

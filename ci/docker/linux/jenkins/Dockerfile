@@ -1,6 +1,6 @@
 ARG PIP_DOWNLOAD_CACHE=/.cache/pip
 ARG UV_CACHE_DIR=/.cache/uv
-ARG SONAR_SCANNER_VERSION=6.2.1.4610
+
 
 FROM ubuntu:24.04 AS base_image
 RUN rm -f /etc/apt/apt.conf.d/docker-clean
@@ -22,5 +22,5 @@ RUN mkdir -p ${PIP_DOWNLOAD_CACHE} && \
     chmod -R 777 ${PIP_DOWNLOAD_CACHE} && \
     mkdir -p ${UV_CACHE_DIR} && \
     chmod -R 777 ${UV_CACHE_DIR}
-
+ENV UV_CACHE_DIR=${UV_CACHE_DIR}
 ENV UV_INDEX_STRATEGY=unsafe-best-match
