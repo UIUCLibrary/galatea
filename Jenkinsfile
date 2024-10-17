@@ -201,18 +201,22 @@ pipeline {
             stages{
                 stage('Python Packages'){
                     agent {
-                        dockerfile {
-                            filename 'ci/docker/linux/jenkins/Dockerfile'
+                        docker {
+                            image 'python'
                             label 'docker && linux'
                         }
+                    }
+                    environment{
+                        PIP_NO_CACHE_DIR='off'
+                        UV_INDEX_STRATEGY='unsafe-best-match'
+                        UV_NO_CACHE='1'
                     }
                     steps{
                         sh(
                             label: 'Package',
                             script: '''python3 -m venv venv && venv/bin/pip install uv
                                        . ./venv/bin/activate
-                                       uv pip sync requirements-dev.txt
-                                       python -m build --installer=uv
+                                       uv build
                                     '''
                         )
                     }
