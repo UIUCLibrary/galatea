@@ -33,14 +33,22 @@ def get_version(){
 }
 
 standaloneVersions = []
-
+def start(){
+}
 pipeline {
     agent none
     parameters{
         booleanParam(name: 'RUN_CHECKS', defaultValue: true, description: 'Run checks on code')
         booleanParam(name: 'USE_SONARQUBE', defaultValue: true, description: 'Send data test data to SonarQube')
-        booleanParam(name: 'TEST_RUN_TOX', defaultValue: false, description: 'Run Tox Tests')
         credentials(name: 'SONARCLOUD_TOKEN', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: 'sonarcloud_token', required: false)
+        booleanParam(name: 'TEST_RUN_TOX', defaultValue: false, description: 'Run Tox Tests')
+        booleanParam(name: 'BUILD_PACKAGES', defaultValue: false, description: 'Build Python packages')
+        booleanParam(name: 'TEST_PACKAGES', defaultValue: false, description: 'Test packages')
+        booleanParam(name: 'INCLUDE_LINUX-X86_64', defaultValue: true, description: 'Include x86_64 architecture for Linux')
+        booleanParam(name: 'INCLUDE_LINUX-ARM64', defaultValue: false, description: 'Include ARM architecture for Linux')
+        booleanParam(name: 'INCLUDE_MACOS-X86_64', defaultValue: false, description: 'Include x86_64 architecture for Mac')
+        booleanParam(name: 'INCLUDE_MACOS-ARM64', defaultValue: false, description: 'Include ARM(m1) architecture for Mac')
+        booleanParam(name: 'INCLUDE_WINDOWS-X86_64', defaultValue: false, description: 'Include x86_64 architecture for Windows')
         booleanParam(name: 'PACKAGE_STANDALONE_WINDOWS_INSTALLER', defaultValue: false, description: 'Create a standalone Windows version that does not require a user to install python first')
         booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_X86_64', defaultValue: false, description: 'Create a standalone version for MacOS X86_64 (m1) machines')
         booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_ARM64', defaultValue: false, description: 'Create a standalone version for MacOS ARM64 (Intel) machines')
@@ -215,7 +223,7 @@ pipeline {
                         script{
                             def envs = []
                             node('docker && linux'){
-                                docker.image('python').inside("--mount source=python-tmp-galatea,target=/tmp"){
+                                docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
                                     try{
                                         checkout scm
                                         sh(script: 'python3 -m venv venv && venv/bin/pip install uv')
@@ -242,7 +250,7 @@ pipeline {
                                         "Tox Environment: ${toxEnv}",
                                         {
                                             node('docker && linux'){
-                                                docker.image('python').inside("--mount source=python-tmp-galatea,target=/tmp"){
+                                                docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
                                                     checkout scm
                                                     try{
                                                         sh( label: 'Running Tox',
@@ -281,18 +289,21 @@ pipeline {
         stage('Package'){
             stages{
                 stage('Python Packages'){
-                    environment{
-                        PIP_CACHE_DIR='/tmp/pipcache'
-                        UV_INDEX_STRATEGY='unsafe-best-match'
-                        UV_CACHE_DIR='/tmp/uvcache'
+                    when{
+                        equals expected: true, actual: params.BUILD_PACKAGES
                     }
                     stages{
                         stage('Create Python Packages'){
+                            environment{
+                                PIP_CACHE_DIR='/tmp/pipcache'
+                                UV_INDEX_STRATEGY='unsafe-best-match'
+                                UV_CACHE_DIR='/tmp/uvcache'
+                            }
                             agent {
                                 docker {
                                     image 'python'
                                     label 'docker && linux'
-                                    args "--mount source=pip-cache-home-galatea,target=${env.PIP_CACHE_DIR}"
+                                    args '--mount source=python-tmp-galatea,target=/tmp'
                                 }
                             }
                             steps{
@@ -307,12 +318,143 @@ pipeline {
                             post{
                                 success{
                                     archiveArtifacts artifacts: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', fingerprint: true
+                                    stash includes: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', name: 'PYTHON_PACKAGES'
                                 }
                                 cleanup{
                                     cleanWs(patterns: [
                                             [pattern: 'venv/', type: 'INCLUDE'],
                                             [pattern: '**/__pycache__/', type: 'INCLUDE'],
                                     ])
+                                }
+                            }
+                        }
+                        stage('Testing packages'){
+                            when{
+                                equals expected: true, actual: params.TEST_PACKAGES
+                            }
+                            matrix {
+                                axes {
+                                    axis {
+                                        name 'PYTHON_VERSION'
+                                        values '3.10','3.11','3.12','3.13'
+                                    }
+                                    axis {
+                                        name 'OS'
+                                        values 'linux','macos','windows'
+                                    }
+                                    axis {
+                                        name 'ARCHITECTURE'
+                                        values 'x86_64', 'arm64'
+                                    }
+                                    axis {
+                                        name 'PACKAGE_TYPE'
+                                        values 'wheel', 'sdist'
+                                    }
+                                }
+                                excludes {
+                                    exclude {
+                                        axis {
+                                            name 'PLATFORM'
+                                            notValues 'windows'
+                                        }
+                                        axis {
+                                            name 'ARCHITECTURE'
+                                            values 'arm64'
+                                        }
+                                    }
+                                }
+                                when{
+                                    expression{
+                                        params.containsKey("INCLUDE_${OS}-${ARCHITECTURE}".toUpperCase()) && params["INCLUDE_${OS}-${ARCHITECTURE}".toUpperCase()]
+                                    }
+                                }
+                                stages {
+                                    stage('Test Package in container') {
+                                        when{
+                                            expression{['linux', 'windows'].contains(OS)}
+                                            beforeAgent true
+                                        }
+                                        agent {
+                                            docker {
+                                                image 'python'
+                                                label "${OS} && ${ARCHITECTURE} && docker"
+                                                args "--mount source=python-tmp-galatea,target=${['linux'].contains(OS) ? '/tmp' : 'C:/Users/AppData/Local/Temp'}"
+                                            }
+                                        }
+                                        environment{
+                                            PIP_CACHE_DIR="${isUnix() ? '/tmp/pipcache': 'C:/Users/AppData/Local/Temp/pipcache'}"
+                                            UV_INDEX_STRATEGY='unsafe-best-match'
+                                            UV_TOOL_DIR="${isUnix() ? '/tmp/uvtools': 'C:/Users/AppData/Local/Temp/uvtools'}"
+                                            UV_PYTHON_INSTALL_DIR="${isUnix() ? '/tmp/uvpython': 'C:/Users/AppData/Local/Temp/uvpython'}"
+                                            UV_CACHE_DIR="${isUnix() ? '/tmp/uvcache': 'C:/Users/AppData/Local/Temp/uvcache'}"
+                                        }
+                                        steps {
+                                            unstash 'PYTHON_PACKAGES'
+                                            script{
+                                                if(isUnix()){
+                                                    sh(
+                                                        label: 'Testing with tox',
+                                                        script: """python3 -m venv venv
+                                                                   . ./venv/bin/activate
+                                                                   pip install uv
+                                                                   UV_INDEX_STRATEGY=unsafe-best-match uvx --with tox-uv tox --installpkg ${findFiles(glob: PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}
+                                                                """
+                                                    )
+                                                } else {
+                                                    bat(
+                                                        label: 'Testing with tox',
+                                                        script: """python -m venv venv
+                                                                   .\\venv\\scripts\\activate.bat
+                                                                   pip install uv
+                                                                   UV_INDEX_STRATEGY=unsafe-best-match uvx --with tox-uv tox --installpkg ${findFiles(glob: PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}
+                                                                """
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        post{
+                                            cleanup{
+                                                cleanWs(
+                                                    patterns: [
+                                                        [pattern: 'dist/', type: 'INCLUDE'],
+                                                        [pattern: 'venv/', type: 'INCLUDE'],
+                                                        [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                        ]
+                                                )
+                                            }
+                                        }
+                                    }
+                                    stage('Test Package directly on agent') {
+                                        when{
+                                            expression{['macos'].contains(OS)}
+                                            beforeAgent true
+                                        }
+                                        agent {
+                                            label "${OS} && ${ARCHITECTURE}"
+                                        }
+                                        steps {
+                                            unstash 'PYTHON_PACKAGES'
+                                            sh(
+                                                label: 'Testing with tox',
+                                                script: """python3 -m venv venv
+                                                           . ./venv/bin/activate
+                                                           pip install uv
+                                                           UV_INDEX_STRATEGY=unsafe-best-match uvx --with tox-uv tox --installpkg ${findFiles(glob: PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}
+                                                        """
+                                            )
+                                        }
+                                        post{
+                                            cleanup{
+                                                cleanWs(
+                                                    patterns: [
+                                                        [pattern: 'dist/', type: 'INCLUDE'],
+                                                        [pattern: 'venv/', type: 'INCLUDE'],
+                                                        [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                        ]
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -452,7 +594,7 @@ pipeline {
                             standaloneVersions.each{
                                 unstash "${it}"
                             }
-                            deployStandalone("dist/*.zip", "${SERVER_URL}/${archiveFolder}")
+                            deployStandalone('dist/*.zip', "${SERVER_URL}/${archiveFolder}")
                         }
                     }
                 }
