@@ -33,198 +33,441 @@ def get_version(){
 }
 
 standaloneVersions = []
-
+def start(){
+}
 pipeline {
     agent none
     parameters{
         booleanParam(name: 'RUN_CHECKS', defaultValue: true, description: 'Run checks on code')
         booleanParam(name: 'USE_SONARQUBE', defaultValue: true, description: 'Send data test data to SonarQube')
         credentials(name: 'SONARCLOUD_TOKEN', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: 'sonarcloud_token', required: false)
+        booleanParam(name: 'TEST_RUN_TOX', defaultValue: false, description: 'Run Tox Tests')
+        booleanParam(name: 'BUILD_PACKAGES', defaultValue: false, description: 'Build Python packages')
+        booleanParam(name: 'TEST_PACKAGES', defaultValue: false, description: 'Test packages')
+        booleanParam(name: 'INCLUDE_LINUX-X86_64', defaultValue: true, description: 'Include x86_64 architecture for Linux')
+        booleanParam(name: 'INCLUDE_LINUX-ARM64', defaultValue: false, description: 'Include ARM architecture for Linux')
+        booleanParam(name: 'INCLUDE_MACOS-X86_64', defaultValue: false, description: 'Include x86_64 architecture for Mac')
+        booleanParam(name: 'INCLUDE_MACOS-ARM64', defaultValue: false, description: 'Include ARM(m1) architecture for Mac')
+        booleanParam(name: 'INCLUDE_WINDOWS-X86_64', defaultValue: false, description: 'Include x86_64 architecture for Windows')
         booleanParam(name: 'PACKAGE_STANDALONE_WINDOWS_INSTALLER', defaultValue: false, description: 'Create a standalone Windows version that does not require a user to install python first')
         booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_X86_64', defaultValue: false, description: 'Create a standalone version for MacOS X86_64 (m1) machines')
         booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_ARM64', defaultValue: false, description: 'Create a standalone version for MacOS ARM64 (Intel) machines')
         booleanParam(name: 'DEPLOY_STANDALONE_PACKAGERS', defaultValue: false, description: 'Deploy standalone packages')
     }
     stages {
-        stage('Build and Test'){
-            agent {
-                dockerfile {
-                    filename 'ci/docker/linux/jenkins/Dockerfile'
-                    label 'docker && linux'
-                    additionalBuildArgs '--build-arg UV_CACHE_DIR=/.cache/uv --build-arg UV_TOOL_DIR=/.local/share/uv/tools'
-                    args '--mount source=sonar-cache-galatea,target=/opt/sonar/.sonar/cache --mount source=uv-cache-galatea,target=/.cache/uv --mount source=uv-tools-galatea,target=/.local/share/uv/tools'
-                }
-            }
-            when{
-                equals expected: true, actual: params.RUN_CHECKS
-                beforeAgent true
-            }
+        stage('Testing'){
             stages{
-                stage('Setup Testing Environment'){
-                    steps{
-                        sh(label: 'Create virtual environment', script: 'python3 -m venv venv && venv/bin/pip install uv')
-                        sh(
-                            label: 'Install dev packages',
-                            script: '''. ./venv/bin/activate
-                                        uv pip sync requirements-dev.txt
-                                    '''
-                            )
-                        sh(
-                            label: 'Install package in development mode',
-                            script: '''. ./venv/bin/activate
-                                       uv pip install -e .
-                                    '''
-                            )
+                stage('Build and Test'){
+                    environment{
+                        PIP_CACHE_DIR='/tmp/pipcache'
+                        UV_INDEX_STRATEGY='unsafe-best-match'
+                        UV_TOOL_DIR='/tmp/uvtools'
+                        UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                        UV_CACHE_DIR='/tmp/uvcache'
                     }
-                }
-                stage('Run Tests'){
-                    parallel{
-                        stage('Pytest'){
+                    agent {
+                        docker{
+                            image 'python'
+                            label 'docker && linux'
+                            args '--mount source=python-tmp-galatea,target=/tmp'
+                        }
+                    }
+                    when{
+                        equals expected: true, actual: params.RUN_CHECKS
+                        beforeAgent true
+                    }
+                    stages{
+                        stage('Setup Testing Environment'){
                             steps{
                                 sh(
-                                    label: 'Run Pytest',
+                                    label: 'Create virtual environment',
+                                    script: '''python3 -m venv bootstrap_uv
+                                               bootstrap_uv/bin/pip install uv
+                                               bootstrap_uv/bin/uv venv --python 3.11  venv
+                                               . ./venv/bin/activate
+                                               bootstrap_uv/bin/uv pip install uv
+                                               rm -rf bootstrap_uv
+                                               uv pip install -r requirements-dev.txt
+                                               '''
+                                           )
+                                sh(
+                                    label: 'Install package in development mode',
                                     script: '''. ./venv/bin/activate
-                                            coverage run --parallel-mode --source=galatea -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml
+                                               uv pip install -e .
                                             '''
-                                )
-                            }
-                            post{
-                                always{
-                                    junit(allowEmptyResults: true, testResults: 'reports/tests/pytest/pytest-junit.xml')
-                                }
+                                    )
                             }
                         }
-                        stage('MyPy'){
-                            steps{
-                                catchError(buildResult: 'SUCCESS', message: 'MyPy found issues', stageResult: 'UNSTABLE') {
-                                    tee('logs/mypy.log'){
-                                        sh(label: 'Running MyPy',
-                                           script: '. ./venv/bin/activate && mypy -p galatea --html-report reports/mypy/html'
+                        stage('Run Tests'){
+                            parallel{
+                                stage('Pytest'){
+                                    steps{
+                                        sh(
+                                            label: 'Run Pytest',
+                                            script: '''. ./venv/bin/activate
+                                                    coverage run --parallel-mode --source=galatea -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml
+                                                    '''
                                         )
+                                    }
+                                    post{
+                                        always{
+                                            junit(allowEmptyResults: true, testResults: 'reports/tests/pytest/pytest-junit.xml')
+                                        }
+                                    }
+                                }
+                                stage('MyPy'){
+                                    steps{
+                                        catchError(buildResult: 'SUCCESS', message: 'MyPy found issues', stageResult: 'UNSTABLE') {
+                                            tee('logs/mypy.log'){
+                                                sh(label: 'Running MyPy',
+                                                   script: '. ./venv/bin/activate && mypy -p galatea --html-report reports/mypy/html'
+                                                )
+                                            }
+                                        }
+                                    }
+                                    post {
+                                        always {
+                                            recordIssues(tools: [myPy(pattern: 'logs/mypy.log')])
+                                            publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
+                                        }
+                                    }
+                                }
+                                stage('Ruff') {
+                                    steps{
+                                        catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
+                                            sh(
+                                             label: 'Running Ruff',
+                                             script: '''. ./venv/bin/activate
+                                                        ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
+                                                        ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
+                                                    '''
+                                             )
+                                        }
+                                    }
+                                    post{
+                                        always{
+                                            recordIssues(tools: [pyLint(pattern: 'reports/ruffoutput.txt', name: 'Ruff')])
+                                        }
                                     }
                                 }
                             }
-                            post {
-                                always {
-                                    recordIssues(tools: [myPy(pattern: 'logs/mypy.log')])
-                                    publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
+                            post{
+                                always{
+                                    sh(
+                                        label: 'Combining coverage data and generating report',
+                                        script: '''. ./venv/bin/activate
+                                                  coverage combine
+                                                  coverage xml -o reports/coverage.xml
+                                                  coverage html -d reports/coverage
+                                                  '''
+                                    )
+                                    recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
                                 }
                             }
                         }
-                        stage('Ruff') {
-                            steps{
-                                catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
-                                    sh(
-                                     label: 'Running Ruff',
-                                     script: '''. ./venv/bin/activate
-                                                ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
-                                                ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
-                                            '''
-                                     )
+                        stage('Submit results to SonarQube'){
+                            options{
+                                lock('galatea-sonarscanner')
+                            }
+                            environment{
+                                VERSION="${readTOML( file: 'pyproject.toml')['project'].version}"
+                            }
+                            when{
+                                allOf{
+                                    equals expected: true, actual: params.USE_SONARQUBE
+                                    expression{
+                                        try{
+                                            withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'dddd')]) {
+                                                echo 'Found credentials for sonarqube'
+                                            }
+                                        } catch(e){
+                                            return false
+                                        }
+                                        return true
+                                    }
                                 }
                             }
-                            post{
-                                always{
-                                    recordIssues(tools: [pyLint(pattern: 'reports/ruffoutput.txt', name: 'Ruff')])
+                            steps{
+                                withSonarQubeEnv(installationName: 'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
+                                    script{
+                                        def sourceInstruction
+                                        if (env.CHANGE_ID){
+                                            sourceInstruction = "-Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.BRANCH_NAME}"
+                                        } else{
+                                            sourceInstruction = "-Dsonar.branch.name=${env.BRANCH_NAME}"
+                                        }
+                                        sh(
+                                            label: 'Running Sonar Scanner',
+                                            script: """. ./venv/bin/activate
+                                                        uvx pysonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${sourceInstruction}
+                                                    """
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                     post{
-                        always{
-                            sh(
-                                label: 'Combining coverage data and generating report',
-                                script: '''. ./venv/bin/activate
-                                          coverage combine
-                                          coverage xml -o reports/coverage.xml
-                                          coverage html -d reports/coverage
-                                          '''
-                            )
-                            recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
+                        cleanup{
+                            cleanWs(patterns: [
+                                    [pattern: 'uv/', type: 'INCLUDE'],
+                                    [pattern: 'venv/', type: 'INCLUDE'],
+                                    [pattern: 'logs/', type: 'INCLUDE'],
+                                    [pattern: 'reports/', type: 'INCLUDE'],
+                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                            ])
                         }
                     }
                 }
-                stage('Submit results to SonarQube'){
-                    options{
-                        lock('galatea-sonarscanner')
+                stage('Tox'){
+                    when {
+                       equals expected: true, actual: params.TEST_RUN_TOX
                     }
                     environment{
-                        VERSION="${readTOML( file: 'pyproject.toml')['project'].version}"
-                    }
-                    when{
-                        allOf{
-                            equals expected: true, actual: params.USE_SONARQUBE
-                            expression{
-                                try{
-                                    withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'dddd')]) {
-                                        echo 'Found credentials for sonarqube'
-                                    }
-                                } catch(e){
-                                    return false
-                                }
-                                return true
-                            }
-                        }
+                        PIP_CACHE_DIR='/tmp/pipcache'
+                        UV_INDEX_STRATEGY='unsafe-best-match'
+                        UV_TOOL_DIR='/tmp/uvtools'
+                        UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                        UV_CACHE_DIR='/tmp/uvcache'
                     }
                     steps{
-                        withSonarQubeEnv(installationName: 'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
-                            script{
-                                def sourceInstruction
-                                if (env.CHANGE_ID){
-                                    sourceInstruction = "-Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.BRANCH_NAME}"
-                                } else{
-                                    sourceInstruction = "-Dsonar.branch.name=${env.BRANCH_NAME}"
+                        script{
+                            def envs = []
+                            node('docker && linux'){
+                                docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
+                                    try{
+                                        checkout scm
+                                        sh(script: 'python3 -m venv venv && venv/bin/pip install uv')
+                                        envs = sh(
+                                            label: 'Get tox environments',
+                                            script: './venv/bin/uvx --quiet --with tox-uv tox list -d --no-desc',
+                                            returnStdout: true,
+                                        ).trim().split('\n')
+                                    } finally{
+                                        cleanWs(
+                                            patterns: [
+                                                [pattern: 'venv/', type: 'INCLUDE'],
+                                                [pattern: '.tox', type: 'INCLUDE'],
+                                                [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                            ]
+                                        )
+                                    }
                                 }
-                                sh(
-                                    label: 'Running Sonar Scanner',
-                                    script: """. ./venv/bin/activate
-                                                uvx pysonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${sourceInstruction}
-                                            """
-                                )
                             }
+                            parallel(
+                                envs.collectEntries{toxEnv ->
+                                    def version = toxEnv.replaceAll(/py(\d)(\d+)/, '$1.$2')
+                                    [
+                                        "Tox Environment: ${toxEnv}",
+                                        {
+                                            node('docker && linux'){
+                                                docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
+                                                    checkout scm
+                                                    try{
+                                                        sh( label: 'Running Tox',
+                                                            script: """python3 -m venv venv && venv/bin/pip install uv
+                                                                       . ./venv/bin/activate
+                                                                       uv python install cpython-${version}
+                                                                       uvx -p ${version} --with tox-uv tox run -e ${toxEnv}
+                                                                    """
+                                                            )
+                                                    } catch(e) {
+                                                        sh(script: '''. ./venv/bin/activate
+                                                              uv python list
+                                                              '''
+                                                                )
+                                                        throw e
+                                                    } finally{
+                                                        cleanWs(
+                                                            patterns: [
+                                                                [pattern: 'venv/', type: 'INCLUDE'],
+                                                                [pattern: '.tox', type: 'INCLUDE'],
+                                                                [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                            ]
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            )
                         }
                     }
-                }
-            }
-            post{
-                cleanup{
-                    cleanWs(patterns: [
-                            [pattern: 'venv/', type: 'INCLUDE'],
-                            [pattern: 'logs/', type: 'INCLUDE'],
-                            [pattern: 'reports/', type: 'INCLUDE'],
-                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                    ])
                 }
             }
         }
         stage('Package'){
             stages{
                 stage('Python Packages'){
-                    agent {
-                        dockerfile {
-                            filename 'ci/docker/linux/jenkins/Dockerfile'
-                            label 'docker && linux'
-                        }
+                    when{
+                        equals expected: true, actual: params.BUILD_PACKAGES
                     }
-                    steps{
-                        sh(
-                            label: 'Package',
-                            script: '''python3 -m venv venv && venv/bin/pip install uv
-                                       . ./venv/bin/activate
-                                       uv pip sync requirements-dev.txt
-                                       python -m build --installer=uv
-                                    '''
-                        )
-                    }
-                    post{
-                        success{
-                            archiveArtifacts artifacts: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', fingerprint: true
+                    stages{
+                        stage('Create Python Packages'){
+                            environment{
+                                PIP_CACHE_DIR='/tmp/pipcache'
+                                UV_INDEX_STRATEGY='unsafe-best-match'
+                                UV_CACHE_DIR='/tmp/uvcache'
+                            }
+                            agent {
+                                docker {
+                                    image 'python'
+                                    label 'docker && linux'
+                                    args '--mount source=python-tmp-galatea,target=/tmp'
+                                }
+                            }
+                            steps{
+                                sh(
+                                    label: 'Package',
+                                    script: '''python3 -m venv venv && venv/bin/pip install uv
+                                               . ./venv/bin/activate
+                                               uv build
+                                            '''
+                                )
+                            }
+                            post{
+                                success{
+                                    archiveArtifacts artifacts: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', fingerprint: true
+                                    stash includes: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', name: 'PYTHON_PACKAGES'
+                                }
+                                cleanup{
+                                    cleanWs(patterns: [
+                                            [pattern: 'venv/', type: 'INCLUDE'],
+                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                    ])
+                                }
+                            }
                         }
-                        cleanup{
-                            cleanWs(patterns: [
-                                    [pattern: 'venv/', type: 'INCLUDE'],
-                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                            ])
+                        stage('Testing packages'){
+                            when{
+                                equals expected: true, actual: params.TEST_PACKAGES
+                            }
+                            matrix {
+                                axes {
+                                    axis {
+                                        name 'PYTHON_VERSION'
+                                        values '3.10','3.11','3.12','3.13'
+                                    }
+                                    axis {
+                                        name 'OS'
+                                        values 'linux','macos','windows'
+                                    }
+                                    axis {
+                                        name 'ARCHITECTURE'
+                                        values 'x86_64', 'arm64'
+                                    }
+                                    axis {
+                                        name 'PACKAGE_TYPE'
+                                        values 'wheel', 'sdist'
+                                    }
+                                }
+                                excludes {
+                                    exclude {
+                                        axis {
+                                            name 'PLATFORM'
+                                            notValues 'windows'
+                                        }
+                                        axis {
+                                            name 'ARCHITECTURE'
+                                            values 'arm64'
+                                        }
+                                    }
+                                }
+                                when{
+                                    expression{
+                                        params.containsKey("INCLUDE_${OS}-${ARCHITECTURE}".toUpperCase()) && params["INCLUDE_${OS}-${ARCHITECTURE}".toUpperCase()]
+                                    }
+                                }
+                                stages {
+                                    stage('Test Package in container') {
+                                        when{
+                                            expression{['linux', 'windows'].contains(OS)}
+                                            beforeAgent true
+                                        }
+                                        agent {
+                                            docker {
+                                                image 'python'
+                                                label "${OS} && ${ARCHITECTURE} && docker"
+                                                args "--mount source=python-tmp-galatea,target=${['linux'].contains(OS) ? '/tmp' : 'C:/Users/AppData/Local/Temp'}"
+                                            }
+                                        }
+                                        environment{
+                                            PIP_CACHE_DIR="${isUnix() ? '/tmp/pipcache': 'C:/Users/AppData/Local/Temp/pipcache'}"
+                                            UV_INDEX_STRATEGY='unsafe-best-match'
+                                            UV_TOOL_DIR="${isUnix() ? '/tmp/uvtools': 'C:/Users/AppData/Local/Temp/uvtools'}"
+                                            UV_PYTHON_INSTALL_DIR="${isUnix() ? '/tmp/uvpython': 'C:/Users/AppData/Local/Temp/uvpython'}"
+                                            UV_CACHE_DIR="${isUnix() ? '/tmp/uvcache': 'C:/Users/AppData/Local/Temp/uvcache'}"
+                                        }
+                                        steps {
+                                            unstash 'PYTHON_PACKAGES'
+                                            script{
+                                                if(isUnix()){
+                                                    sh(
+                                                        label: 'Testing with tox',
+                                                        script: """python3 -m venv venv
+                                                                   . ./venv/bin/activate
+                                                                   pip install uv
+                                                                   UV_INDEX_STRATEGY=unsafe-best-match uvx --with tox-uv tox --installpkg ${findFiles(glob: PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}
+                                                                """
+                                                    )
+                                                } else {
+                                                    bat(
+                                                        label: 'Testing with tox',
+                                                        script: """python -m venv venv
+                                                                   .\\venv\\scripts\\activate.bat
+                                                                   pip install uv
+                                                                   UV_INDEX_STRATEGY=unsafe-best-match uvx --with tox-uv tox --installpkg ${findFiles(glob: PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}
+                                                                """
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        post{
+                                            cleanup{
+                                                cleanWs(
+                                                    patterns: [
+                                                        [pattern: 'dist/', type: 'INCLUDE'],
+                                                        [pattern: 'venv/', type: 'INCLUDE'],
+                                                        [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                        ]
+                                                )
+                                            }
+                                        }
+                                    }
+                                    stage('Test Package directly on agent') {
+                                        when{
+                                            expression{['macos'].contains(OS)}
+                                            beforeAgent true
+                                        }
+                                        agent {
+                                            label "${OS} && ${ARCHITECTURE}"
+                                        }
+                                        steps {
+                                            unstash 'PYTHON_PACKAGES'
+                                            sh(
+                                                label: 'Testing with tox',
+                                                script: """python3 -m venv venv
+                                                           . ./venv/bin/activate
+                                                           pip install uv
+                                                           UV_INDEX_STRATEGY=unsafe-best-match uvx --with tox-uv tox --installpkg ${findFiles(glob: PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}
+                                                        """
+                                            )
+                                        }
+                                        post{
+                                            cleanup{
+                                                cleanWs(
+                                                    patterns: [
+                                                        [pattern: 'dist/', type: 'INCLUDE'],
+                                                        [pattern: 'venv/', type: 'INCLUDE'],
+                                                        [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                        ]
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -362,7 +605,7 @@ pipeline {
                             standaloneVersions.each{
                                 unstash "${it}"
                             }
-                            deployStandalone("dist/*.zip", "${SERVER_URL}/${archiveFolder}")
+                            deployStandalone('dist/*.zip', "${SERVER_URL}/${archiveFolder}")
                         }
                     }
                 }
