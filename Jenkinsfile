@@ -58,12 +58,18 @@ pipeline {
         stage('Testing'){
             stages{
                 stage('Build and Test'){
+                    environment{
+                        PIP_CACHE_DIR='/tmp/pipcache'
+                        UV_INDEX_STRATEGY='unsafe-best-match'
+                        UV_TOOL_DIR='/tmp/uvtools'
+                        UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                        UV_CACHE_DIR='/tmp/uvcache'
+                    }
                     agent {
-                        dockerfile {
-                            filename 'ci/docker/linux/jenkins/Dockerfile'
+                        docker{
+                            image 'python'
                             label 'docker && linux'
-                            additionalBuildArgs '--build-arg UV_CACHE_DIR=/.cache/uv --build-arg UV_TOOL_DIR=/.local/share/uv/tools'
-                            args '--mount source=sonar-cache-galatea,target=/opt/sonar/.sonar/cache --mount source=uv-cache-galatea,target=/.cache/uv --mount source=uv-tools-galatea,target=/.local/share/uv/tools'
+                            args '--mount source=python-tmp-galatea,target=/tmp'
                         }
                     }
                     when{
@@ -73,13 +79,17 @@ pipeline {
                     stages{
                         stage('Setup Testing Environment'){
                             steps{
-                                sh(label: 'Create virtual environment', script: 'python3 -m venv venv && venv/bin/pip install uv')
                                 sh(
-                                    label: 'Install dev packages',
-                                    script: '''. ./venv/bin/activate
-                                                uv pip sync requirements-dev.txt
-                                            '''
-                                    )
+                                    label: 'Create virtual environment',
+                                    script: '''python3 -m venv bootstrap_uv
+                                               bootstrap_uv/bin/pip install uv
+                                               bootstrap_uv/bin/uv venv --python 3.11  venv
+                                               . ./venv/bin/activate
+                                               bootstrap_uv/bin/uv pip install uv
+                                               rm -rf bootstrap_uv
+                                               uv pip install -r requirements-dev.txt
+                                               '''
+                                           )
                                 sh(
                                     label: 'Install package in development mode',
                                     script: '''. ./venv/bin/activate
@@ -200,6 +210,7 @@ pipeline {
                     post{
                         cleanup{
                             cleanWs(patterns: [
+                                    [pattern: 'uv/', type: 'INCLUDE'],
                                     [pattern: 'venv/', type: 'INCLUDE'],
                                     [pattern: 'logs/', type: 'INCLUDE'],
                                     [pattern: 'reports/', type: 'INCLUDE'],
