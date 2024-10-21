@@ -365,8 +365,8 @@ pipeline {
                                 excludes {
                                     exclude {
                                         axis {
-                                            name 'PLATFORM'
-                                            notValues 'windows'
+                                            name 'OS'
+                                            values 'windows'
                                         }
                                         axis {
                                             name 'ARCHITECTURE'
