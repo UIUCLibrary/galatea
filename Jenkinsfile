@@ -467,15 +467,15 @@ pipeline {
                                             docker {
                                                 image 'python'
                                                 label "${OS} && ${ARCHITECTURE} && docker"
-                                                args "--mount source=python-tmp-galatea,target=${['linux'].contains(OS) ? '/tmp' : 'C:/Users/AppData/Local/Temp'}"
+                                                args "--mount source=python-tmp-galatea,target=${['linux'].contains(OS) ? '/tmp' : 'C:\\Users\\ContainerUser\\Documents'}"
                                             }
                                         }
                                         environment{
-                                            PIP_CACHE_DIR="${isUnix() ? '/tmp/pipcache': 'C:/Users/AppData/Local/Temp/pipcache'}"
+                                            PIP_CACHE_DIR="${isUnix() ? '/tmp/pipcache': 'C:\\Users\\ContainerUser\\Documents\\pipcache'}"
                                             UV_INDEX_STRATEGY='unsafe-best-match'
-                                            UV_TOOL_DIR="${isUnix() ? '/tmp/uvtools': 'C:/Users/AppData/Local/Temp/uvtools'}"
-                                            UV_PYTHON_INSTALL_DIR="${isUnix() ? '/tmp/uvpython': 'C:/Users/AppData/Local/Temp/uvpython'}"
-                                            UV_CACHE_DIR="${isUnix() ? '/tmp/uvcache': 'C:/Users/AppData/Local/Temp/uvcache'}"
+                                            UV_TOOL_DIR="${isUnix() ? '/tmp/uvtools': 'C:\\Users\\ContainerUser\\Documents\\uvtools'}"
+                                            UV_PYTHON_INSTALL_DIR="${isUnix() ? '/tmp/uvpython': 'C:\\Users\\ContainerUser\\Documents\\uvpython'}"
+                                            UV_CACHE_DIR="${isUnix() ? '/tmp/uvcache': 'C:\\Users\\ContainerUser\\Documents\\uvcache'}"
                                         }
                                         steps {
                                             unstash 'PYTHON_PACKAGES'
