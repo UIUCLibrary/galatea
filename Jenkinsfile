@@ -223,75 +223,153 @@ pipeline {
                     when {
                        equals expected: true, actual: params.TEST_RUN_TOX
                     }
-                    environment{
-                        PIP_CACHE_DIR='/tmp/pipcache'
-                        UV_INDEX_STRATEGY='unsafe-best-match'
-                        UV_TOOL_DIR='/tmp/uvtools'
-                        UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
-                        UV_CACHE_DIR='/tmp/uvcache'
-                    }
-                    steps{
-                        script{
-                            def envs = []
-                            node('docker && linux'){
-                                docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
-                                    try{
-                                        checkout scm
-                                        sh(script: 'python3 -m venv venv && venv/bin/pip install uv')
-                                        envs = sh(
-                                            label: 'Get tox environments',
-                                            script: './venv/bin/uvx --quiet --with tox-uv tox list -d --no-desc',
-                                            returnStdout: true,
-                                        ).trim().split('\n')
-                                    } finally{
-                                        cleanWs(
-                                            patterns: [
-                                                [pattern: 'venv/', type: 'INCLUDE'],
-                                                [pattern: '.tox', type: 'INCLUDE'],
-                                                [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                                            ]
-                                        )
-                                    }
-                                }
+                    parallel{
+                        stage('Linux'){
+                            environment{
+                                PIP_CACHE_DIR='/tmp/pipcache'
+                                UV_INDEX_STRATEGY='unsafe-best-match'
+                                UV_TOOL_DIR='/tmp/uvtools'
+                                UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                                UV_CACHE_DIR='/tmp/uvcache'
                             }
-                            parallel(
-                                envs.collectEntries{toxEnv ->
-                                    def version = toxEnv.replaceAll(/py(\d)(\d+)/, '$1.$2')
-                                    [
-                                        "Tox Environment: ${toxEnv}",
-                                        {
-                                            node('docker && linux'){
-                                                docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
-                                                    checkout scm
-                                                    try{
-                                                        sh( label: 'Running Tox',
-                                                            script: """python3 -m venv venv && venv/bin/pip install uv
-                                                                       . ./venv/bin/activate
-                                                                       uv python install cpython-${version}
-                                                                       uvx -p ${version} --with tox-uv tox run -e ${toxEnv}
-                                                                    """
-                                                            )
-                                                    } catch(e) {
-                                                        sh(script: '''. ./venv/bin/activate
-                                                              uv python list
-                                                              '''
-                                                                )
-                                                        throw e
-                                                    } finally{
-                                                        cleanWs(
-                                                            patterns: [
-                                                                [pattern: 'venv/', type: 'INCLUDE'],
-                                                                [pattern: '.tox', type: 'INCLUDE'],
-                                                                [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                                                            ]
-                                                        )
-                                                    }
-                                                }
+                            steps{
+                                script{
+                                    def envs = []
+                                    node('docker && linux'){
+                                        docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
+                                            try{
+                                                checkout scm
+                                                sh(script: 'python3 -m venv venv && venv/bin/pip install uv')
+                                                envs = sh(
+                                                    label: 'Get tox environments',
+                                                    script: './venv/bin/uvx --quiet --with tox-uv tox list -d --no-desc',
+                                                    returnStdout: true,
+                                                ).trim().split('\n')
+                                            } finally{
+                                                cleanWs(
+                                                    patterns: [
+                                                        [pattern: 'venv/', type: 'INCLUDE'],
+                                                        [pattern: '.tox', type: 'INCLUDE'],
+                                                        [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                    ]
+                                                )
                                             }
                                         }
-                                    ]
+                                    }
+                                    parallel(
+                                        envs.collectEntries{toxEnv ->
+                                            def version = toxEnv.replaceAll(/py(\d)(\d+)/, '$1.$2')
+                                            [
+                                                "Tox Environment: ${toxEnv}",
+                                                {
+                                                    node('docker && linux'){
+                                                        docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
+                                                            checkout scm
+                                                            try{
+                                                                sh( label: 'Running Tox',
+                                                                    script: """python3 -m venv venv && venv/bin/pip install uv
+                                                                               . ./venv/bin/activate
+                                                                               uv python install cpython-${version}
+                                                                               uvx -p ${version} --with tox-uv tox run -e ${toxEnv}
+                                                                            """
+                                                                    )
+                                                            } catch(e) {
+                                                                sh(script: '''. ./venv/bin/activate
+                                                                      uv python list
+                                                                      '''
+                                                                        )
+                                                                throw e
+                                                            } finally{
+                                                                cleanWs(
+                                                                    patterns: [
+                                                                        [pattern: 'venv/', type: 'INCLUDE'],
+                                                                        [pattern: '.tox', type: 'INCLUDE'],
+                                                                        [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                                    ]
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    )
                                 }
-                            )
+                            }
+                        }
+                        stage('Windows'){
+                            when{
+                                expression {return nodesByLabel('windows && docker && x86').size() > 0}
+                            }
+                            environment{
+                                UV_INDEX_STRATEGY='unsafe-best-match'
+                                PIP_CACHE_DIR='C:\\Users\\ContainerUser\\Documents\\pipcache'
+                                UV_TOOL_DIR='C:\\Users\\ContainerUser\\Documents\\uvtools'
+                                UV_PYTHON_INSTALL_DIR='C:\\Users\\ContainerUser\\Documents\\uvpython'
+                                UV_CACHE_DIR='C:\\Users\\ContainerUser\\Documents\\uvcache'
+                            }
+                            steps{
+                                script{
+                                    def envs = []
+                                    node('docker && windows'){
+                                        docker.image('python').inside('--mount source=python-tmp-galatea,target=C:\\Users\\ContainerUser\\Documents'){
+                                            try{
+                                                checkout scm
+                                                bat(script: 'python -m venv venv && venv\\Scripts\\pip install uv')
+                                                envs = bat(
+                                                    label: 'Get tox environments',
+                                                    script: '@.\\venv\\Scripts\\uvx --quiet --with tox-uv tox list -d --no-desc',
+                                                    returnStdout: true,
+                                                ).trim().split('\r\n')
+                                            } finally{
+                                                cleanWs(
+                                                    patterns: [
+                                                        [pattern: 'venv/', type: 'INCLUDE'],
+                                                        [pattern: '.tox', type: 'INCLUDE'],
+                                                        [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                    ]
+                                                )
+                                            }
+                                        }
+                                    }
+                                    parallel(
+                                        envs.collectEntries{toxEnv ->
+                                            def version = toxEnv.replaceAll(/py(\d)(\d+)/, '$1.$2')
+                                            [
+                                                "Tox Environment: ${toxEnv}",
+                                                {
+                                                    node('docker && windows'){
+                                                        docker.image('python').inside('--mount source=python-tmp-galatea,target=C:\\Users\\ContainerUser\\Documents'){
+                                                            checkout scm
+                                                            try{
+                                                                bat(label: 'Install uv',
+                                                                    script: 'python -m venv venv && venv\\Scripts\\pip install uv'
+                                                                )
+                                                                retry(3){
+                                                                    bat(label: 'Running Tox',
+                                                                        script: """call venv\\Scripts\\activate.bat
+                                                                               uv python install cpython-${version}
+                                                                               uvx -p ${version} --with tox-uv tox run -e ${toxEnv}
+                                                                            """
+                                                                    )
+                                                                }
+                                                            } finally{
+                                                                cleanWs(
+                                                                    patterns: [
+                                                                        [pattern: 'venv/', type: 'INCLUDE'],
+                                                                        [pattern: '.tox', type: 'INCLUDE'],
+                                                                        [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                                    ]
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
