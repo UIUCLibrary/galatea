@@ -63,7 +63,8 @@ def row_modifier(row: _Marc_Entry) -> _Marc_Entry:
         def modify(entry: str) -> str:
             functions = [
                 modifiers.remove_double_dash_postfix,
-                modifiers.remove_trailing_periods
+                modifiers.remove_trailing_periods,
+                modifiers.add_comma_after_space
             ]
             return reduce(lambda result, func: func(result), functions, entry)
         return (

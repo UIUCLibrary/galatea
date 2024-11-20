@@ -29,3 +29,7 @@ def test_split_and_modify():
     assert modifiers.split_and_modify(
         "spam.||bacon.", modifiers.remove_trailing_periods
     ) == "spam||bacon"
+
+def test_add_space_after_comma():
+    starting = "Persac, Marie Adrien,1823-1873"
+    assert modifiers.add_comma_after_space(starting) == "Persac, Marie Adrien, 1823-1873"
