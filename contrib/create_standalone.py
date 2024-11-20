@@ -4,6 +4,7 @@
 #   'PyInstaller', 'cmake'
 #   ]
 # ///
+"""Create a standalone cli application."""
 
 import abc
 import argparse
@@ -20,6 +21,7 @@ import typing
 import PyInstaller.__main__
 import cmake
 
+__all__ = []
 
 SPECS_TEMPLATE = """# -*- mode: python ; coding: utf-8 -*-
 
@@ -67,10 +69,11 @@ coll = COLLECT(
 )
     """
 
+
 logger = logging.getLogger(__name__)
 
 def create_standalone(specs_file, dist, work_path) -> str:
-
+    """Create a standalone CLI application."""
     PyInstaller.__main__.run([
         '--noconfirm',
         specs_file,
