@@ -56,7 +56,7 @@ def get_version(){
     }
 }
 
-standaloneVersions = []
+
 def start(){
 }
 def shouldRun(params){
@@ -65,6 +65,7 @@ def shouldRun(params){
     }
 }
 def call(){
+    standaloneVersions = []
     pipeline {
         agent none
         parameters{
