@@ -6,7 +6,7 @@ import sys
 from importlib import metadata
 from typing import Optional, List
 import typing
-from galatea import clean_tsv
+from galatea import clean_tsv, add_authorities
 
 __doc__ = "Galatea is a tool for manipulating tsv data."
 __all__ = ['main']
@@ -55,6 +55,19 @@ def get_arg_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         help="Output tsv file",
     )
+
+    add_authorities_cmd = subparsers.add_parser("add-authorities")
+    add_authorities_cmd.add_argument(
+        "source_tsv", type=pathlib.Path, help="Source tsv file"
+    )
+
+    add_authorities_cmd.add_argument(
+        "--output",
+        dest="output_tsv",
+        type=pathlib.Path,
+        help="Output tsv file",
+    )
+
     return parser
 
 
@@ -65,6 +78,12 @@ def clean_tsv_command(args: argparse.Namespace) -> None:
     clean_tsv.clean_tsv(typing.cast(pathlib.Path, args.source_tsv), output)
 
 
+def add_authorities_command(args: argparse.Namespace):
+    output: pathlib.Path = args.output_tsv or args.source_tsv
+    add_authorities.add_authorities(typing.cast(pathlib.Path, args.source_tsv), output)
+
+
+
 def main(cli_args: Optional[List[str]] = None) -> None:
     """Run main entry point."""
     arg_parser = get_arg_parser()
@@ -73,6 +92,8 @@ def main(cli_args: Optional[List[str]] = None) -> None:
     match args.command:
         case "clean-tsv":
             clean_tsv_command(args)
+        case "add-authorities":
+            add_authorities_command(args)
 
 
 if __name__ == "__main__":
