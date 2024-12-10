@@ -297,13 +297,15 @@ def call(){
                                                             docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
                                                                 checkout scm
                                                                 try{
-                                                                    sh( label: 'Running Tox',
-                                                                        script: """python3 -m venv venv && venv/bin/pip install uv
-                                                                                   . ./venv/bin/activate
-                                                                                   uv python install cpython-${version}
-                                                                                   uvx -p ${version} --with tox-uv tox run -e ${toxEnv}
-                                                                                """
-                                                                        )
+                                                                    retry(3){
+                                                                        sh( label: 'Running Tox',
+                                                                            script: """python3 -m venv venv && venv/bin/pip install uv
+                                                                                       . ./venv/bin/activate
+                                                                                       uv python install cpython-${version}
+                                                                                       uvx -p ${version} --with tox-uv tox run -e ${toxEnv}
+                                                                                    """
+                                                                            )
+                                                                    }
                                                                 } catch(e) {
                                                                     sh(script: '''. ./venv/bin/activate
                                                                           uv python list
