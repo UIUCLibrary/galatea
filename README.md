@@ -18,7 +18,7 @@ pre-commit install
 
 ### Using pip
 
-If you don't have pip installed:
+If you don't have uv installed:
 
 ```shell
 python -m venv .venv
