@@ -9,7 +9,9 @@ import abc
 import argparse
 import logging
 import os.path
+import platform
 import sys
+import zipfile
 
 import packaging.version
 import pathlib
@@ -159,23 +161,82 @@ class GenerateCPackConfig(abc.ABC):
         return "\n".join(lines)
 
     def build(self) -> str:
-        return "\n".join(
-            [
-                self.create_boilerplate_config()
-            ]
-        )
+        return "\n".join([self.create_boilerplate_config()])
 
-def package_distribution(dist, build_path, metadata_strategy):
+
+def package_with_cpack(build_path, dist, package_metadata, cpack_generator):
     cpack_file = os.path.join(build_path, "CPackConfig.cmake")
-    package_metadata = metadata_strategy()
+
     with open(cpack_file, "w") as f:
-        cpack_file_generator = GenerateCPackConfig(dist, version_number=package_metadata["version"])
+        cpack_file_generator = GenerateCPackConfig(
+            dist, version_number=package_metadata["version"]
+        )
         if "output_path" in package_metadata:
-            cpack_file_generator.metadata['CPACK_PACKAGE_DIRECTORY'] = package_metadata['output_path']
-        cpack_file_generator.metadata['CPACK_PACKAGE_DESCRIPTION'] = package_metadata.get("description", "")
+            cpack_file_generator.metadata["CPACK_PACKAGE_DIRECTORY"] = package_metadata[
+                "output_path"
+            ]
+        cpack_file_generator.metadata["CPACK_PACKAGE_DESCRIPTION"] = (
+            package_metadata.get("description", "")
+        )
         f.write(cpack_file_generator.build())
     cpack_cmd = shutil.which("cpack", path=cmake.CMAKE_BIN_DIR)
-    subprocess.check_call([cpack_cmd, "--config", cpack_file, "-G", "ZIP"])
+    subprocess.check_call([cpack_cmd, "--config", cpack_file, "-G", cpack_generator])
+
+
+def package_with_system_zip(build_path, dist, package_metadata):
+    zip_file_path = os.path.join(
+        "dist",
+        f"avtool-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.zip",
+    )
+    cwd = "dist"
+    zip_command = [
+        "zip",
+        "--symlinks",
+        "-r",
+        os.path.relpath(zip_file_path, cwd),
+        os.path.relpath(dist, cwd),
+    ]
+
+    subprocess.check_call(zip_command, cwd=cwd)
+    print(f"Created {zip_file_path}")
+
+
+def package_with_system_tar(build_path, dist, package_metadata):
+    archive_file_path = os.path.join(
+        "dist",
+        f"avtool-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.tar.gz",
+    )
+    cwd = "dist"
+    command = [
+        "tar",
+        "-zcvf",
+        # "--keep-directory-symlink",
+        os.path.relpath(archive_file_path, cwd),
+        "-h",
+        os.path.relpath(dist, cwd),
+    ]
+    subprocess.check_call(command, cwd=cwd)
+
+
+def package_with_builtin_zip(build_path, dist, package_metadata):
+    zip_file_path = os.path.join(
+        "dist",
+        f"avtool-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.zip",
+    )
+    with zipfile.ZipFile(zip_file_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(dist):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, build_path)
+                zipf.write(file_path, arcname)
+
+    print(f"Created {zip_file_path}")
+
+
+def package_distribution(dist, build_path, metadata_strategy, package_strategy):
+    package_metadata = metadata_strategy()
+    package_strategy(build_path, dist, package_metadata)
+
 
 def main():
     args = get_arg_parser().parse_args()
@@ -186,21 +247,23 @@ def main():
         entry_point=os.path.abspath(args.entry_point),
     )
     create_standalone(
-        specs_file,
-        dist=args.dest,
-        work_path=os.path.join(args.build_path, "work_path")
+        specs_file, dist=args.dest, work_path=os.path.join(args.build_path, "work_path")
     )
     dist = find_standalone_distrib(name=args.command_name, path=args.dest)
     if dist is None:
         raise FileNotFoundError("No standalone distribution found")
 
     def metadata_strategy():
-        project_toml_file = 'pyproject.toml'
-        metadata= {
+        project_toml_file = "pyproject.toml"
+        os_friendly_names = {"Darwin": "MacOS"}
+        metadata = {
             "description": "this is a script",
             "output_path": args.dest,
+            "architecture": platform.machine(),
+            "os_name": os_friendly_names[platform.system()]
+            if platform.system() in os_friendly_names
+            else platform.system(),
         }
-
 
         with open(project_toml_file, "rb") as f:
             toml = tomllib.load(f)
@@ -210,8 +273,23 @@ def main():
                 metadata["version"] = version
             return metadata
 
-    package_distribution(dist, build_path=args.build_path, metadata_strategy=metadata_strategy)
+    package_distribution(
+        dist,
+        build_path=args.build_path,
+        metadata_strategy=metadata_strategy,
+        # package_strategy=package_with_system_zip
+        # if sys.platform == "darwin"
+        # else package_with_builtin_zip,
+        package_strategy=package_with_system_tar
+        if sys.platform == "darwin"
+        else lambda build_path, dist, package_metadata: package_with_cpack(
+            build_path,
+            dist,
+            package_metadata,
+            "TGZ" if sys.platform == "darwin" else "ZIP",
+        ),
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
