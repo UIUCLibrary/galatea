@@ -701,36 +701,66 @@ def call(){
                                 }
                             }
                             stage('Windows Application'){
-                                agent{
-                                    docker{
-                                        image 'python'
-                                        label 'windows && docker && x86_64'
-                                    }
-                                }
                                 when{
                                     equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
                                     beforeAgent true
                                 }
-                                steps{
-                                    bat(script: '''set UV_INDEX_STRATEGY=unsafe-best-match
-                                                   contrib/create_windows_distrib.bat
-                                                   '''
-                                   )
-                                }
-                                post{
-                                    success{
-                                        archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
-                                        stash includes: 'dist/*.zip', name: 'WINDOWS_APPLICATION_X86_64'
-                                        script{
-                                            standaloneVersions << 'WINDOWS_APPLICATION_X86_64'
+                                stages{
+                                    stage('Package'){
+                                        agent{
+                                            docker{
+                                                image 'python'
+                                                label 'windows && docker && x86_64'
+                                            }
+                                        }
+                                        steps{
+                                            bat(script: '''set UV_INDEX_STRATEGY=unsafe-best-match
+                                                           contrib/create_windows_distrib.bat
+                                                           '''
+                                           )
+                                        }
+                                        post{
+                                            success{
+                                                archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
+                                                stash includes: 'dist/*.zip', name: 'WINDOWS_APPLICATION_X86_64'
+                                                script{
+                                                    standaloneVersions << 'WINDOWS_APPLICATION_X86_64'
+                                                }
+                                            }
+                                            cleanup{
+                                                cleanWs(patterns: [
+                                                    [pattern: 'venv/', type: 'INCLUDE'],
+                                                    [pattern: 'dist/', type: 'INCLUDE'],
+                                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                ])
+                                            }
                                         }
                                     }
-                                    cleanup{
-                                        cleanWs(patterns: [
-                                            [pattern: 'venv/', type: 'INCLUDE'],
-                                            [pattern: 'dist/', type: 'INCLUDE'],
-                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                                        ])
+                                    stage('Test package'){
+                                        agent {
+                                            docker {
+                                                image 'mcr.microsoft.com/windows/servercore:ltsc2019'
+                                                label 'windows && docker && x86_64'
+                                            }
+                                        }
+                                        options {
+                                            skipDefaultCheckout true
+                                        }
+                                        steps{
+                                            unstash 'WINDOWS_APPLICATION_X86_64'
+                                            unzip(zipFile: "${findFiles(glob: 'dist/*.zip')[0]}", dir: 'dist/galatea')
+                                            bat "${findFiles(glob: 'dist/galatea/**/galatea.exe')[0]} --version"
+                                        }
+                                        post{
+                                            cleanup{
+                                                cleanWs(
+                                                    deleteDirs: true,
+                                                    patterns: [
+                                                        [pattern: 'dist/', type: 'INCLUDE'],
+                                                    ]
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
