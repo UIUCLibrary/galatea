@@ -488,10 +488,6 @@ def call(){
                                     }
                                     when{
                                         equals expected: true, actual: params.TEST_PACKAGES
-    //                                    expression{
-    //                                        shouldRun(params)
-    //                                    }
-    //                                    beforeAgent true
                                     }
                                     stages {
                                         stage('Test Package in container') {
@@ -597,90 +593,174 @@ def call(){
                         }
                         parallel{
                             stage('Mac Application x86_64'){
-                                agent{
-                                    label 'mac && python3.11 && x86_64'
-                                }
                                 when{
                                     equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
                                     beforeAgent true
                                 }
-                                steps{
-                                    sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
-                                }
-                                post{
-                                    success{
-                                        archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
-                                        stash includes: 'dist/*.zip', name: 'APPLE_APPLICATION_X86_64'
-                                        script{
-                                            standaloneVersions << 'APPLE_APPLICATION_X86_64'
+                                stages{
+                                    stage('Package'){
+                                        agent{
+                                            label 'mac && python3.11 && x86_64'
+                                        }
+                                        steps{
+                                            sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
+                                        }
+                                        post{
+                                            success{
+                                                archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
+                                                stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_X86_64'
+                                                script{
+                                                    standaloneVersions << 'APPLE_APPLICATION_X86_64'
+                                                }
+                                            }
+                                            cleanup{
+                                                cleanWs(patterns: [
+                                                    [pattern: 'dist/', type: 'INCLUDE'],
+                                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                ])
+                                            }
                                         }
                                     }
-                                    cleanup{
-                                        cleanWs(patterns: [
-                                            [pattern: 'dist/', type: 'INCLUDE'],
-                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                                        ])
+                                    stage('Test'){
+                                        agent{
+                                            label 'mac && x86_64'
+                                        }
+                                        options {
+                                            skipDefaultCheckout true
+                                        }
+                                        steps{
+                                            unstash 'APPLE_APPLICATION_X86_64'
+                                            untar(file: "${findFiles(glob: 'dist/*.tar.gz')[0]}", dir: 'dist/out')
+                                            sh "${findFiles(glob: 'dist/out/**/galatea')[0].path} --version"
+                                        }
+                                        post{
+                                            cleanup{
+                                               cleanWs(
+                                                     deleteDirs: true,
+                                                     patterns: [
+                                                         [pattern: 'dist/', type: 'INCLUDE'],
+                                                     ]
+                                                 )
+                                            }
+                                        }
                                     }
                                 }
                             }
-                            stage('Mac Application Bundle arm64'){
-                                agent{
-                                    label 'mac && python3.11 && arm64'
-                                }
+                            stage('Mac Application arm64'){
                                 when{
                                     equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
                                     beforeAgent true
                                 }
-                                steps{
-                                    sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
-                                }
-                                post{
-                                    success{
-                                        archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
-                                        stash includes: 'dist/*.zip', name: 'APPLE_APPLICATION_ARM64'
-                                        script{
-                                            standaloneVersions << 'APPLE_APPLICATION_ARM64'
+                                stages{
+                                    stage('Package'){
+                                        agent{
+                                            label 'mac && python3.11 && arm64'
+                                        }
+                                        steps{
+                                            sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
+                                        }
+                                        post{
+                                            success{
+                                                archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
+                                                stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_ARM64'
+                                                script{
+                                                    standaloneVersions << 'APPLE_APPLICATION_ARM64'
+                                                }
+                                            }
+                                            cleanup{
+                                                cleanWs(patterns: [
+                                                    [pattern: 'dist/', type: 'INCLUDE'],
+                                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                ])
+                                            }
                                         }
                                     }
-                                    cleanup{
-                                        cleanWs(patterns: [
-                                            [pattern: 'dist/', type: 'INCLUDE'],
-                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                                        ])
+                                    stage('Test'){
+                                        agent{
+                                            label 'mac && arm64'
+                                        }
+                                        options {
+                                            skipDefaultCheckout true
+                                        }
+                                        steps{
+                                            unstash 'APPLE_APPLICATION_ARM64'
+                                            untar(file: "${findFiles(glob: 'dist/*.tar.gz')[0]}", dir: 'dist/out')
+                                            sh "${findFiles(glob: 'dist/out/**/galatea')[0].path} --version"
+                                        }
+                                        post{
+                                            cleanup{
+                                               cleanWs(
+                                                     deleteDirs: true,
+                                                     patterns: [
+                                                         [pattern: 'dist/', type: 'INCLUDE'],
+                                                     ]
+                                                 )
+                                            }
+                                        }
                                     }
                                 }
                             }
                             stage('Windows Application'){
-                                agent{
-                                    docker{
-                                        image 'python'
-                                        label 'windows && docker && x86_64'
-                                    }
-                                }
                                 when{
                                     equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
                                     beforeAgent true
                                 }
-                                steps{
-                                    bat(script: '''set UV_INDEX_STRATEGY=unsafe-best-match
-                                                   contrib/create_windows_distrib.bat
-                                                   '''
-                                   )
-                                }
-                                post{
-                                    success{
-                                        archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
-                                        stash includes: 'dist/*.zip', name: 'WINDOWS_APPLICATION_X86_64'
-                                        script{
-                                            standaloneVersions << 'WINDOWS_APPLICATION_X86_64'
+                                stages{
+                                    stage('Package'){
+                                        agent{
+                                            docker{
+                                                image 'python'
+                                                label 'windows && docker && x86_64'
+                                            }
+                                        }
+                                        steps{
+                                            bat(script: '''set UV_INDEX_STRATEGY=unsafe-best-match
+                                                           contrib/create_windows_distrib.bat
+                                                           '''
+                                           )
+                                        }
+                                        post{
+                                            success{
+                                                archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
+                                                stash includes: 'dist/*.zip', name: 'WINDOWS_APPLICATION_X86_64'
+                                                script{
+                                                    standaloneVersions << 'WINDOWS_APPLICATION_X86_64'
+                                                }
+                                            }
+                                            cleanup{
+                                                cleanWs(patterns: [
+                                                    [pattern: 'venv/', type: 'INCLUDE'],
+                                                    [pattern: 'dist/', type: 'INCLUDE'],
+                                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                ])
+                                            }
                                         }
                                     }
-                                    cleanup{
-                                        cleanWs(patterns: [
-                                            [pattern: 'venv/', type: 'INCLUDE'],
-                                            [pattern: 'dist/', type: 'INCLUDE'],
-                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                                        ])
+                                    stage('Test package'){
+                                        agent {
+                                            docker {
+                                                image 'mcr.microsoft.com/windows/servercore:ltsc2019'
+                                                label 'windows && docker && x86_64'
+                                            }
+                                        }
+                                        options {
+                                            skipDefaultCheckout true
+                                        }
+                                        steps{
+                                            unstash 'WINDOWS_APPLICATION_X86_64'
+                                            unzip(zipFile: "${findFiles(glob: 'dist/*.zip')[0]}", dir: 'dist/galatea')
+                                            bat "${findFiles(glob: 'dist/galatea/**/galatea.exe')[0]} --version"
+                                        }
+                                        post{
+                                            cleanup{
+                                                cleanWs(
+                                                    deleteDirs: true,
+                                                    patterns: [
+                                                        [pattern: 'dist/', type: 'INCLUDE'],
+                                                    ]
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
