@@ -30,7 +30,7 @@ def getToxEnvs(){
         docker.image('python').inside("--mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR}"){
             try{
                 checkout scm
-                bat(script: 'python -m venv venv && venv\\Scripts\\pip install uv')
+                bat(script: 'python -m venv venv && venv\\Scripts\\pip install --disable-pip-version-check uv')
                 return bat(
                     label: 'Get tox environments',
                     script: '@.\\venv\\Scripts\\uvx --quiet --with tox-uv tox list -d --no-desc',
@@ -122,7 +122,7 @@ def call(){
                                     sh(
                                         label: 'Create virtual environment',
                                         script: '''python3 -m venv bootstrap_uv
-                                                   bootstrap_uv/bin/pip install uv
+                                                   bootstrap_uv/bin/pip install --disable-pip-version-check uv
                                                    bootstrap_uv/bin/uv venv --python 3.11  venv
                                                    . ./venv/bin/activate
                                                    bootstrap_uv/bin/uv pip install uv
@@ -279,7 +279,7 @@ def call(){
                                             docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
                                                 try{
                                                     checkout scm
-                                                    sh(script: 'python3 -m venv venv && venv/bin/pip install uv')
+                                                    sh(script: 'python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv')
                                                     envs = sh(
                                                         label: 'Get tox environments',
                                                         script: './venv/bin/uvx --quiet --with tox-uv tox list -d --no-desc',
@@ -308,7 +308,7 @@ def call(){
                                                                 try{
                                                                     retry(3){
                                                                         sh( label: 'Running Tox',
-                                                                            script: """python3 -m venv venv && venv/bin/pip install uv
+                                                                            script: """python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
                                                                                        . ./venv/bin/activate
                                                                                        uv python install cpython-${version}
                                                                                        uvx -p ${version} --with tox-uv tox run -e ${toxEnv}
@@ -357,7 +357,7 @@ def call(){
                                             docker.image('python').inside("--mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR}"){
                                                 try{
                                                     checkout scm
-                                                    bat(script: 'python -m venv venv && venv\\Scripts\\pip install uv')
+                                                    bat(script: 'python -m venv venv && venv\\Scripts\\pip install --disable-pip-version-check uv')
                                                     envs = bat(
                                                         label: 'Get tox environments',
                                                         script: '@.\\venv\\Scripts\\uvx --quiet --with tox-uv tox list -d --no-desc',
@@ -385,7 +385,7 @@ def call(){
                                                                 checkout scm
                                                                 try{
                                                                     bat(label: 'Install uv',
-                                                                        script: 'python -m venv venv && venv\\Scripts\\pip install uv'
+                                                                        script: 'python -m venv venv && venv\\Scripts\\pip install --disable-pip-version-check uv'
                                                                     )
                                                                     retry(3){
                                                                         bat(label: 'Running Tox',
@@ -440,7 +440,7 @@ def call(){
                                 steps{
                                     sh(
                                         label: 'Package',
-                                        script: '''python3 -m venv venv && venv/bin/pip install uv
+                                        script: '''python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
                                                    . ./venv/bin/activate
                                                    uv build
                                                 '''
