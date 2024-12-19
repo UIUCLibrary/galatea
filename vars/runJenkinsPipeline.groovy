@@ -27,7 +27,7 @@ def deployStandalone(glob, url) {
 
 def getToxEnvs(){
     node('docker && windows'){
-        docker.image('python').inside('--mount source=python-tmp-galatea,target=C:\\Users\\ContainerUser\\Documents'){
+        docker.image('python').inside("--mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR}"){
             try{
                 checkout scm
                 bat(script: 'python -m venv venv && venv\\Scripts\\pip install uv')
@@ -354,7 +354,7 @@ def call(){
                                     script{
                                         def envs = []
                                         node('docker && windows'){
-                                            docker.image('python').inside('--mount source=python-tmp-galatea,target=C:\\Users\\ContainerUser\\Documents'){
+                                            docker.image('python').inside("--mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR}"){
                                                 try{
                                                     checkout scm
                                                     bat(script: 'python -m venv venv && venv\\Scripts\\pip install uv')
@@ -381,7 +381,7 @@ def call(){
                                                     "Tox Environment: ${toxEnv}",
                                                     {
                                                         node('docker && windows'){
-                                                            docker.image('python').inside('--mount source=python-tmp-galatea,target=C:\\Users\\ContainerUser\\Documents'){
+                                                            docker.image('python').inside("--mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR}"){
                                                                 checkout scm
                                                                 try{
                                                                     bat(label: 'Install uv',
