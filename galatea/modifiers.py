@@ -47,3 +47,7 @@ def remove_double_dash_postfix(entry: str) -> str:
     if match:
         return entry[:match.start()]
     return entry
+
+
+def add_comma_after_space(entry: str) -> str:
+    return entry.replace(",", ", ").replace(",  ", ", ")
