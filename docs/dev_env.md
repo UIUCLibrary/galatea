@@ -26,3 +26,16 @@ pip install -r requirements-dev.txt
 pip install -e .
 pre-commit install
 ```
+
+## Build Documentation
+
+Galatea documentation is written in a combination of Markdown and 
+[reStructuredText](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html) 
+and is built using [Sphinx](https://www.sphinx-doc.org/en/master/index.html). 
+
+To build the documentation as html, use the following command within your 
+development environment.
+
+```shell
+python -m sphinx docs/ dist/docs/
+```
