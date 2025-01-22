@@ -112,12 +112,9 @@ def call(){
                                 args '--mount source=python-tmp-galatea,target=/tmp'
                             }
                         }
-                        when{
-                            equals expected: true, actual: params.RUN_CHECKS
-                            beforeAgent true
-                        }
+
                         stages{
-                            stage('Setup Testing Environment'){
+                            stage('Setup ci Environment'){
                                 steps{
                                     sh(
                                         label: 'Create virtual environment',
@@ -138,110 +135,166 @@ def call(){
                                         )
                                 }
                             }
-                            stage('Run Tests'){
-                                parallel{
-                                    stage('Pytest'){
-                                        steps{
-                                            sh(
-                                                label: 'Run Pytest',
-                                                script: '''. ./venv/bin/activate
-                                                        coverage run --parallel-mode --source=galatea -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml
-                                                        '''
-                                            )
-                                        }
-                                        post{
-                                            always{
-                                                junit(allowEmptyResults: true, testResults: 'reports/tests/pytest/pytest-junit.xml')
-                                            }
-                                        }
-                                    }
-                                    stage('MyPy'){
-                                        steps{
-                                            catchError(buildResult: 'SUCCESS', message: 'MyPy found issues', stageResult: 'UNSTABLE') {
-                                                tee('logs/mypy.log'){
-                                                    sh(label: 'Running MyPy',
-                                                       script: '. ./venv/bin/activate && mypy -p galatea --html-report reports/mypy/html'
-                                                    )
-                                                }
-                                            }
-                                        }
-                                        post {
-                                            always {
-                                                recordIssues(tools: [myPy(pattern: 'logs/mypy.log')])
-                                                publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
-                                            }
-                                        }
-                                    }
-                                    stage('Ruff') {
-                                        steps{
-                                            catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
-                                                sh(
-                                                 label: 'Running Ruff',
-                                                 script: '''. ./venv/bin/activate
-                                                            ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
-                                                            ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
-                                                        '''
-                                                 )
-                                            }
-                                        }
-                                        post{
-                                            always{
-                                                recordIssues(tools: [pyLint(pattern: 'reports/ruffoutput.txt', name: 'Ruff')])
-                                            }
-                                        }
-                                    }
+                            stage('Build Documentation'){
+                                steps{
+                                    catchError(buildResult: 'UNSTABLE', message: 'Sphinx has warnings', stageResult: 'UNSTABLE') {
+                                        sh '''. ./venv/bin/activate
+                                              python -m sphinx --builder=html -W --keep-going -w logs/build_sphinx_html.log -d build/docs/.doctrees docs dist/docs/html
+                                           '''
+                                   }
                                 }
                                 post{
+                                    success{
+                                        publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'dist/docs/html', reportFiles: 'index.html', reportName: 'Documentation', reportTitles: ''])
+                                        script{
+                                            def props = readTOML( file: 'pyproject.toml')['project']
+                                            zip archive: true, dir: 'dist/docs/html', glob: '', zipFile: "dist/${props.name}-${props.version}.doc.zip"
+                                        }
+                                    }
                                     always{
-                                        sh(
-                                            label: 'Combining coverage data and generating report',
-                                            script: '''. ./venv/bin/activate
-                                                      coverage combine
-                                                      coverage xml -o reports/coverage.xml
-                                                      coverage html -d reports/coverage
-                                                      '''
-                                        )
-                                        recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
+                                        recordIssues(tools: [sphinxBuild(pattern: 'logs/build_sphinx_html.log')])
                                     }
                                 }
                             }
-                            stage('Submit results to SonarQube'){
-                                options{
-                                    lock('galatea-sonarscanner')
-                                }
-                                environment{
-                                    VERSION="${readTOML( file: 'pyproject.toml')['project'].version}"
-                                }
+                            stage('Test Code'){
                                 when{
-                                    allOf{
-                                        equals expected: true, actual: params.USE_SONARQUBE
-                                        expression{
-                                            try{
-                                                withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'dddd')]) {
-                                                    echo 'Found credentials for sonarqube'
+                                    equals expected: true, actual: params.RUN_CHECKS
+                                    beforeAgent true
+                                }
+                                stages{
+                                    stage('Run Tests'){
+                                        parallel{
+                                            stage('Documentation linkcheck'){
+                                                steps {
+                                                    catchError(buildResult: 'SUCCESS', message: 'Sphinx docs linkcheck', stageResult: 'UNSTABLE') {
+                                                        sh(
+                                                            label: 'Running Sphinx docs linkcheck',
+                                                            script: '''. ./venv/bin/activate
+                                                                       python -m sphinx -b doctest docs/ build/docs -d build/docs/doctrees --no-color --builder=linkcheck --fail-on-warning
+                                                                       '''
+                                                            )
+                                                    }
                                                 }
-                                            } catch(e){
-                                                return false
                                             }
-                                            return true
+                                            stage('Documentation Doctest'){
+                                                steps {
+                                                    sh(
+                                                        label: 'Running Doctest Tests',
+                                                        script: '''. ./venv/bin/activate
+                                                                   coverage run --parallel-mode --source=galatea -m sphinx -b doctest docs/ dist/docs/html -d build/docs/doctrees --no-color -w logs/doctest.txt
+                                                                '''
+                                                        )
+                                                }
+                                                post{
+                                                    always {
+                                                        recordIssues(tools: [sphinxBuild(id: 'doctest', name: 'Doctest', pattern: 'logs/doctest.txt')])
+                                                    }
+                                                }
+                                            }
+                                            stage('Pytest'){
+                                                steps{
+                                                    sh(
+                                                        label: 'Run Pytest',
+                                                        script: '''. ./venv/bin/activate
+                                                                coverage run --parallel-mode --source=galatea -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml
+                                                                '''
+                                                    )
+                                                }
+                                                post{
+                                                    always{
+                                                        junit(allowEmptyResults: true, testResults: 'reports/tests/pytest/pytest-junit.xml')
+                                                    }
+                                                }
+                                            }
+                                            stage('MyPy'){
+                                                steps{
+                                                    catchError(buildResult: 'SUCCESS', message: 'MyPy found issues', stageResult: 'UNSTABLE') {
+                                                        tee('logs/mypy.log'){
+                                                            sh(label: 'Running MyPy',
+                                                               script: '. ./venv/bin/activate && mypy -p galatea --html-report reports/mypy/html'
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                post {
+                                                    always {
+                                                        recordIssues(tools: [myPy(pattern: 'logs/mypy.log')])
+                                                        publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
+                                                    }
+                                                }
+                                            }
+                                            stage('Ruff') {
+                                                steps{
+                                                    catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
+                                                        sh(
+                                                         label: 'Running Ruff',
+                                                         script: '''. ./venv/bin/activate
+                                                                    ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
+                                                                    ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
+                                                                '''
+                                                         )
+                                                    }
+                                                }
+                                                post{
+                                                    always{
+                                                        recordIssues(tools: [pyLint(pattern: 'reports/ruffoutput.txt', name: 'Ruff')])
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        post{
+                                            always{
+                                                sh(
+                                                    label: 'Combining coverage data and generating report',
+                                                    script: '''. ./venv/bin/activate
+                                                              coverage combine
+                                                              coverage xml -o reports/coverage.xml
+                                                              coverage html -d reports/coverage
+                                                              '''
+                                                )
+                                                recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
+                                            }
                                         }
                                     }
-                                }
-                                steps{
-                                    withSonarQubeEnv(installationName: 'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
-                                        script{
-                                            def sourceInstruction
-                                            if (env.CHANGE_ID){
-                                                sourceInstruction = "-Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.BRANCH_NAME}"
-                                            } else{
-                                                sourceInstruction = "-Dsonar.branch.name=${env.BRANCH_NAME}"
+                                    stage('Submit results to SonarQube'){
+                                        options{
+                                            lock('galatea-sonarscanner')
+                                        }
+                                        environment{
+                                            VERSION="${readTOML( file: 'pyproject.toml')['project'].version}"
+                                        }
+                                        when{
+                                            allOf{
+                                                equals expected: true, actual: params.USE_SONARQUBE
+                                                expression{
+                                                    try{
+                                                        withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'dddd')]) {
+                                                            echo 'Found credentials for sonarqube'
+                                                        }
+                                                    } catch(e){
+                                                        return false
+                                                    }
+                                                    return true
+                                                }
                                             }
-                                            sh(
-                                                label: 'Running Sonar Scanner',
-                                                script: """. ./venv/bin/activate
-                                                            uvx pysonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${sourceInstruction}
-                                                        """
-                                            )
+                                        }
+                                        steps{
+                                            withSonarQubeEnv(installationName: 'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
+                                                script{
+                                                    def sourceInstruction
+                                                    if (env.CHANGE_ID){
+                                                        sourceInstruction = "-Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.BRANCH_NAME}"
+                                                    } else{
+                                                        sourceInstruction = "-Dsonar.branch.name=${env.BRANCH_NAME}"
+                                                    }
+                                                    sh(
+                                                        label: 'Running Sonar Scanner',
+                                                        script: """. ./venv/bin/activate
+                                                                    uvx pysonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${sourceInstruction}
+                                                                """
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
