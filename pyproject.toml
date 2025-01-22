@@ -6,6 +6,12 @@ authors = [
     {name="University Library at The University of Illinois at Urbana Champaign: Preservation Services", email="prescons@library.illinois.edu"}
 ]
 
+[project.urls]
+Documentation = "https://uiuclibrary.github.io/galatea/"
+Repository = "https://github.com/UIUCLibrary/galatea.git"
+Issues = "https://github.com/UIUCLibrary/galatea/issues"
+
+
 [project.scripts]
 galatea = "galatea.cli:main"
 
