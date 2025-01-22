@@ -1,8 +1,11 @@
-# Set up development environment on Mac and Linux
+# Developer's Guide
 
-## Using UV instead of pip
+## Configure Development Environment on Mac and Linux
 
-This way is better and faster than using pip.
+### Option 1: Using UV (Recommended)
+
+This way is better and faster than using pip. However, you need to have 
+[uv already installed](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```shell
 uv venv
@@ -12,7 +15,7 @@ uv pip install -e .
 pre-commit install
 ```
 
-## Using pip
+### Option 2: Using pip
 
 If you don't have uv installed:
 
