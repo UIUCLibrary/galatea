@@ -1,6 +1,7 @@
 # galatea
 Used for cleaning up metadata used by UIUC metadata.
 
+[Documentation](https://uiuclibrary.github.io/galatea/)
 
 ## Set up development environment on Mac and Linux
 
