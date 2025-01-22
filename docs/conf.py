@@ -36,6 +36,7 @@ author = metadata['authors'][0]['name']
 
 extensions = [
     'sphinx.ext.doctest',
+    "myst_parser",
 ]
 
 templates_path = ['_templates']

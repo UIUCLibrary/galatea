@@ -3,6 +3,7 @@ commitizen
 coverage
 lxml
 mypy
+myst-parser
 pre-commit
 pytest
 ruff
