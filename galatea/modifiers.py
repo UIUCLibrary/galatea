@@ -92,4 +92,4 @@ def remove_character(
     """Remove character from text."""
     if entry is None:
         return None
-    return entry.replace(character, f"{character}")
+    return entry.replace(character, "")

@@ -95,7 +95,7 @@ def default_row_modifier() -> RowTransformer:
     )
     transformer.add_transformation(
         condition=lambda k, v: k
-        in ["264$a", "260$b", "264$b", "260$c", "264$c"],
+        in ["260$a","260$b", "260$c", "264$a", "264$b", "264$c"],
         transformation=lambda entry: modifiers.split_and_modify(
             entry,
             funcs=[
