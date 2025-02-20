@@ -4,7 +4,7 @@ from unittest.mock import Mock, mock_open, patch, ANY, create_autospec
 
 import pytest
 
-from galatea import clean_tsv
+from galatea import clean_tsv, modifiers
 import io
 
 
@@ -118,12 +118,6 @@ def test_iter_tsv_file_calls_strategy():
     strategy.assert_called_once()
 
 
-def test_apply_filters_calls_filter_function():
-    filter_function = Mock()
-    clean_tsv.apply_filters([filter_function], entry="dummy")
-    filter_function.assert_called_once_with("dummy")
-
-
 def test_make_empty_strings_none_removes_empty_strings():
     record = {"1": "somedata", "50": ""}
     assert clean_tsv.make_empty_strings_none(record)["50"] is None
@@ -231,3 +225,38 @@ def test_transform_row_and_merge(marc_entry):
     assert (
         merged_row["246"] == "dummy" and merged_row["1"] == "99160807512205899"
     )
+
+class TestRowTransformer:
+    def test_no_transform(self, marc_entry):
+        transformer = clean_tsv.RowTransformer()
+        assert transformer.transform(marc_entry) == marc_entry
+
+    def test_add_transformation_to_all_field(self, marc_entry):
+        transformer = clean_tsv.RowTransformer()
+
+        transformer.add_transformation(modifiers.remove_trailing_periods)
+        transformed = transformer.transform(marc_entry)
+        assert all([
+            # the original value ends with a period
+            marc_entry["245"][-1] == ".",
+            marc_entry["110"][-1] == ".",
+            # the transformed value does not end with a period
+            transformed["245"][-1] != ".",
+            transformed["110"][-1] != ".",
+        ]), f"""original["245"] = {marc_entry["245"]}
+                transformed['245'] = {transformed['245']}"""
+
+    def test_add_transformation_to_specific_field(self, marc_entry):
+        transformer = clean_tsv.RowTransformer()
+        transformer.add_transformation(
+            modifiers.remove_trailing_periods,
+            condition=lambda key,_: key == "245"
+        )
+        assert all([
+            # the original value ends with a period
+            marc_entry["245"][-1] == ".",
+            marc_entry["110"][-1] == ".",
+            # only the entry with 245 key transformed value to remove a period
+            transformer.transform(marc_entry)["245"][-1] != ".",
+            transformer.transform(marc_entry)["110"][-1] == ".",
+            ])

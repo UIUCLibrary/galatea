@@ -27,7 +27,7 @@ def test_remove_double_dash_postfix(value, expected):
 
 def test_split_and_modify():
     assert modifiers.split_and_modify(
-        "spam.||bacon.", modifiers.remove_trailing_periods
+        "spam.||bacon.", [modifiers.remove_trailing_periods]
     ) == "spam||bacon"
 
 def test_add_space_after_comma():

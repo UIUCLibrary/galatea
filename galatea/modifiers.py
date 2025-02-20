@@ -1,20 +1,40 @@
 """Modifying functions for string data."""
+from __future__ import annotations
 import re
+import typing
 from typing import List, Callable
+from functools import reduce
+if typing.TYPE_CHECKING:
+    from galatea.marc import MarcEntryDataTypes
 
 
 def split_and_modify(
-    entry: str, func: Callable[[str], str], delimiter: str = "||"
-) -> str:
+    entry: MarcEntryDataTypes,
+    funcs: List[Callable[[MarcEntryDataTypes], MarcEntryDataTypes]],
+    delimiter: str = "||",
+) -> MarcEntryDataTypes:
     """Split the entry into and apply function to each element."""
+    if entry is None:
+        return None
     values = entry.split(delimiter)
     new_values: List[str] = []
     for value in values:
-        new_values.append(func(value))
+        if value is not None:
+            new_values.append(
+                reduce(
+                    lambda result, func: typing.cast(
+                        Callable[[str], str], func
+                    )(result),
+                    funcs,
+                    value,
+                )
+            )
     return delimiter.join(new_values)
 
 
-def remove_duplicates(entry: str, delimiter: str = "||") -> str:
+def remove_duplicates(
+    entry: MarcEntryDataTypes, delimiter: str = "||"
+) -> MarcEntryDataTypes:
     """Remove duplicate items and retains order.
 
     Args:
@@ -24,6 +44,8 @@ def remove_duplicates(entry: str, delimiter: str = "||") -> str:
     Returns: new text with duplicates removed.
 
     """
+    if entry is None:
+        return None
     values = entry.split(delimiter)
     new_values: List[str] = []
     for value in values:
@@ -34,20 +56,29 @@ def remove_duplicates(entry: str, delimiter: str = "||") -> str:
     return delimiter.join(new_values)
 
 
-def remove_trailing_periods(entry: str) -> str:
+def remove_trailing_periods(entry: MarcEntryDataTypes) -> MarcEntryDataTypes:
     """Remove trailing period."""
+    if entry is None:
+        return None
     if entry.endswith("."):
         return entry[:-1]
     return entry
 
 
-def remove_double_dash_postfix(entry: str) -> str:
+def remove_double_dash_postfix(
+    entry: MarcEntryDataTypes,
+) -> MarcEntryDataTypes:
     """Remove double dash postfix."""
+    if entry is None:
+        return None
     match = re.search("--[a-z]+", entry)
     if match:
-        return entry[:match.start()]
+        return entry[: match.start()]
     return entry
 
 
-def add_comma_after_space(entry: str) -> str:
+def add_comma_after_space(entry: MarcEntryDataTypes) -> MarcEntryDataTypes:
+    """Add comma after space."""
+    if entry is None:
+        return None
     return entry.replace(",", ", ").replace(",  ", ", ")
