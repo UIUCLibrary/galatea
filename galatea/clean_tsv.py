@@ -106,6 +106,17 @@ def default_row_modifier() -> RowTransformer:
             ],
         ),
     )
+    transformer.add_transformation(
+        condition=lambda k, v: k in ["300$ab", "300$c"],
+        transformation=lambda entry: modifiers.split_and_modify(
+            entry,
+            funcs=[
+                modifiers.remove_trailing_punctuation,
+                functools.partial(modifiers.remove_trailing_punctuation, punctuation=[" "]),
+                modifiers.remove_trailing_punctuation,
+            ],
+        ),
+    )
     transformer.add_transformation(modifiers.remove_duplicates)
     return transformer
 
