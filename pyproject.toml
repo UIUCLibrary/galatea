@@ -1,11 +1,23 @@
 [project]
 name = "galatea"
-version = "0.2.0"
+version = "0.2.1.dev1"
+description = "Used for cleaning up metadata used by UIUC metadata"
 requires-python = ">= 3.10"
 authors = [
     {name="University Library at The University of Illinois at Urbana Champaign: Preservation Services", email="prescons@library.illinois.edu"}
 ]
+license = { file="LICENSE"}
+readme = { file= "README.md", content-type="text/markdown" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Natural Language :: English",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: University of Illinois/NCSA Open Source License",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Archiving"
 
+]
 [project.scripts]
 galatea = "galatea.cli:main"
 
