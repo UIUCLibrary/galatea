@@ -1,9 +1,11 @@
 """Modifying functions for string data."""
+
 from __future__ import annotations
 import re
 import typing
 from typing import List, Callable
 from functools import reduce
+
 if typing.TYPE_CHECKING:
     from galatea.marc import MarcEntryDataTypes
 
@@ -82,3 +84,12 @@ def add_comma_after_space(entry: MarcEntryDataTypes) -> MarcEntryDataTypes:
     if entry is None:
         return None
     return entry.replace(",", ", ").replace(",  ", ", ")
+
+
+def remove_character(
+    entry: MarcEntryDataTypes, character: str
+) -> MarcEntryDataTypes:
+    """Remove character from text."""
+    if entry is None:
+        return None
+    return entry.replace(character, f"{character}")

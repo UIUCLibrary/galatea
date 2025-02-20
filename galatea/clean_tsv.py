@@ -2,6 +2,7 @@
 
 import csv
 import contextlib
+import functools
 import logging
 import pathlib
 from collections.abc import Iterator
@@ -52,7 +53,35 @@ def iter_tsv_file(
         yield from strategy(tsv_file, dialect)
 
 
-def row_modifier(row: Marc_Entry) -> Marc_Entry:
+class RowTransformer:
+    def __init__(self) -> None:
+        self.transformations: List[
+            Tuple[
+                Callable[[MarcEntryDataTypes], Union[MarcEntryDataTypes]],
+                Optional[Callable[[str, MarcEntryDataTypes], bool]],
+            ]
+        ] = []
+
+    def transform(self, row: Marc_Entry) -> Marc_Entry:
+        new_row = row.copy()
+        for k, v in row.items():
+            for transformation, condition in self.transformations:
+                if condition is None or condition(k, v) is True:
+                    transformed_value = transformation(new_row[k])
+                    new_row[k] = transformed_value
+        return new_row
+
+    def add_transformation(
+        self,
+        transformation: Callable[
+            [MarcEntryDataTypes], Union[MarcEntryDataTypes]
+        ],
+        condition: Optional[Callable[[str, MarcEntryDataTypes], bool]] = None,
+    ) -> None:
+        self.transformations.append((transformation, condition))
+
+
+def default_row_modifier() -> RowTransformer:
     transformer = RowTransformer()
     transformer.add_transformation(
         transformation=lambda entry: modifiers.split_and_modify(
@@ -64,7 +93,24 @@ def row_modifier(row: Marc_Entry) -> Marc_Entry:
             ],
         )
     )
+    transformer.add_transformation(
+        condition=lambda k, v: k
+        in ["264$a", "260$b", "264$b", "260$c", "264$c"],
+        transformation=lambda entry: modifiers.split_and_modify(
+            entry,
+            funcs=[
+                functools.partial(modifiers.remove_character, character="?"),
+            ],
+        ),
+    )
     transformer.add_transformation(modifiers.remove_duplicates)
+    return transformer
+
+
+def row_modifier(
+    row: Marc_Entry, transformer: Optional[RowTransformer] = None
+) -> Marc_Entry:
+    transformer = transformer or default_row_modifier()
     return transformer.transform(row)
 
 
@@ -166,38 +212,13 @@ def clean_tsv(source: pathlib.Path, dest: pathlib.Path) -> None:
 
         modified_data = [
             transform_row_and_merge(
-                row, row_transformation_strategy=row_modifier
+                row,
+                row_transformation_strategy=functools.partial(
+                    row_modifier, transformer=default_row_modifier()
+                ),
             )
             for row in iter_tsv_fp(tsv_file, dialect)
         ]
 
     write_tsv_file(dest, modified_data, dialect)
     print(f'Done. Wrote to "{dest.absolute()}"')
-
-
-class RowTransformer:
-    def __init__(self) -> None:
-        self.transformations: List[
-            Tuple[
-                Callable[[MarcEntryDataTypes], Union[MarcEntryDataTypes]],
-                Optional[Callable[[str, MarcEntryDataTypes], bool]],
-            ]
-        ] = []
-
-    def transform(self, row: Marc_Entry) -> Marc_Entry:
-        new_row = row.copy()
-        for k, v in row.items():
-            for transformation, condition in self.transformations:
-                if condition is None or condition(k, v) is True:
-                    transformed_value = transformation(new_row[k])
-                    new_row[k] = transformed_value
-        return new_row
-
-    def add_transformation(
-        self,
-        transformation: Callable[
-            [MarcEntryDataTypes], Union[MarcEntryDataTypes]
-        ],
-        condition: Optional[Callable[[str, MarcEntryDataTypes], bool]] = None,
-    ) -> None:
-        self.transformations.append((transformation, condition))
