@@ -100,6 +100,8 @@ def default_row_modifier() -> RowTransformer:
             entry,
             funcs=[
                 functools.partial(modifiers.remove_character, character="?"),
+                functools.partial(modifiers.remove_character, character="["),
+                functools.partial(modifiers.remove_character, character="]"),
             ],
         ),
     )
