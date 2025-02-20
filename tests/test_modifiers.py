@@ -37,7 +37,7 @@ def test_add_space_after_comma():
 
 def test_remove_character():
     starting = "Chicago, Ill.?"
-    assert modifiers.remove_character(starting, "?") == "Chicago, Ill.?"
+    assert modifiers.remove_character(starting, "?") == "Chicago, Ill."
 
 
 def test_remove_character_does_not_change_in_not_included():
