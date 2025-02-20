@@ -3,7 +3,7 @@
 from __future__ import annotations
 import re
 import typing
-from typing import List, Callable
+from typing import List, Callable, Optional
 from functools import reduce
 
 if typing.TYPE_CHECKING:
@@ -93,3 +93,17 @@ def remove_character(
     if entry is None:
         return None
     return entry.replace(character, "")
+
+
+DEFAULT_PUNCTUATION_TO_REMOVE = [".", ",", ";",":"]
+
+def remove_trailing_punctuation(
+    entry: MarcEntryDataTypes,
+    punctuation: Optional[List[str]]=None
+) -> MarcEntryDataTypes:
+    """Remove trailing punctuation."""
+    if entry is None:
+        return None
+    return entry.rstrip(
+        "".join(punctuation or DEFAULT_PUNCTUATION_TO_REMOVE)
+    )

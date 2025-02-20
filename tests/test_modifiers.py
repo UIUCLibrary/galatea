@@ -52,7 +52,21 @@ def test_remove_character_does_not_change_in_not_included():
         modifiers.remove_double_dash_postfix,
         modifiers.remove_duplicates,
         modifiers.remove_trailing_periods,
+        modifiers.remove_trailing_punctuation
     ]
 )
 def test_none_returns_none(filter_func):
     assert filter_func(None) is None
+
+@pytest.mark.parametrize(
+    "starting,expected",
+    [
+        ("spam", "spam"),
+        ("spam.", "spam"),
+        ("spam,", "spam"),
+        ("spam;", "spam"),
+        ("spam:", "spam"),
+    ]
+)
+def test_remove_trailing_punctuation(starting,expected):
+    assert modifiers.remove_trailing_punctuation(starting) == expected

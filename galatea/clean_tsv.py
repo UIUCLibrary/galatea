@@ -102,6 +102,7 @@ def default_row_modifier() -> RowTransformer:
                 functools.partial(modifiers.remove_character, character="?"),
                 functools.partial(modifiers.remove_character, character="["),
                 functools.partial(modifiers.remove_character, character="]"),
+                modifiers.remove_trailing_punctuation,
             ],
         ),
     )
