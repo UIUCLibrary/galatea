@@ -1,5 +1,6 @@
 import pytest
 
+import functools
 from galatea import modifiers
 
 def test_remove_duplicates():
@@ -43,3 +44,15 @@ def test_remove_character_does_not_change_in_not_included():
     starting = "Chicago, Ill."
     assert modifiers.remove_character(starting, "?") == starting
 
+@pytest.mark.parametrize(
+    "filter_func",
+    [
+        functools.partial(modifiers.remove_character, character="?"),
+        modifiers.add_comma_after_space,
+        modifiers.remove_double_dash_postfix,
+        modifiers.remove_duplicates,
+        modifiers.remove_trailing_periods,
+    ]
+)
+def test_none_returns_none(filter_func):
+    assert filter_func(None) is None
