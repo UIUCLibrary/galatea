@@ -70,3 +70,11 @@ def test_none_returns_none(filter_func):
 )
 def test_remove_trailing_punctuation(starting,expected):
     assert modifiers.remove_trailing_punctuation(starting) == expected
+
+def test_regex_transform():
+    starting = "spam--Upper"
+    assert modifiers.regex_transform(
+        starting,
+        pattern=r"(--)(?=[A-Z])",
+        replacement=" "
+    ) == "spam Upper"

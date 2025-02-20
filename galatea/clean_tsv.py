@@ -117,6 +117,14 @@ def default_row_modifier() -> RowTransformer:
             ],
         ),
     )
+    transformer.add_transformation(
+        condition=lambda k, _: k == "610",
+        transformation=functools.partial(
+            modifiers.regex_transform,
+            pattern=r"(--)(?=[A-Z])",
+            replacement=" "
+        ),
+    )
     transformer.add_transformation(modifiers.remove_duplicates)
     return transformer
 

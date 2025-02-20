@@ -107,3 +107,9 @@ def remove_trailing_punctuation(
     return entry.rstrip(
         "".join(punctuation or DEFAULT_PUNCTUATION_TO_REMOVE)
     )
+
+def regex_transform(entry: MarcEntryDataTypes, pattern: str, replacement: str) -> MarcEntryDataTypes:
+    """Apply regular expression to entry."""
+    if entry is None:
+        return None
+    return re.sub(pattern, replacement, entry)
