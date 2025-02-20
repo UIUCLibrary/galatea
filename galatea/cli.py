@@ -40,7 +40,10 @@ def get_arg_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(
-        title="commands", dest="command", description="valid commands"
+        title="commands",
+        dest="command",
+        description="valid commands",
+        required=True
     )
 
     clean_tsv_cmd = subparsers.add_parser("clean-tsv", help="clean TSV files")
