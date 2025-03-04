@@ -9,10 +9,13 @@ from typing import Optional, List
 import typing
 
 import galatea
+
 from galatea import clean_tsv
+
 import logging
 __doc__ = "Galatea is a tool for manipulating tsv data."
 __all__ = ['main']
+
 
 
 def get_versions_from_package() -> Optional[str]:
@@ -49,6 +52,7 @@ def get_arg_parser() -> argparse.ArgumentParser:
         required=True
     )
 
+
     clean_tsv_cmd = subparsers.add_parser("clean-tsv", help="clean TSV files")
     clean_tsv_cmd.add_argument('-v', '--verbose', action='count', default=0, help="increase output verbosity", dest="verbosity")
 
@@ -62,6 +66,7 @@ def get_arg_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         help="Output tsv file",
     )
+
     return parser
 
 @contextlib.contextmanager
