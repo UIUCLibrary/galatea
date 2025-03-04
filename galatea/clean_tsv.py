@@ -2,10 +2,12 @@
 
 import csv
 import contextlib
+import dataclasses
 import functools
 import logging
 import pathlib
 from collections.abc import Iterator
+import difflib
 from typing import (
     Iterable,
     List,
@@ -16,14 +18,19 @@ from typing import (
     Type,
     Optional,
     Tuple,
+    TypeVar,
+    Generic,
 )
+import galatea
 from galatea import modifiers
+from galatea.marc import MarcEntryDataTypes, Marc_Entry
 
 __all__ = ["clean_tsv"]
 
-from galatea.marc import MarcEntryDataTypes, Marc_Entry
+T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 @contextlib.contextmanager
@@ -35,20 +42,29 @@ def remembered_file_pointer_head(fp: TextIO) -> Iterator[TextIO]:
         fp.seek(starting)
 
 
+@dataclasses.dataclass(frozen=True)
+class TableRow(Generic[T]):
+    line_number: int
+    entry: T
+
+
 def iter_tsv_fp(
     fp: TextIO, dialect: Union[Type[csv.Dialect], csv.Dialect]
-) -> Iterable[Marc_Entry]:
+) -> Iterable[TableRow[Marc_Entry]]:
     with remembered_file_pointer_head(fp):
-        yield from csv.DictReader(fp, dialect=dialect)
+        reader = csv.DictReader(fp, dialect=dialect)
+        for row in reader:
+            yield TableRow(line_number=reader.line_num, entry=row)
 
 
 def iter_tsv_file(
     file_name: pathlib.Path,
     dialect: Union[Type[csv.Dialect], csv.Dialect],
     strategy: Callable[
-        [TextIO, Union[Type[csv.Dialect], csv.Dialect]], Iterable[Marc_Entry]
+        [TextIO, Union[Type[csv.Dialect], csv.Dialect]],
+        Iterable[TableRow[Marc_Entry]],
     ] = iter_tsv_fp,
-) -> Iterable[Marc_Entry]:
+) -> Iterable[TableRow[Marc_Entry]]:
     with open(file_name, newline="", encoding="utf8") as tsv_file:
         yield from strategy(tsv_file, dialect)
 
@@ -97,7 +113,7 @@ def default_row_modifier() -> RowTransformer:
 
     transformer.add_transformation(
         condition=lambda k, v: k
-        in ["260$a","260$b", "260$c", "264$a", "264$b", "264$c"],
+        in ["260$a", "260$b", "260$c", "264$a", "264$b", "264$c"],
         transformation=lambda entry: modifiers.split_and_modify(
             entry,
             funcs=[
@@ -115,7 +131,9 @@ def default_row_modifier() -> RowTransformer:
             entry,
             funcs=[
                 modifiers.remove_trailing_punctuation,
-                functools.partial(modifiers.remove_trailing_punctuation, punctuation=[" "]),
+                functools.partial(
+                    modifiers.remove_trailing_punctuation, punctuation=[" "]
+                ),
                 modifiers.remove_trailing_punctuation,
             ],
         ),
@@ -126,7 +144,7 @@ def default_row_modifier() -> RowTransformer:
         transformation=functools.partial(
             modifiers.regex_transform,
             pattern=r"(--)(?=[A-Z])",
-            replacement=" "
+            replacement=" ",
         ),
     )
 
@@ -135,7 +153,7 @@ def default_row_modifier() -> RowTransformer:
         transformation=functools.partial(
             modifiers.regex_transform,
             pattern=r"(--)(?=[A-Z])",
-            replacement=" "
+            replacement=" ",
         ),
     )
 
@@ -144,24 +162,16 @@ def default_row_modifier() -> RowTransformer:
         transformation=functools.partial(
             modifiers.regex_transform,
             pattern=r"(?<=[a-z])([.])(?=[A-Z])",
-            replacement=". "
+            replacement=". ",
         ),
     )
 
     transformer.add_transformation(
-        condition=lambda k, _: k in ["650",
-                                     "651",
-                                     "655",
-                                     "600",
-                                     "610",
-                                     "611",
-                                     "700",
-                                     "710",
-                                     "711"],
+        condition=lambda k, _: k
+        in ["650", "651", "655", "600", "610", "611", "700", "710", "711"],
         transformation=functools.partial(
-            modifiers.remove_trailing_punctuation,
-            punctuation=["."]
-        )
+            modifiers.remove_trailing_punctuation, punctuation=["."]
+        ),
     )
     transformer.add_transformation(modifiers.remove_duplicates)
     return transformer
@@ -236,7 +246,7 @@ def get_tsv_dialect(
                 "dialect. Reason: %s",
                 e,
             )
-            return csv.get_dialect("excel-tab")
+            return csv.get_dialect("excel-tab")  # type:ignore[return-value]
 
 
 def make_empty_strings_none(record: Marc_Entry) -> Marc_Entry:
@@ -259,26 +269,93 @@ def transform_row_and_merge(
     return merged
 
 
-def clean_tsv(source: pathlib.Path, dest: pathlib.Path) -> None:
+def get_field_names_fp(
+    fp: TextIO, dialect: Union[Type[csv.Dialect], csv.Dialect]
+):
+    fieldnames = csv.DictReader(fp, dialect=dialect).fieldnames
+    if fieldnames is None:
+        raise ValueError("file contains no field names")
+    return list(fieldnames)
+
+
+def get_field_names(
+    file_name: pathlib.Path,
+    dialect: Optional[Union[Type[csv.Dialect], csv.Dialect]] = None,
+    strategy: Callable[
+        [TextIO, Union[Type[csv.Dialect], csv.Dialect]], List[str]
+    ] = get_field_names_fp,
+) -> List[str]:
+    with open(file_name, newline="", encoding="utf-8") as tsv_file:
+        return strategy(tsv_file, dialect or get_tsv_dialect(tsv_file))
+
+
+def clean_tsv(
+    source: pathlib.Path,
+    dest: pathlib.Path,
+    row_diff_report_generator: Optional[
+        Callable[[TableRow[Marc_Entry], TableRow[Marc_Entry], List[str]], str]
+    ] = None,
+) -> None:
     """Clean tsv file.
 
     Args:
         source: source tsv file
         dest: output file name
+        row_diff_report_generator: function for generating reports explaining
+            the changes in the row
 
     """
+    logger.debug("Reading %s", source)
     with open(source, newline="", encoding="utf-8") as tsv_file:
+        modified_data = []
         dialect = get_tsv_dialect(tsv_file)
-
-        modified_data = [
-            transform_row_and_merge(
-                row,
+        field_names = get_field_names(source)
+        for row in iter_tsv_fp(tsv_file, dialect):
+            transformed_row = transform_row_and_merge(
+                row.entry,
                 row_transformation_strategy=functools.partial(
                     row_modifier, transformer=default_row_modifier()
                 ),
             )
-            for row in iter_tsv_fp(tsv_file, dialect)
-        ]
+            if row_diff_report_generator is not None:
+                if diff_report := row_diff_report_generator(
+                    row,
+                    TableRow(
+                        line_number=row.line_number, entry=transformed_row
+                    ),
+                    field_names,
+                ):
+                    logger.log(galatea.VERBOSE_LEVEL_NUM, msg=diff_report)
+            modified_data.append(transformed_row)
 
     write_tsv_file(dest, modified_data, dialect)
-    print(f'Done. Wrote to "{dest.absolute()}"')
+    logger.info(f'Modified tsv wrote to "{dest.absolute()}"')
+    print("Done.")
+
+
+def create_diff_report(
+    unmodified_row: TableRow[Marc_Entry],
+    transformed_row: TableRow[Marc_Entry],
+    fieldnames: List[str],
+):
+    changed = {}
+    for k in fieldnames:
+        a: str = (unmodified_row.entry.get(k, "") or "").strip()
+        b: str = (transformed_row.entry.get(k, "") or "").strip()
+        if a == b:
+            continue
+        entry_differ = difflib.Differ()
+        res = entry_differ.compare([a], [b])
+        changed[k] = "\n".join(list(res))
+    if len(changed) == 0:
+        return None
+    lines: List[str] = []
+    for k, v in changed.items():
+        lines.append("")
+        lines.append(f"Row  : {unmodified_row.line_number}")
+        lines.append(f"Field: {k}")
+        lines.append("")
+        lines.append("Changes:\n")
+        lines.append(v)
+        lines.append("=" * 80)
+    return "\n".join(lines)

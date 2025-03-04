@@ -1,13 +1,16 @@
 """cli interface to galatea."""
 
 import argparse
+import contextlib
 import pathlib
 import sys
 from importlib import metadata
 from typing import Optional, List
 import typing
-from galatea import clean_tsv
 
+import galatea
+from galatea import clean_tsv
+import logging
 __doc__ = "Galatea is a tool for manipulating tsv data."
 __all__ = ['main']
 
@@ -47,6 +50,7 @@ def get_arg_parser() -> argparse.ArgumentParser:
     )
 
     clean_tsv_cmd = subparsers.add_parser("clean-tsv", help="clean TSV files")
+    clean_tsv_cmd.add_argument('-v', '--verbose', action='count', default=0, help="increase output verbosity", dest="verbosity")
 
     clean_tsv_cmd.add_argument(
         "source_tsv", type=pathlib.Path, help="Source tsv file"
@@ -60,12 +64,43 @@ def get_arg_parser() -> argparse.ArgumentParser:
     )
     return parser
 
+@contextlib.contextmanager
+def manage_module_logs(logger, verbosity=logging.INFO):
+    hander = logging.StreamHandler()
+    try:
+        logger.setLevel(verbosity)
+        logger.addHandler(hander)
+        yield
+    finally:
+        logger.removeHandler(hander)
+
+def get_logger_level_from_args(args: argparse.Namespace) -> int:
+    try:
+        match args.verbosity:
+            case 1:
+                return galatea.VERBOSE_LEVEL_NUM
+            case 2:
+                return logging.DEBUG
+            case _:
+                return logging.INFO
+    except AttributeError:
+        return logging.INFO
 
 def clean_tsv_command(args: argparse.Namespace) -> None:
     # if no output is explicitly selected, the changes are handled
     # inplace instead of creating a new file
+
     output: pathlib.Path = args.output_tsv or args.source_tsv
-    clean_tsv.clean_tsv(typing.cast(pathlib.Path, args.source_tsv), output)
+
+    with manage_module_logs(
+        clean_tsv.logger,
+        verbosity=get_logger_level_from_args(args)
+    ):
+        clean_tsv.clean_tsv(
+            typing.cast(pathlib.Path, args.source_tsv),
+            output,
+            row_diff_report_generator=clean_tsv.create_diff_report
+        )
 
 
 def main(cli_args: Optional[List[str]] = None) -> None:
