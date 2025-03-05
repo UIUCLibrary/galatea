@@ -18,6 +18,10 @@ classifiers = [
     "Topic :: System :: Archiving"
 
 ]
+dependencies = [
+    "requests"
+]
+
 [project.scripts]
 galatea = "galatea.cli:main"
 
