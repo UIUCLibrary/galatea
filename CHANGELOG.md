@@ -1,6 +1,27 @@
-## v0.2.1.dev1 (2025-02-17)
+## v0.3.0 (2025-03-05)
 
-## v0.2.0.dev1 (2025-01-15)
+### Feat
+
+- authority-check command added
+- clean-tsv prints diff when --verbose flag is used
+- Trailing periods are removed in the following fields: 650, 651, 655, 600, 610, 611, 700, 710, and 711
+- Double dashes -- are removed and spaces are added after punctuation in the 710 field
+- double dashes -- are replace with spaces in 610 field.
+- Remove trailing punctuation 300
+- Remove trailing punctuation from 260 and 264 fields
+- tsv-clean removes brackets appearing in 260 and 264 fields
+- Question marks from 260 and 264 fields
+
+### Fix
+
+- error message is shown when galatea is run without a subcommand
+
+### Refactor
+
+- Move tsv related functions into own module
+- Use RowTransformer()
+
+## v0.2.0 (2025-01-15)
 
 ## v0.1.0 (2024-10-08)
 
