@@ -11,6 +11,7 @@ import typing
 import galatea
 
 from galatea import clean_tsv
+from galatea import validate_authorized_terms
 
 import logging
 __doc__ = "Galatea is a tool for manipulating tsv data."
@@ -67,6 +68,17 @@ def get_arg_parser() -> argparse.ArgumentParser:
         help="Output tsv file",
     )
 
+    authority_check_cmd = subparsers.add_parser(
+        "authority-check",
+        help="validate-authorized-names"
+    )
+
+    authority_check_cmd.add_argument(
+        "source_tsv", type=pathlib.Path, help="Source tsv file"
+    )
+
+    authority_check_cmd.add_argument('-v', '--verbose', action='count', default=0, help="increase output verbosity", dest="verbosity")
+
     return parser
 
 @contextlib.contextmanager
@@ -107,6 +119,13 @@ def clean_tsv_command(args: argparse.Namespace) -> None:
             row_diff_report_generator=clean_tsv.create_diff_report
         )
 
+def authority_check_command(args: argparse.Namespace) -> None:
+    with manage_module_logs(
+            validate_authorized_terms.logger,
+            verbosity=get_logger_level_from_args(args)
+    ):
+        validate_authorized_terms.validate_authorized_terms(args.source_tsv)
+
 
 def main(cli_args: Optional[List[str]] = None) -> None:
     """Run main entry point."""
@@ -116,6 +135,8 @@ def main(cli_args: Optional[List[str]] = None) -> None:
     match args.command:
         case "clean-tsv":
             clean_tsv_command(args)
+        case "authority-check":
+            authority_check_command(args)
 
 
 if __name__ == "__main__":

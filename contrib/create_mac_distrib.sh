@@ -8,6 +8,7 @@ DEFAULT_BUILD_VENV=build/build_standalone_build_env
 
 default_python_path=$(which python3)
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 create_standalone(){
     uv_path=$1
@@ -17,7 +18,7 @@ create_standalone(){
 #     Generates the galatea.egg-info needed for the version metadata
     $uv_path build --wheel
 
-    $uv_path run $FREEZE_SCRIPT galatea ./galatea/__main__.py
+    $uv_path run --with-requirements "${SCRIPT_DIR}/../requirements.txt" $FREEZE_SCRIPT galatea ./galatea/__main__.py
 }
 
 
