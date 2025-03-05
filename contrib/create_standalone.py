@@ -28,11 +28,11 @@ SPECS_TEMPLATE = """# -*- mode: python ; coding: utf-8 -*-
 
 a = Analysis(
     %(entry_points)s,
-    pathex=[],
+    pathex=%(pathex)s,
     binaries=[],
     datas=[],
     hiddenimports=[],
-    hookspath=['%(hooks_path)s'],
+    hookspath=[%(hooks_path)r],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
@@ -82,12 +82,12 @@ def create_standalone(specs_file, dist, work_path) -> str:
         "--log-level", "WARN"
     ])
 
-def generate_spec_file(output_file: str, script_name: str, entry_point: str):
-
+def generate_spec_file(output_file: str, script_name: str, entry_point: str, path:str=""):
     specs = {
         "entry_points": [entry_point],
         "name": script_name,
-        "hooks_path": pathlib.Path(__file__).parent / "hooks"
+        "hooks_path": os.path.abspath(f'{pathlib.Path(__file__).parent / "hooks"}'),
+        "pathex": [path],
     }
     specs_files = pathlib.Path(output_file)
     dist_path = specs_files.parent
@@ -186,7 +186,7 @@ def package_with_cpack(build_path, dist, package_metadata, cpack_generator):
 def package_with_system_zip(build_path, dist, package_metadata):
     zip_file_path = os.path.join(
         "dist",
-        f"avtool-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.zip",
+        f"galatea-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.zip",
     )
     cwd = "dist"
     zip_command = [
@@ -204,7 +204,7 @@ def package_with_system_zip(build_path, dist, package_metadata):
 def package_with_system_tar(build_path, dist, package_metadata):
     archive_file_path = os.path.join(
         "dist",
-        f"avtool-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.tar.gz",
+        f"galatea-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.tar.gz",
     )
     cwd = "dist"
     command = [
@@ -221,7 +221,7 @@ def package_with_system_tar(build_path, dist, package_metadata):
 def package_with_builtin_zip(build_path, dist, package_metadata):
     zip_file_path = os.path.join(
         "dist",
-        f"avtool-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.zip",
+        f"galatea-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.zip",
     )
     with zipfile.ZipFile(zip_file_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(dist):
