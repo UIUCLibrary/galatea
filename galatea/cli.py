@@ -1,10 +1,12 @@
 """cli interface to galatea."""
+# PYTHON_ARGCOMPLETE_OK
 
 import argparse
 import contextlib
 import pathlib
 import sys
 from importlib import metadata
+import logging
 from typing import Optional, List
 import typing
 
@@ -13,7 +15,8 @@ import galatea
 from galatea import clean_tsv
 from galatea import validate_authorized_terms
 
-import logging
+import argcomplete
+
 __doc__ = "Galatea is a tool for manipulating tsv data."
 __all__ = ['main']
 
@@ -130,6 +133,7 @@ def authority_check_command(args: argparse.Namespace) -> None:
 def main(cli_args: Optional[List[str]] = None) -> None:
     """Run main entry point."""
     arg_parser = get_arg_parser()
+    argcomplete.autocomplete(arg_parser)
     args = arg_parser.parse_args(cli_args or sys.argv[1:])
 
     match args.command:

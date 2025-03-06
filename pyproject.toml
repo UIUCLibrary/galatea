@@ -19,7 +19,8 @@ classifiers = [
 
 ]
 dependencies = [
-    "requests"
+    "requests",
+    "argcomplete>=3.6"
 ]
 
 [project.scripts]
