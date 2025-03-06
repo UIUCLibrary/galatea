@@ -1,12 +1,11 @@
 build
-commitizen
 coverage
 lxml
 mypy
 pre-commit
 pytest
 ruff
-sphinx>=8.0
+sphinx
 tomli;python_version<"3.11"
 tox
 types-requests
