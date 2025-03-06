@@ -137,6 +137,14 @@ def default_row_modifier() -> RowTransformer:
 
     transformer.add_transformation(
         condition=lambda k, _: k
+        in ["600", "610", "611", "700", "710", "711"],
+        transformation=functools.partial(
+            modifiers.remove_relator_terms
+        ),
+    )
+
+    transformer.add_transformation(
+        condition=lambda k, _: k
         in ["500"],
         transformation=functools.partial(
             modifiers.regex_transform,

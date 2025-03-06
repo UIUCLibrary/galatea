@@ -78,3 +78,10 @@ def test_regex_transform():
         pattern=r"(--)(?=[A-Z])",
         replacement=" "
     ) == "spam Upper"
+
+@pytest.mark.parametrize("starting,expected", [
+    ("Illinois State Geological Survey,publisher.", "Illinois State Geological Survey,"),
+    ("Carey, Mathew, 1760-1839.General atlas||Bower, John", "Carey, Mathew, 1760-1839.General atlas||Bower, John")
+])
+def test_remove_relator_terms(starting, expected):
+    assert modifiers.remove_relator_terms(starting) == expected

@@ -32,6 +32,12 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["galatea"]
+zip-safe = true
+
+[tool.setuptools.package-data]
+"galatea" = [
+    "relator_terms.txt"
+]
 
 [tool.commitizen]
 name = "cz_conventional_commits"

@@ -1,0 +1,370 @@
+abridger
+actor
+adapter
+addressee
+analyst
+animator
+annotator
+announcer
+appellant
+appellee
+applicant
+appraiser
+architect
+arranger
+arranger of music
+art copyist
+art director
+artist
+artistic director
+assignee
+associated name
+attributed name
+auctioneer
+audio engineer
+audio producer
+author
+author in quotations or text abstracts
+author of afterword, colophon, etc.
+author of dialog
+author of introduction, etc.
+author of screenplay, etc.
+autographer
+bibliographic antecedent
+binder
+binding designer
+blurb writer
+book artist
+book designer
+book producer
+bookjacket designer
+bookplate designer
+bookseller
+bowdlerizer
+braille embosser
+broadcaster
+calligrapher
+camera operator
+cartographer
+caster
+casting director
+censor
+chief electrician
+choral conductor
+choreographer
+cinematographer
+civil defendant
+client
+collaborator
+collection registrar
+collector
+collotyper
+colorist
+colourist
+commentator
+commentator for written text
+commissioning body
+compiler
+complainant
+complainant-appellant
+complainant-appellee
+composer
+compositor
+conceptor
+conductor
+conservator
+consultant
+consultant to a project
+contestant
+contestant-appellant
+contestant-appellee
+contestee
+contestee-appellant
+contestee-appellee
+contractor
+contributor
+copier
+copier
+copyright claimant
+copyright holder
+corrector
+correspondent
+costume designer
+counterfeiter
+court governed
+court reporter
+cover designer
+creator
+criminal defendant
+curator
+curator of an exhibition
+current owner
+dancer
+data contributor
+data manager
+dedicatee
+dedicatee of item
+dedicator
+defendant
+defendant-appellant
+defendant-appellee
+degree committee member
+degree granting institution
+degree grantor
+degree supervisor
+delineator
+depicted
+deponent
+depositor
+designer
+designer of binding
+designer of book
+designer of bookjacket
+designer of cover
+designer of e-book
+designer of type
+director
+director of photography
+dissertant
+distribution place
+distributor
+dj
+donor
+draftsman
+dubbing director
+dubious author
+editor
+editor of compilation
+editor of moving image work
+editorial director
+electrician
+electrotyper
+enacting jurisdiction
+encoder
+engineer
+engraver
+etcher
+event place
+expert
+expurgator
+eyewitness
+facsimilist
+field director
+film director
+film distributor
+film editor
+film producer
+filmmaker
+first party
+forger
+former owner
+founder
+funder
+game developer
+geographic information specialist
+geospatial information specialist
+graphic technician
+honoree
+honouree
+honouree of item
+host
+host institution
+host, supporting
+house electrician
+illuminator
+illustrator
+imprimatur
+inker
+inscriber
+instructor
+instrumental conductor
+instrumentalist
+interviewee
+interviewer
+inventor
+issuing body
+joint author
+judge
+jurisdiction governed
+lab director
+laboratory
+laboratory director
+landscape architect
+lead
+lender
+letterer
+libelant
+libelant-appellant
+libelant-appellee
+libelee
+libelee-appellant
+libelee-appellee
+librettist
+licensee
+licensor
+lighting designer
+lithographer
+lyricist
+makeup artist
+manufacture place
+manufacturer
+marbler
+markup editor
+master electrician
+medium
+metadata contact
+metal-engraver
+minute taker
+mixing engineer
+moderator
+monitor
+motion picture editor
+moving image work editor
+music copyist
+music programmer
+musical director
+musician
+narrator
+news anchor
+observer
+onlooker
+onscreen participant
+onscreen presenter
+opponent
+organizer
+organizer of meeting
+originator
+other
+owner
+panelist
+papermaker
+patent applicant
+patent holder
+patent inventor
+patentee
+patron
+penciller
+performer
+performer of research
+permitting agency
+photographer
+place of address
+plaintiff
+plaintiff corporate body
+plaintiff person
+plaintiff-appellant
+plaintiff-appellee
+platemaker
+plates, printer of
+praeses
+presenter
+preservationist
+printer
+printer of plates
+printmaker
+process contact
+producer
+producer of book
+production company
+production designer
+production manager
+production personnel
+production place
+programmer
+project director
+project supervisor
+promoter
+proofreader
+provider
+publication place
+publisher
+publishing director
+puppeteer
+radio director
+radio producer
+rapporteur
+recipient
+recording engineer
+recordist
+redaktor
+remix artist
+renderer
+reporter
+repository
+research supervisor
+research team head
+research team member
+researcher
+respondent
+respondent-appellant
+respondent-appellee
+responsible party
+restager
+restorationist
+reviewer
+rubricator
+scenarist
+scientific advisor
+screenwriter
+scribe
+sculptor
+second party
+secretary
+seller
+set designer
+setting
+signer
+singer
+software developer
+sound designer
+sound engineer
+speaker
+special effects provider
+sponsor
+sponsored work
+sponsoring body
+stage director
+stage manager
+standards body
+stereotyper
+storyteller
+supporting host
+supposed name
+surveyor
+teacher
+technical advisor
+technical director
+technical draftsman
+television director
+television guest
+television host
+television producer
+television writer
+testifier
+thesis advisor
+transcriber
+translator
+type designer
+typesetter
+typographer
+university place
+videographer
+visual effects provider
+vocalist
+voice actor
+witness
+wood engraver
+woodcutter
+writer of accompanying material
+writer of added commentary
+writer of added lyrics
+writer of added text
+writer of afterword
+writer of film story
+writer of foreword
+writer of intertitles
+writer of introduction
+writer of postface
+writer of preface
+writer of supplementary textual content
+writer of television story

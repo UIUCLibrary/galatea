@@ -1,14 +1,16 @@
 """Modifying functions for string data."""
 
 from __future__ import annotations
+
+import functools
 import re
 import typing
 from typing import List, Callable, Optional
+from importlib.resources import files
 from functools import reduce
 
 if typing.TYPE_CHECKING:
     from galatea.marc import MarcEntryDataTypes
-
 
 def split_and_modify(
     entry: MarcEntryDataTypes,
@@ -95,21 +97,46 @@ def remove_character(
     return entry.replace(character, "")
 
 
-DEFAULT_PUNCTUATION_TO_REMOVE = [".", ",", ";",":"]
+DEFAULT_PUNCTUATION_TO_REMOVE = [".", ",", ";", ":"]
+
 
 def remove_trailing_punctuation(
-    entry: MarcEntryDataTypes,
-    punctuation: Optional[List[str]]=None
+    entry: MarcEntryDataTypes, punctuation: Optional[List[str]] = None
 ) -> MarcEntryDataTypes:
     """Remove trailing punctuation."""
     if entry is None:
         return None
-    return entry.rstrip(
-        "".join(punctuation or DEFAULT_PUNCTUATION_TO_REMOVE)
-    )
+    return entry.rstrip("".join(punctuation or DEFAULT_PUNCTUATION_TO_REMOVE))
 
-def regex_transform(entry: MarcEntryDataTypes, pattern: str, replacement: str) -> MarcEntryDataTypes:
+
+def regex_transform(
+    entry: MarcEntryDataTypes, pattern: str, replacement: str
+) -> MarcEntryDataTypes:
     """Apply regular expression to entry."""
     if entry is None:
         return None
     return re.sub(pattern, replacement, entry)
+
+@functools.cache
+def _get_relator_term_regex():
+    terms = (
+        files("galatea").joinpath('relator_terms.txt').read_text().split("\n")
+    )
+    relator_terms_in_regex = "|".join(terms)
+    return fr"({relator_terms_in_regex})\.?"
+
+def remove_relator_terms(entry: MarcEntryDataTypes):
+    """Remove any relator terms from the string.
+
+    See https://www.loc.gov/marc/relators/relaterm.html
+
+    Args:
+        entry: single element value from a mark file
+
+    Returns:
+        entry with relator terms removed
+
+    """
+    if entry is None:
+        return None
+    return re.sub(_get_relator_term_regex(), "", entry)
