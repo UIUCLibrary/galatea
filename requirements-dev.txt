@@ -2,8 +2,8 @@
 #    uv pip compile --universal --python 3.10 requirements/requirements-dev.in pyproject.toml
 alabaster==1.0.0
     # via sphinx
-argcomplete==3.5.3
-    # via commitizen
+argcomplete==3.6.0
+    # via galatea (pyproject.toml)
 babel==2.17.0
     # via sphinx
 build==1.2.2.post1
@@ -17,22 +17,15 @@ cfgv==3.4.0
 chardet==5.2.0
     # via tox
 charset-normalizer==3.4.1
-    # via
-    #   commitizen
-    #   requests
+    # via requests
 colorama==0.4.6
     # via
     #   build
-    #   commitizen
     #   pytest
     #   sphinx
     #   tox
-commitizen==4.4.1
-    # via -r requirements/requirements-dev.in
 coverage==7.6.12
     # via -r requirements/requirements-dev.in
-decli==0.6.2
-    # via commitizen
 distlib==0.3.9
     # via virtualenv
 docutils==0.21.2
@@ -51,10 +44,8 @@ imagesize==1.4.1
     # via sphinx
 iniconfig==2.0.0
     # via pytest
-jinja2==3.1.5
-    # via
-    #   commitizen
-    #   sphinx
+jinja2==3.1.6
+    # via sphinx
 lxml==5.3.1
     # via -r requirements/requirements-dev.in
 markupsafe==3.0.2
@@ -68,7 +59,6 @@ nodeenv==1.9.1
 packaging==24.2
     # via
     #   build
-    #   commitizen
     #   pyproject-api
     #   pytest
     #   sphinx
@@ -83,8 +73,6 @@ pluggy==1.5.0
     #   tox
 pre-commit==4.1.0
     # via -r requirements/requirements-dev.in
-prompt-toolkit==3.0.50
-    # via questionary
 pygments==2.19.1
     # via sphinx
 pyproject-api==1.9.0
@@ -94,11 +82,7 @@ pyproject-hooks==1.2.0
 pytest==8.3.5
     # via -r requirements/requirements-dev.in
 pyyaml==6.0.2
-    # via
-    #   commitizen
-    #   pre-commit
-questionary==2.1.0
-    # via commitizen
+    # via pre-commit
 requests==2.32.3
     # via
     #   galatea (pyproject.toml)
@@ -121,8 +105,6 @@ sphinxcontrib-qthelp==2.0.0
     # via sphinx
 sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
-termcolor==2.5.0
-    # via commitizen
 tomli==2.2.1 ; python_full_version < '3.11'
     # via
     #   -r requirements/requirements-dev.in
@@ -132,15 +114,12 @@ tomli==2.2.1 ; python_full_version < '3.11'
     #   pytest
     #   sphinx
     #   tox
-tomlkit==0.13.2
-    # via commitizen
 tox==4.24.1
     # via -r requirements/requirements-dev.in
-types-requests==2.32.0.20250301
+types-requests==2.32.0.20250306
     # via -r requirements/requirements-dev.in
 typing-extensions==4.12.2
     # via
-    #   commitizen
     #   mypy
     #   tox
 urllib3==2.3.0
@@ -151,5 +130,3 @@ virtualenv==20.29.2
     # via
     #   pre-commit
     #   tox
-wcwidth==0.2.13
-    # via prompt-toolkit
