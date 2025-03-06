@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Using the Command Line &#8212; Galatea  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Galatea’s documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="using-the-command-line">
+<h1>Using the Command Line<a class="headerlink" href="#using-the-command-line" title="Link to this heading">¶</a></h1>
+<section id="getting-help">
+<h2>Getting Help<a class="headerlink" href="#getting-help" title="Link to this heading">¶</a></h2>
+<p>To get help at any point you can use the <cite>–help</cite> flag</p>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@WORKMACHINE123 galatea % </span>galatea<span class="w"> </span>--help
+<span class="go">usage: galatea [-h] [--version] {clean-tsv,authority-check} ...</span>
+
+<span class="go">Galatea is a tool for manipulating tsv data.</span>
+
+<span class="go">options:</span>
+<span class="go">  -h, --help            show this help message and exit</span>
+<span class="go">  --version             show program&#39;s version number and exit</span>
+
+<span class="go">commands:</span>
+<span class="go">  valid commands</span>
+
+<span class="go">  {clean-tsv,authority-check}</span>
+<span class="go">    clean-tsv           clean TSV files</span>
+<span class="go">    authority-check     validate-authorized-names</span>
+</pre></div>
+</div>
+</section>
+<section id="clean-tsv">
+<h2>Clean Tsv<a class="headerlink" href="#clean-tsv" title="Link to this heading">¶</a></h2>
+<p>To clean TSV files use the <cite>clean-tsv</cite> command</p>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@WORKMACHINE123 % </span>galatea<span class="w"> </span>clean-tsv<span class="w"> </span>/Users/user/Documents/River<span class="se">\ </span>Maps<span class="se">\ </span>-<span class="se">\ </span>River<span class="se">\ </span>Maps.tsv
+<span class="go">Modified tsv wrote to &quot;/Users/user/Documents/River Maps - River Maps.tsv&quot;</span>
+<span class="go">Done.</span>
+</pre></div>
+</div>
+</section>
+<section id="verify-values-based-on-authority">
+<h2>Verify values based on Authority<a class="headerlink" href="#verify-values-based-on-authority" title="Link to this heading">¶</a></h2>
+<p>To validate columns that should match a Library of Congress Authority, use the <cite>authority-check</cite> command</p>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@WORKMACHINE123 % </span>galatea<span class="w"> </span>authority-check<span class="w">  </span>/Users/hborcher/PycharmProjects/UIUCLibrary/galatea/River<span class="se">\ </span>Maps<span class="se">\ </span>-<span class="se">\ </span>River<span class="se">\ </span>Maps.tsv
+<span class="go">validating authorized terms</span>
+<span class="go">Line: 2 | Field: &quot;260$a&quot; | &quot;Chicago, Ill.&quot; is not an authorized term.</span>
+<span class="go">Line: 3 | Field: &quot;260$a&quot; | &quot;Washington, D.C.&quot; is not an authorized term.</span>
+<span class="go">Line: 4 | Field: &quot;260$a&quot; | &quot;Fort Belvoir, Va.&quot; is not an authorized term.</span>
+<span class="go">Line: 7 | Field: &quot;264$a&quot; | &quot;Fayetteville, Arkansas&quot; is not an authorized term.</span>
+<span class="go">Line: 8 | Field: &quot;264$a&quot; | &quot;Vicksburg, Miss.&quot; is not an authorized term.</span>
+<span class="go">Line: 9 | Field: &quot;260$a&quot; | &quot;Memphis, Tenn.&quot; is not an authorized term.</span>
+<span class="go">Line: 11 | Field: &quot;260$a&quot; | &quot;Vicksburg, Miss.&quot; is not an authorized term.</span>
+<span class="go">Line: 12 | Field: &quot;264$a&quot; | &quot;Vicksburg, Miss.&quot; is not an authorized term.</span>
+<span class="go">Line: 12 | Field: &quot;264$a&quot; | &quot;Washington, D.C.&quot; is not an authorized term.</span>
+<span class="go">Line: 13 | Field: &quot;264$a&quot; | &quot;Washington, D.C.&quot; is not an authorized term.</span>
+<span class="go">Line: 14 | Field: &quot;264$a&quot; | &quot;Washington, D.C.&quot; is not an authorized term.</span>
+<span class="go">Line: 15 | Field: &quot;264$a&quot; | &quot;Vicksburg, Mississippi&quot; is not an authorized term.</span>
+<span class="go">Line: 15 | Field: &quot;264$a&quot; | &quot;Washington, D.C.&quot; is not an authorized term.</span>
+<span class="go">Line: 16 | Field: &quot;264$a&quot; | &quot;St. Louis, Mo.&quot; is not an authorized term.</span>
+<span class="go">Line: 17 | Field: &quot;264$a&quot; | &quot;New Orleans&quot; is not an authorized term.</span>
+<span class="go">Line: 17 | Field: &quot;264$a&quot; | &quot;New York&quot; is not an authorized term.</span>
+<span class="go">Line: 17 | Field: &quot;264$a&quot; | &quot;Chicago&quot; is not an authorized term.</span>
+<span class="go">Line: 18 | Field: &quot;264$a&quot; | &quot;Vicksburg, Mississippi&quot; is not an authorized term.</span>
+<span class="go">Line: 18 | Field: &quot;264$a&quot; | &quot;Washington, D.C.&quot; is not an authorized term.</span>
+<span class="go">Line: 19 | Field: &quot;264$a&quot; | &quot;Philadelphia, Penn.&quot; is not an authorized term.</span>
+<span class="gp">hborcher@LIBLAPPRE18 homebrew-uiucprescon %</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/full_mark_horz_bw.gif" alt="Logo of Galatea"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">Galatea</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Using the Command Line</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#getting-help">Getting Help</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#clean-tsv">Clean Tsv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#verify-values-based-on-authority">Verify values based on Authority</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Galatea’s documentation</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Galatea.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/cli.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
