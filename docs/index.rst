@@ -8,3 +8,5 @@ Galatea's documentation
    :maxdepth: 2
    :caption: Contents:
 
+   cli
+
