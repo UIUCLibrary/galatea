@@ -108,7 +108,7 @@ def call(){
                         agent {
                             docker{
                                 image 'python'
-                                label 'docker && linux'
+                                label 'docker && linux && x86_64'
                                 args '--mount source=python-tmp-galatea,target=/tmp'
                             }
                         }
@@ -279,20 +279,19 @@ def call(){
                                             }
                                         }
                                         steps{
+                                            milestone ordinal: 1, label: 'sonarcloud'
                                             withSonarQubeEnv(installationName: 'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
-                                                script{
-                                                    def sourceInstruction
-                                                    if (env.CHANGE_ID){
-                                                        sourceInstruction = "-Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.BRANCH_NAME}"
-                                                    } else{
-                                                        sourceInstruction = "-Dsonar.branch.name=${env.BRANCH_NAME}"
-                                                    }
-                                                    sh(
-                                                        label: 'Running Sonar Scanner',
-                                                        script: """. ./venv/bin/activate
-                                                                    uvx pysonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${sourceInstruction}
-                                                                """
-                                                    )
+                                                sh(
+                                                    label: 'Running Sonar Scanner',
+                                                    script: "./venv/bin/uvx pysonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
+                                                )
+                                            }
+                                            script{
+                                                timeout(time: 1, unit: 'HOURS') {
+                                                    def sonarqubeResult = waitForQualityGate(abortPipeline: false, credentialsId: params.SONARCLOUD_TOKEN)
+                                                    if (sonarqubeResult.status != 'OK') {
+                                                       unstable "SonarQube quality gate: ${sonarqubeResult.status}"
+                                                   }
                                                 }
                                             }
                                         }
