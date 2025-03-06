@@ -134,6 +134,16 @@ def default_row_modifier() -> RowTransformer:
             modifiers.remove_trailing_punctuation, punctuation=["."]
         ),
     )
+
+    transformer.add_transformation(
+        condition=lambda k, _: k
+        in ["500"],
+        transformation=functools.partial(
+            modifiers.regex_transform,
+            pattern=r'"+',
+            replacement='"',
+        ),
+    )
     transformer.add_transformation(modifiers.remove_duplicates)
     return transformer
 
