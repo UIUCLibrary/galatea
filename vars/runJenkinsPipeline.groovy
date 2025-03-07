@@ -760,11 +760,13 @@ def call(){
                                                 label 'windows && docker && x86_64'
                                             }
                                         }
+                                        environment{
+                                            UV_INDEX_STRATEGY='unsafe-best-match'
+                                        }
                                         steps{
-                                            bat(script: '''set UV_INDEX_STRATEGY=unsafe-best-match
-                                                           contrib/create_windows_distrib.bat
-                                                           '''
-                                           )
+                                            tee('reports/windows_cpack.log'){
+                                                bat(script: 'contrib/create_windows_distrib.bat')
+                                            }
                                         }
                                         post{
                                             success{
@@ -774,8 +776,20 @@ def call(){
                                                     standaloneVersions << 'WINDOWS_APPLICATION_X86_64'
                                                 }
                                             }
+                                            always{
+                                                recordIssues(
+                                                        sourceCodeRetention: 'LAST_BUILD',
+                                                        tools: [
+                                                            cmake(
+                                                                name: 'CMake warnings when packaging standalone for Windows',
+                                                                pattern: 'reports/windows_cpack.log'
+                                                            )
+                                                        ]
+                                                    )
+                                            }
                                             cleanup{
                                                 cleanWs(patterns: [
+                                                    [pattern: 'reports/', type: 'INCLUDE'],
                                                     [pattern: 'venv/', type: 'INCLUDE'],
                                                     [pattern: 'dist/', type: 'INCLUDE'],
                                                     [pattern: '**/__pycache__/', type: 'INCLUDE'],
