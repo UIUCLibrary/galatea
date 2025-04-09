@@ -800,7 +800,7 @@ def call(){
                                     stage('Test package'){
                                         agent {
                                             docker {
-                                                image 'mcr.microsoft.com/windows/servercore:ltsc2019'
+                                                image 'mcr.microsoft.com/windows/servercore:ltsc2025'
                                                 label 'windows && docker && x86_64'
                                             }
                                         }
