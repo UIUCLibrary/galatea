@@ -5,6 +5,7 @@ import csv
 import dataclasses
 import logging
 import pathlib
+import typing
 
 from typing import (
     Callable,
@@ -58,12 +59,15 @@ class TableRow(Generic[T]):
 
 
 def iter_tsv_fp(
-    fp: TextIO, dialect: Union[Type[csv.Dialect], csv.Dialect]
-) -> Iterable[TableRow[Marc_Entry]]:
+    fp: TextIO, dialect: Union[Type[csv.Dialect], csv.Dialect, str]
+) -> Iterable[TableRow[T]]:
     with remembered_file_pointer_head(fp):
         reader = csv.DictReader(fp, dialect=dialect)
         for row in reader:
-            yield TableRow(line_number=reader.line_num, entry=row)
+            yield TableRow(
+                line_number=reader.line_num,
+                entry=typing.cast(T, row)
+            )
 
 
 def iter_tsv_file(
@@ -71,17 +75,17 @@ def iter_tsv_file(
     dialect: Union[Type[csv.Dialect], csv.Dialect],
     strategy: Callable[
         [TextIO, Union[Type[csv.Dialect], csv.Dialect]],
-        Iterable[TableRow[Marc_Entry]],
+        Iterable[TableRow[T]],
     ] = iter_tsv_fp,
-) -> Iterable[TableRow[Marc_Entry]]:
-    """Iterate over the Marc entries in a given tsv file.
+) -> Iterable[TableRow[T]]:
+    """Iterate over entries in a given tsv file.
 
     Args:
         file_name: file path to tsv to use,
         dialect: dialect of tsv file
         strategy: function to read tsv to file pointer
 
-    Yields: Marc data
+    Yields: data
 
     """
     with open(file_name, newline="", encoding="utf8") as tsv_file:
