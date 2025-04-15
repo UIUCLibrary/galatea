@@ -14,13 +14,14 @@ import galatea
 
 from galatea import clean_tsv
 from galatea import validate_authorized_terms
+from galatea import resolve_authorized_terms
 
 import argcomplete
 
 __doc__ = "Galatea is a tool for manipulating tsv data."
-__all__ = ['main']
+__all__ = ["main"]
 
-
+logger = logging.getLogger(__name__)
 
 def get_versions_from_package() -> Optional[str]:
     """Get version information from the package metadata."""
@@ -53,12 +54,21 @@ def get_arg_parser() -> argparse.ArgumentParser:
         title="commands",
         dest="command",
         description="valid commands",
-        required=True
+        required=True,
     )
 
-
+    # --------------------------------------------------------------------------
+    #  Clean tsv command
+    # --------------------------------------------------------------------------
     clean_tsv_cmd = subparsers.add_parser("clean-tsv", help="clean TSV files")
-    clean_tsv_cmd.add_argument('-v', '--verbose', action='count', default=0, help="increase output verbosity", dest="verbosity")
+    clean_tsv_cmd.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="increase output verbosity",
+        dest="verbosity",
+    )
 
     clean_tsv_cmd.add_argument(
         "source_tsv", type=pathlib.Path, help="Source tsv file"
@@ -70,19 +80,115 @@ def get_arg_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         help="Output tsv file",
     )
-
+    # --------------------------------------------------------------------------
+    #  Authority check command
+    # --------------------------------------------------------------------------
     authority_check_cmd = subparsers.add_parser(
-        "authority-check",
-        help="validate-authorized-names"
+        "authority-check", help="validate-authorized-names"
     )
 
     authority_check_cmd.add_argument(
         "source_tsv", type=pathlib.Path, help="Source tsv file"
     )
 
-    authority_check_cmd.add_argument('-v', '--verbose', action='count', default=0, help="increase output verbosity", dest="verbosity")
+    authority_check_cmd.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="increase output verbosity",
+        dest="verbosity",
+    )
+
+    # --------------------------------------------------------------------------
+    # authorized-terms command
+    # --------------------------------------------------------------------------
+
+    authorized_terms_cmd = subparsers.add_parser(
+        "authorized-terms", help="manipulate authorized terms used"
+    )
+    authorized_terms_parser = authorized_terms_cmd.add_subparsers(
+        dest="authorized_term_command", required=True
+    )
+
+    # --------------------------------------------------------------------------
+    # authorized-terms check command
+    # --------------------------------------------------------------------------
+
+    authorized_terms_check_cmd = authorized_terms_parser.add_parser(
+        "check", help="Check authorized terms are used in tsv file"
+    )
+
+    authorized_terms_check_cmd.add_argument(
+        "source_tsv", type=pathlib.Path, help="Source tsv file"
+    )
+
+    authorized_terms_check_cmd.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="increase output verbosity",
+        dest="verbosity",
+    )
+
+    # --------------------------------------------------------------------------
+    # authorized-terms new-transformation-file command
+    # --------------------------------------------------------------------------
+
+    authorized_terms_new_transform_file_cmd = authorized_terms_parser.add_parser(
+        "new-transformation-file", help="create a new transformation tsv file"
+    )
+    authorized_terms_new_transform_file_cmd.add_argument(
+        "--output",
+        dest="output",
+        type=pathlib.Path,
+        help="Output tsv file",
+        default=pathlib.Path(resolve_authorized_terms.DEFAULT_TRANSFORMATION_FILE_NAME),
+    )
+    authorized_terms_new_transform_file_cmd.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="increase output verbosity",
+        dest="verbosity",
+    )
+
+    # --------------------------------------------------------------------------
+    # authorized-terms resolve command
+    # --------------------------------------------------------------------------
+    resolve_authorized_terms_cmd = authorized_terms_parser.add_parser(
+        "resolve",
+        help="resolve unauthorized terms to authorized terms in found tsv file "
+    )
+    resolve_authorized_terms_cmd.add_argument(
+        "transformation_tsv_file",
+        type=pathlib.Path,
+        help="Transformation tsv file",
+    )
+    resolve_authorized_terms_cmd.add_argument(
+        "source_tsv", type=pathlib.Path, help="Source tsv file"
+    )
+
+    resolve_authorized_terms_cmd.add_argument(
+        "--output",
+        dest="output_tsv",
+        type=pathlib.Path,
+        help="Output tsv file",
+    )
+
+    resolve_authorized_terms_cmd.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="increase output verbosity",
+        dest="verbosity",
+    )
 
     return parser
+
 
 @contextlib.contextmanager
 def manage_module_logs(logger, verbosity=logging.INFO):
@@ -93,6 +199,7 @@ def manage_module_logs(logger, verbosity=logging.INFO):
         yield
     finally:
         logger.removeHandler(hander)
+
 
 def get_logger_level_from_args(args: argparse.Namespace) -> int:
     try:
@@ -106,6 +213,7 @@ def get_logger_level_from_args(args: argparse.Namespace) -> int:
     except AttributeError:
         return logging.INFO
 
+
 def clean_tsv_command(args: argparse.Namespace) -> None:
     # if no output is explicitly selected, the changes are handled
     # inplace instead of creating a new file
@@ -113,21 +221,51 @@ def clean_tsv_command(args: argparse.Namespace) -> None:
     output: pathlib.Path = args.output_tsv or args.source_tsv
 
     with manage_module_logs(
-        clean_tsv.logger,
-        verbosity=get_logger_level_from_args(args)
+        clean_tsv.logger, verbosity=get_logger_level_from_args(args)
     ):
         clean_tsv.clean_tsv(
             typing.cast(pathlib.Path, args.source_tsv),
             output,
-            row_diff_report_generator=clean_tsv.create_diff_report
+            row_diff_report_generator=clean_tsv.create_diff_report,
         )
+
 
 def authority_check_command(args: argparse.Namespace) -> None:
     with manage_module_logs(
-            validate_authorized_terms.logger,
-            verbosity=get_logger_level_from_args(args)
+        validate_authorized_terms.logger,
+        verbosity=get_logger_level_from_args(args),
     ):
         validate_authorized_terms.validate_authorized_terms(args.source_tsv)
+
+
+def resolve_authorized_terms_command(args: argparse.Namespace) -> None:
+    with manage_module_logs(
+        resolve_authorized_terms.logger,
+        verbosity=get_logger_level_from_args(args),
+    ):
+        resolve_authorized_terms.resolve_authorized_terms(
+            input_tsv=args.source_tsv,
+            transformation_file=args.transformation_tsv_file,
+            output_file=args.output_tsv or args.source_tsv,
+        )
+
+
+def generate_new_transformation_file(args: argparse.Namespace) -> None:
+    with manage_module_logs(
+        resolve_authorized_terms.logger,
+        verbosity=get_logger_level_from_args(args),
+    ):
+        resolve_authorized_terms.create_init_transformation_file(args.output)
+
+
+def authorized_terms_command(args: argparse.Namespace):
+    match args.authorized_term_command:
+        case "resolve":
+            resolve_authorized_terms_command(args)
+        case "new-transformation-file":
+            generate_new_transformation_file(args)
+        case "check":
+            authority_check_command(args)
 
 
 def main(cli_args: Optional[List[str]] = None) -> None:
@@ -141,6 +279,17 @@ def main(cli_args: Optional[List[str]] = None) -> None:
             clean_tsv_command(args)
         case "authority-check":
             authority_check_command(args)
+            deprecation_notice = "\n".join([
+                "*" * 80,
+                "DEPRECATION NOTICE: The subcommand `authority-check` is deprecated."
+                " Use `authorized-terms check` instead of `authority-check`",
+                "*" * 80,
+            ])
+            logger.warning(deprecation_notice)
+
+        case "authorized-terms":
+            authorized_terms_command(args)
+            # resolve_authorized_terms_command(args)
 
 
 if __name__ == "__main__":

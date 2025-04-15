@@ -36,6 +36,7 @@ author = metadata['authors'][0]['name']
 
 extensions = [
     'sphinx.ext.doctest',
+    'sphinx.ext.autosectionlabel',
 ]
 
 templates_path = ['_templates']

@@ -1,3 +1,13 @@
+## v0.3.2b1 (2025-04-09)
+
+### Feat
+
+- authorized-terms command
+
+### Fix
+
+- tab completion support added via argcomplete
+
 ## v0.3.1 (2025-03-06)
 
 ### Feat

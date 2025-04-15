@@ -756,7 +756,7 @@ def call(){
                                     stage('Package'){
                                         agent{
                                             docker{
-                                                image 'python:3-windowsservercore-ltsc2022'
+                                                image 'python'
                                                 label 'windows && docker && x86_64'
                                             }
                                         }
@@ -800,7 +800,7 @@ def call(){
                                     stage('Test package'){
                                         agent {
                                             docker {
-                                                image 'mcr.microsoft.com/windows/servercore:ltsc2022'
+                                                image 'mcr.microsoft.com/windows/servercore:ltsc2025'
                                                 label 'windows && docker && x86_64'
                                             }
                                         }
