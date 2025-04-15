@@ -131,6 +131,9 @@ def get_arg_parser() -> argparse.ArgumentParser:
         dest="verbosity",
     )
 
+    # --------------------------------------------------------------------------
+    # authorized-terms resolve command
+    # --------------------------------------------------------------------------
     resolve_authorized_terms_cmd = authorized_terms_parser.add_parser(
         "resolve",
         help="resolve unauthorized terms to authorized terms in found tsv file "
@@ -149,6 +152,15 @@ def get_arg_parser() -> argparse.ArgumentParser:
         dest="output_tsv",
         type=pathlib.Path,
         help="Output tsv file",
+    )
+
+    resolve_authorized_terms_cmd.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="increase output verbosity",
+        dest="verbosity",
     )
 
     return parser
