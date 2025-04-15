@@ -204,6 +204,7 @@ def clean_tsv(
         modified_data = []
         dialect = get_tsv_dialect(tsv_file)
         field_names = galatea.tsv.get_field_names(source)
+        row: TableRow[Marc_Entry]
         for row in iter_tsv_fp(tsv_file, dialect):
             transformed_row = transform_row_and_merge(
                 row.entry,
