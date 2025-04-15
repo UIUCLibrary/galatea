@@ -6,14 +6,14 @@ requires-python = ">= 3.10"
 authors = [
     {name="University Library at The University of Illinois at Urbana Champaign: Preservation Services", email="prescons@library.illinois.edu"}
 ]
-license = { file="LICENSE"}
+license = "NCSA"
+license-files = ["LICENSE"]
 readme = { file= "README.md", content-type="text/markdown" }
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Natural Language :: English",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: University of Illinois/NCSA Open Source License",
     "Programming Language :: Python :: 3",
     "Topic :: System :: Archiving"
 
@@ -27,7 +27,7 @@ dependencies = [
 galatea = "galatea.cli:main"
 
 [build-system]
-requires = ["setuptools>=75.1.0"]
+requires = ["setuptools>=77.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -60,3 +60,4 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+"docs/conf.py" = ["D"]
