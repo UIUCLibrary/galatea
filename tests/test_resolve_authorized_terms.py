@@ -88,11 +88,11 @@ def test_resolve_authorized_terms_calls_resolve_strategy():
             galatea.tsv.TableRow(line_number=1, entry={"element1": "value2"}),
          )
     ])
-
     resolve_authorized_terms.resolve_authorized_terms(
         sample_input_tsv,
         transformation_file=sample_transformation_tsv,
         output_file=output_file,
+        input_tsv_dialect="excel-tab",
         resolve_strategy=resolve_strategy,
     )
     resolve_strategy.assert_called_once()

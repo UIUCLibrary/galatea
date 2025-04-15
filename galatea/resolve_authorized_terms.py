@@ -1,6 +1,7 @@
 """Resolve unauthorized terms to authorized terms in a tsv file."""
 
 import collections
+import csv
 import functools
 import logging
 import pathlib
@@ -16,7 +17,7 @@ from typing import (
     Tuple,
     Iterator,
     Dict,
-    Union,
+    Union, Type,
 )
 
 
@@ -156,6 +157,7 @@ def resolve_authorized_terms(
     input_tsv: pathlib.Path,
     transformation_file: pathlib.Path,
     output_file: pathlib.Path,
+    input_tsv_dialect: Optional[Union[Type[csv.Dialect], csv.Dialect]] = None,
     resolve_strategy: Callable[
         [
             Iterable[galatea.tsv.TableRow[galatea.marc.Marc_Entry]],
@@ -173,6 +175,7 @@ def resolve_authorized_terms(
     """Resolve unauthorized terms to authorized terms in found tsv file.
 
     Args:
+        input_tsv_dialect: The dialect of the input tsv file. If None, it will attempt to guess
         input_tsv: The input tsv file to be transformed.
         transformation_file: The file to define transformations.
         output_file: Output file name.
@@ -186,8 +189,12 @@ def resolve_authorized_terms(
         transformer = Transform(fp)
         new_data: List[galatea.marc.Marc_Entry] = []
 
+        if input_tsv_dialect is None:
+            with input_tsv.open("r") as input_tsv_fp:
+                input_tsv_dialect = galatea.tsv.get_tsv_dialect(input_tsv_fp)
+
         for original_row, new_row in resolve_strategy(
-            galatea.tsv.iter_tsv_file(input_tsv, dialect="excel-tab"),
+            galatea.tsv.iter_tsv_file(input_tsv, dialect=input_tsv_dialect),
             transformer,
             default_resolved_fields,
         ):
@@ -200,7 +207,7 @@ def resolve_authorized_terms(
                     ),
                 )
     with output_file.open("w") as fp:
-        galatea.tsv.write_tsv_fp(fp, data=new_data, dialect="excel-tab")
+        galatea.tsv.write_tsv_fp(fp, data=new_data, dialect=input_tsv_dialect)
     logger.info(f"Wrote to {output_file.name}")
 
 
