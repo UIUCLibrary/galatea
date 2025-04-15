@@ -9,4 +9,4 @@ venv\Scripts\pip install uv --disable-pip-version-check
 REM Generates the galatea.egg-info needed for the version metadata
 venv\Scripts\uv build --wheel
 
-venv\Scripts\uv run --with-requirements %REQUIREMENTS_FILE% %SCRIPT_DIR%\create_standalone.py --include-tab-completions galatea ./galatea/__main__.py
+venv\Scripts\uv run --with-requirements %REQUIREMENTS_FILE% %SCRIPT_DIR%\create_standalone.py --include-tab-completions galatea ./contrib/bootstrap_standalone.py
