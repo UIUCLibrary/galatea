@@ -95,6 +95,7 @@ This contains functionality to verify, and resolve Library of Congress Authority
     options:
       -h, --help            show this help message and exit
 
+.. _authorized-terms_authorized-terms-check:
 
 check
 +++++
@@ -141,6 +142,8 @@ _____________________________________
     Line: 19 | Field: "264$a" | "Philadelphia, Penn." is not an authorized term.
 
 
+.. _authorized-terms_new-transformation-file:
+
 new-transformation-file
 +++++++++++++++++++++++
 
@@ -165,6 +168,8 @@ _______________________________________________________
     user@WORKMACHINE123 % galatea authorized-terms new-transformation-file
     Wrote new transformation tsv file to: /Users/user/authorized_terms_transformation.tsv
 
+
+.. _authorized-terms_resolve:
 
 resolve
 +++++++
