@@ -12,6 +12,7 @@ from functools import reduce
 if typing.TYPE_CHECKING:
     from galatea.marc import MarcEntryDataTypes
 
+
 def split_and_modify(
     entry: MarcEntryDataTypes,
     funcs: List[Callable[[MarcEntryDataTypes], MarcEntryDataTypes]],
@@ -117,6 +118,7 @@ def regex_transform(
         return None
     return re.sub(pattern, replacement, entry)
 
+
 @functools.cache
 def _get_relator_term_regex():
     terms = (
@@ -124,6 +126,7 @@ def _get_relator_term_regex():
     )
     relator_terms_in_regex = "|".join(terms)
     return fr"({relator_terms_in_regex})\.?"
+
 
 def remove_relator_terms(entry: MarcEntryDataTypes):
     """Remove any relator terms from the string.

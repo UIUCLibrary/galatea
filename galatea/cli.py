@@ -23,6 +23,7 @@ __all__ = ["main"]
 
 logger = logging.getLogger(__name__)
 
+
 def get_versions_from_package() -> Optional[str]:
     """Get version information from the package metadata."""
     try:

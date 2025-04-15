@@ -1,11 +1,10 @@
 import pathlib
-from unittest.mock import Mock, mock_open, patch, ANY, create_autospec
+from unittest.mock import Mock, mock_open, patch, ANY
 
 import pytest
 import galatea.tsv
 import galatea.clean_tsv
 from galatea import clean_tsv, modifiers
-import io
 
 def test_make_empty_strings_none_removes_empty_strings():
     record = {"1": "somedata", "50": ""}

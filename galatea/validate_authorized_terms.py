@@ -89,26 +89,6 @@ def check_terms(name: str, cache: CachedApiCheck) -> bool:
     return cache.get_data(name).status_code == 200
 
 
-# def _iter_things_to_check(
-#     source: pathlib.Path,
-# ) -> Iterator[Tuple[int, str, str]]:
-#     field_names = {
-#         "260$a",
-#         "264$a",
-#     }
-#     with open(source) as tsv_file:
-#         dialect = get_tsv_dialect(tsv_file)
-#     for row in iter_tsv_file(source, dialect):
-#         for field_name in field_names:
-#             field = row.entry[field_name]
-#             if not field:
-#                 continue
-#             field = field.strip()
-#             for name in field.split("||"):
-#                 cleaned_string = name.strip()
-#                 yield row.line_number, field_name, cleaned_string
-#
-
 def optional_rate_limited_iterator(
     iterable: Iterable[T],
     bypass_sleep_func: Callable[[T], bool] = lambda *_: False,
@@ -137,6 +117,7 @@ def optional_rate_limited_iterator(
                     start_time = time.time()
         yield results
 
+
 class IterTerms(collections.abc.Iterable):
     tsv_file_row_iterator = iter_tsv_file
 
@@ -145,10 +126,11 @@ class IterTerms(collections.abc.Iterable):
         self.field_names = set()
 
     def iter_rows(self):
-        with open(self._source) as tsv_file:
+        with open(self._source, encoding="utf-8") as tsv_file:
             dialect = get_tsv_dialect(tsv_file)
         for row in IterTerms.tsv_file_row_iterator(self._source, dialect):
             yield row
+
     def __iter__(self):
         for row in self.iter_rows():
             for field_name in self.field_names:
@@ -159,6 +141,7 @@ class IterTerms(collections.abc.Iterable):
                 for name in field.split("||"):
                     cleaned_string = name.strip()
                     yield row.line_number, field_name, cleaned_string
+
 
 def validate_authorized_terms(source: pathlib.Path) -> None:
     """Validate Authorized terms.

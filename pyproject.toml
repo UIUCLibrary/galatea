@@ -60,3 +60,4 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+"docs/conf.py" = ["D"]
