@@ -21,6 +21,7 @@ import argcomplete
 __doc__ = "Galatea is a tool for manipulating tsv data."
 __all__ = ["main"]
 
+logger = logging.getLogger(__name__)
 
 def get_versions_from_package() -> Optional[str]:
     """Get version information from the package metadata."""
@@ -99,8 +100,6 @@ def get_arg_parser() -> argparse.ArgumentParser:
         dest="verbosity",
     )
 
-    # todo: move authority-check into authorized-terms subcommand
-
     # --------------------------------------------------------------------------
     # authorized-terms command
     # --------------------------------------------------------------------------
@@ -112,17 +111,42 @@ def get_arg_parser() -> argparse.ArgumentParser:
         dest="authorized_term_command", required=True
     )
 
-    authorized_terms_transform_cmd = authorized_terms_parser.add_parser(
+    # --------------------------------------------------------------------------
+    # authorized-terms check command
+    # --------------------------------------------------------------------------
+
+    authorized_terms_check_cmd = authorized_terms_parser.add_parser(
+        "check", help="Check authorized terms are used in tsv file"
+    )
+
+    authorized_terms_check_cmd.add_argument(
+        "source_tsv", type=pathlib.Path, help="Source tsv file"
+    )
+
+    authorized_terms_check_cmd.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="increase output verbosity",
+        dest="verbosity",
+    )
+
+    # --------------------------------------------------------------------------
+    # authorized-terms new-transformation-file command
+    # --------------------------------------------------------------------------
+
+    authorized_terms_new_transform_file_cmd = authorized_terms_parser.add_parser(
         "new-transformation-file", help="create a new transformation tsv file"
     )
-    authorized_terms_transform_cmd.add_argument(
+    authorized_terms_new_transform_file_cmd.add_argument(
         "--output",
         dest="output",
         type=pathlib.Path,
         help="Output tsv file",
         default=pathlib.Path(resolve_authorized_terms.DEFAULT_TRANSFORMATION_FILE_NAME),
     )
-    authorized_terms_transform_cmd.add_argument(
+    authorized_terms_new_transform_file_cmd.add_argument(
         "-v",
         "--verbose",
         action="count",
@@ -240,7 +264,8 @@ def authorized_terms_command(args: argparse.Namespace):
             resolve_authorized_terms_command(args)
         case "new-transformation-file":
             generate_new_transformation_file(args)
-            # print("new-transformation-file")
+        case "check":
+            authority_check_command(args)
 
 
 def main(cli_args: Optional[List[str]] = None) -> None:
@@ -254,6 +279,14 @@ def main(cli_args: Optional[List[str]] = None) -> None:
             clean_tsv_command(args)
         case "authority-check":
             authority_check_command(args)
+            deprecation_notice = "\n".join([
+                "*" * 80,
+                "DEPRECATION NOTICE: The subcommand `authority-check` is deprecated."
+                " Use `authorized-terms check` instead of `authority-check`",
+                "*" * 80,
+            ])
+            logger.warning(deprecation_notice)
+
         case "authorized-terms":
             authorized_terms_command(args)
             # resolve_authorized_terms_command(args)
