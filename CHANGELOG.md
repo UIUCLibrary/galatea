@@ -52,5 +52,3 @@
 ### Fix
 
 - version information is retained within the standalone distributions
-
-## v0.0.1 (2024-10-01)

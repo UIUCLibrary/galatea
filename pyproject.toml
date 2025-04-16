@@ -48,6 +48,8 @@ version_provider = "pep621"
 update_changelog_on_bump = true
 major_version_zero = true
 changelog_merge_prerelease = true
+changelog_start_rev = "v0.0.1"
+
 
 [tool.mypy]
 mypy_path = "src"
