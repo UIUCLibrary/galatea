@@ -383,7 +383,7 @@ def create_completions(entry_point: str, dest: str) -> None:
         }
     elif sys.platform == "win32":
         supported_shells = {
-            "powershell": {"file_name": f"{entry_point}.complete.psm1"}
+            "powershell": {"file_name": f"{entry_point.title()}ArgumentCompleter.psm1"}
         }
     else:
         supported_shells = {}
@@ -428,6 +428,7 @@ def main() -> None:
         specs_file,
         script_name=args.command_name,
         entry_point=os.path.abspath(args.entry_point),
+        path=os.path.abspath("src"),
     )
     package_path = os.path.join(args.build_path, "package", args.command_name)
     create_standalone(

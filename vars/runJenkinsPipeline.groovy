@@ -181,7 +181,7 @@ def call(){
                                                     sh(
                                                         label: 'Running Doctest Tests',
                                                         script: '''. ./venv/bin/activate
-                                                                   coverage run --parallel-mode --source=galatea -m sphinx -b doctest docs/ dist/docs/html -d build/docs/doctrees --no-color -w logs/doctest.txt
+                                                                   coverage run --parallel-mode --source=src -m sphinx -b doctest docs/ dist/docs/html -d build/docs/doctrees --no-color -w logs/doctest.txt
                                                                 '''
                                                         )
                                                 }
@@ -196,7 +196,7 @@ def call(){
                                                     sh(
                                                         label: 'Run Pytest',
                                                         script: '''. ./venv/bin/activate
-                                                                coverage run --parallel-mode --source=galatea -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml
+                                                                coverage run --parallel-mode --source=src -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml
                                                                 '''
                                                     )
                                                 }

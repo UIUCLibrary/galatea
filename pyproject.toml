@@ -33,6 +33,7 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["galatea"]
 zip-safe = true
+package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
 "galatea" = [
@@ -46,6 +47,9 @@ version_scheme = "pep440"
 version_provider = "pep621"
 update_changelog_on_bump = true
 major_version_zero = true
+
+[tool.mypy]
+mypy_path = "src"
 
 [tool.ruff]
 line-length = 79
