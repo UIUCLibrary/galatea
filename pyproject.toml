@@ -1,6 +1,6 @@
 [project]
 name = "galatea"
-version = "0.3.2.dev2"
+version = "0.3.2"
 description = "Used for cleaning up metadata used by UIUC metadata"
 requires-python = ">= 3.10"
 authors = [
@@ -47,6 +47,7 @@ version_scheme = "pep440"
 version_provider = "pep621"
 update_changelog_on_bump = true
 major_version_zero = true
+changelog_merge_prerelease = true
 
 [tool.mypy]
 mypy_path = "src"
