@@ -1,11 +1,14 @@
-## v0.3.2b1 (2025-04-09)
+## v0.3.2 (2025-04-16)
 
 ### Feat
 
+- Added 'authorized-terms check' subcommand as a replacement for `authority-check`
+- resolving authorized terms with verbose will show diff
 - authorized-terms command
 
 ### Fix
 
+- resolve_authorized_terms sniffs input tsv file dialect to match output if unknown dialect
 - tab completion support added via argcomplete
 
 ## v0.3.1 (2025-03-06)
