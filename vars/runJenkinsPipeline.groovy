@@ -9,6 +9,18 @@ def getStandAloneStorageServers(){
     }
 }
 
+def createChocolateyConfigFile(configJsonFile, installerPackage, url){
+    def deployJsonMetadata = [
+        "PackageVersion": readTOML( file: 'pyproject.toml')['project'].version,
+        "DownloadUrl": url,
+        "PackageFile": installerPackage.name,
+        "Sha256": sha256(installerPackage.path),
+        "TabCompletionPowershellModule": "${installerPackage.name.take(installerPackage.name.lastIndexOf('.'))}\\extras\\cli_completion\\powershell\\GalateaArgumentCompleter.psm1"
+
+    ]
+    writeJSON( json: deployJsonMetadata, file: configJsonFile, pretty: 2)
+}
+
 def deployStandalone(glob, url) {
     script{
         findFiles(glob: glob).each{
@@ -21,6 +33,20 @@ def deployStandalone(glob, url) {
                 echo "${e}"
                 throw e;
             }
+        }
+    }
+}
+
+def deploySingleStandalone(file, url, authentication) {
+    script{
+        try{
+            def encodedUrlFileName = new URI(null, null, file.name, null).toASCIIString()
+            def newUrl = "${url}/${encodedUrlFileName}"
+            def putResponse = httpRequest authentication: authentication, httpMode: 'PUT', uploadFile: file.path, url: "${newUrl}", wrapAsMultipart: false
+            return newUrl
+        } catch(Exception e){
+            echo "${e}"
+            throw e;
         }
     }
 }
@@ -74,7 +100,6 @@ def call(){
             ]
         )
     )
-    standaloneVersions = []
     pipeline {
         agent none
         parameters{
@@ -656,9 +681,6 @@ def call(){
                                             success{
                                                 archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                                 stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_X86_64'
-                                                script{
-                                                    standaloneVersions << 'APPLE_APPLICATION_X86_64'
-                                                }
                                             }
                                             cleanup{
                                                 cleanWs(patterns: [
@@ -710,9 +732,6 @@ def call(){
                                             success{
                                                 archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                                 stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_ARM64'
-                                                script{
-                                                    standaloneVersions << 'APPLE_APPLICATION_ARM64'
-                                                }
                                             }
                                             cleanup{
                                                 cleanWs(patterns: [
@@ -767,15 +786,10 @@ def call(){
                                             tee('reports/windows_cpack.log'){
                                                 bat(script: 'contrib/create_windows_distrib.bat')
                                             }
+                                            archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
+                                            stash includes: 'dist/*.zip', name: 'WINDOWS_APPLICATION_X86_64'
                                         }
                                         post{
-                                            success{
-                                                archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
-                                                stash includes: 'dist/*.zip', name: 'WINDOWS_APPLICATION_X86_64'
-                                                script{
-                                                    standaloneVersions << 'WINDOWS_APPLICATION_X86_64'
-                                                }
-                                            }
                                             always{
                                                 recordIssues(
                                                         sourceCodeRetention: 'LAST_BUILD',
@@ -854,15 +868,60 @@ def call(){
                         string defaultValue: "galatea/${get_version()}", description: 'subdirectory to store artifact', name: 'archiveFolder'
                     }
                 }
-                stages{
-                    stage('Deploy Standalone Applications'){
+                parallel{
+                    stage('Deploy Standalone Applications: Windows x86_64'){
                         agent any
+                        when{
+                            equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
+                            beforeAgent true
+                        }
+                        environment{
+                            GENERATED_CHOCOLATEY_CONFIG_FILE='dist/chocolatey/config.json'
+                        }
                         steps{
                             script{
-                                standaloneVersions.each{
-                                    unstash "${it}"
-                                }
-                                deployStandalone('dist/*.zip', "${SERVER_URL}/${archiveFolder}")
+                                unstash 'WINDOWS_APPLICATION_X86_64'
+                                def deploymentFile = findFiles(glob: 'dist/*.zip')[0]
+                                def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
+                                createChocolateyConfigFile(env.GENERATED_CHOCOLATEY_CONFIG_FILE, deploymentFile, deployedUrl)
+                                archiveArtifacts artifacts: env.GENERATED_CHOCOLATEY_CONFIG_FILE
+                                echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                            }
+                        }
+                        post{
+                            success{
+                                echo "Use ${env.GENERATED_CHOCOLATEY_CONFIG_FILE} for deploying to Chocolatey with https://github.com/UIUCLibrary/chocolatey-hosted-public.git. Found in the artifacts for this build."
+                                echo "${readFile(env.GENERATED_CHOCOLATEY_CONFIG_FILE)}"
+                            }
+                        }
+                    }
+                    stage('Deploy Standalone Applications: MacOS ARM64'){
+                        agent any
+                        when{
+                            equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
+                            beforeAgent true
+                        }
+                        steps{
+                            script{
+                                unstash 'APPLE_APPLICATION_ARM64'
+                                def deploymentFile = findFiles(glob: 'dist/*.tar.gz')[0]
+                                def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
+                                echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                            }
+                        }
+                    }
+                    stage('Deploy Standalone Applications: MacOS X86_64'){
+                        agent any
+                        when{
+                            equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
+                            beforeAgent true
+                        }
+                        steps{
+                            script{
+                                unstash 'APPLE_APPLICATION_X86_64'
+                                def deploymentFile = findFiles(glob: 'dist/*.tar.gz')[0]
+                                def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
+                                echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
                             }
                         }
                     }
