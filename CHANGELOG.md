@@ -1,3 +1,10 @@
+## v0.4.0b0 (2025-05-29)
+
+### Feat
+
+- galatea can merge data from alma records
+- galatea uses a config to configure application
+
 ## v0.3.2 (2025-04-16)
 
 ### Feat
