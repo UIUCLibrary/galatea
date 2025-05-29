@@ -1,6 +1,8 @@
+"""galatea.config."""
+
 import abc
 import pathlib
-from typing import Optional, Type
+from typing import Optional
 import dataclasses
 import platform
 import json
@@ -28,9 +30,7 @@ class ConfigFileFormatStrategy(abc.ABC):
         """Deserialize the configuration from a string."""
 
 
-
 class JSONConfigStrategy(ConfigFileFormatStrategy):
-
     @staticmethod
     def get_file_name() -> str:
         return "config.json"
@@ -38,10 +38,7 @@ class JSONConfigStrategy(ConfigFileFormatStrategy):
     def serialize(self, config: Config) -> str:
         """Serialize the configuration to a TOML string."""
         return json.dumps(
-            {
-                'get_marc_server_url': config.get_marc_server_url or ''
-            },
-            indent=4
+            {"get_marc_server_url": config.get_marc_server_url or ""}, indent=4
         )
 
     def deserialize(self, config_str: str) -> Config:
@@ -49,11 +46,12 @@ class JSONConfigStrategy(ConfigFileFormatStrategy):
         data = json.loads(config_str)
         return Config(get_marc_server_url=data.get("get_marc_server_url"))
 
+
 def get_format_strategy() -> ConfigFileFormatStrategy:
     return JSONConfigStrategy()
 
-class ConfigStrategy(abc.ABC):
 
+class ConfigStrategy(abc.ABC):
     def read_raw_data(self) -> str:
         with self.get_config_file_path().open() as config_file:
             return config_file.read()
@@ -72,17 +70,27 @@ class ConfigStrategy(abc.ABC):
 
     @abc.abstractmethod
     def write(self, data: Config) -> None:
-       """Write the configuration."""
+        """Write the configuration."""
+
 
 class HomeDirectoryConfigStrategy(ConfigStrategy):
     """Configuration strategy that stores config data on home directory."""
 
-    def __init__(self, config_format_strategy: Optional[ConfigFileFormatStrategy] = None):
+    def __init__(
+        self, config_format_strategy: Optional[ConfigFileFormatStrategy] = None
+    ):
         super().__init__()
-        self.config_format_strategy: ConfigFileFormatStrategy = config_format_strategy or get_format_strategy()
+        self.config_format_strategy: ConfigFileFormatStrategy = (
+            config_format_strategy or get_format_strategy()
+        )
 
     def get_config_file_path(self) -> pathlib.Path:
-        return pathlib.Path.home() / ".config" / "galatea" / self.config_format_strategy.get_file_name()
+        return (
+            pathlib.Path.home()
+            / ".config"
+            / "galatea"
+            / self.config_format_strategy.get_file_name()
+        )
 
     def read(self) -> Config:
         return self.config_format_strategy.deserialize(self.read_raw_data())
@@ -97,6 +105,7 @@ config_strategies = {
     "Windows": HomeDirectoryConfigStrategy(),
 }
 
+
 def _get_config_strategy(platform_name: str) -> ConfigStrategy:
     platform_name = platform_name or platform.system()
     locate_config_file_strategy = config_strategies.get(platform_name)
@@ -104,19 +113,32 @@ def _get_config_strategy(platform_name: str) -> ConfigStrategy:
         raise ValueError(f"Unsupported platform: {platform_name}")
     return locate_config_file_strategy
 
+
 def get_default_config_file_path() -> pathlib.Path:
+    """Get the default path to the configuration file based on the platform."""
     return _get_config_strategy(platform.system()).get_config_file_path()
 
-def get_config(locate_config_file_strategy: Optional[ConfigStrategy] = None, platform_name: Optional[str] = None):
+
+def get_config(
+    locate_config_file_strategy: Optional[ConfigStrategy] = None,
+    platform_name: Optional[str] = None,
+):
+    """Get the configuration data."""
     locate_config_file_strategy = (
-            locate_config_file_strategy or
-            _get_config_strategy(platform_name or platform.system())
+        locate_config_file_strategy
+        or _get_config_strategy(platform_name or platform.system())
     )
     return locate_config_file_strategy.read()
 
-def set_config(data, locate_config_file_strategy: Optional[ConfigStrategy] = None, platform_name: Optional[str] = None):
+
+def set_config(
+    data: Config,
+    locate_config_file_strategy: Optional[ConfigStrategy] = None,
+    platform_name: Optional[str] = None,
+):
+    """Set the configuration data."""
     locate_config_file_strategy = (
-            locate_config_file_strategy or
-            _get_config_strategy(platform_name or platform.system())
+        locate_config_file_strategy
+        or _get_config_strategy(platform_name or platform.system())
     )
     locate_config_file_strategy.write(data)

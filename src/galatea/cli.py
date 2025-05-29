@@ -17,6 +17,7 @@ import galatea.config
 from galatea import clean_tsv
 from galatea import validate_authorized_terms
 from galatea import resolve_authorized_terms
+from galatea import merge_data
 
 import argcomplete
 
@@ -222,6 +223,75 @@ def get_arg_parser() -> argparse.ArgumentParser:
     )
 
     # --------------------------------------------------------------------------
+    #  merge-data command
+    # --------------------------------------------------------------------------
+    merge_data_cmd = subparsers.add_parser(
+        "merge-data", help="merge data from another source to tsv file"
+    )
+    merge_data_parser = merge_data_cmd.add_subparsers(
+        dest="merge_data_command", required=True
+    )
+
+    # --------------------------------------------------------------------------
+    #  merge-data.from-getmarc command
+    # --------------------------------------------------------------------------
+    merge_from_getmarc_cmd = merge_data_parser.add_parser(
+        "from-getmarc", help="merge data from getmarc server to tsv file"
+    )
+
+    merge_get_marc_data_parser = merge_from_getmarc_cmd.add_subparsers(
+        dest="from_getmarc_data_command", required=True
+    )
+
+    # --------------------------------------------------------------------------
+    #  merge-data.from-get-marc.init_mapping command
+    # --------------------------------------------------------------------------
+    init_mapping = merge_get_marc_data_parser.add_parser(
+        "init-mapper", help="create initial mapping file"
+    )
+    init_mapping.add_argument(
+        "source_tsv_file",
+        type=pathlib.Path,
+        action=ValidateFilePath,
+        help="Source tsv file",
+    )
+
+    init_mapping.add_argument(
+        "--output_file",
+        type=pathlib.Path,
+        help="Output file",
+        default=pathlib.Path("mapping.toml"),
+    )
+
+    merge_merge_from_get_marc_cmd = merge_get_marc_data_parser.add_parser(
+        "merge", help="merge data from get-marc server and map to tsv file"
+    )
+    merge_merge_from_get_marc_cmd.add_argument(
+        "metadata_tsv_file", type=pathlib.Path, help="tsv file with metadata"
+    )
+    merge_merge_from_get_marc_cmd.add_argument(
+        "--output-tsv-file",
+        type=pathlib.Path,
+        help="write changes to another file instead of inplace",
+    )
+    merge_merge_from_get_marc_cmd.add_argument(
+        "mapping_file", type=pathlib.Path, help="Mapping file"
+    )
+    try:
+        default_get_marc_server = galatea.config.get_config().get_marc_server_url
+    except FileNotFoundError:
+        default_get_marc_server = None
+
+    merge_merge_from_get_marc_cmd.add_argument(
+        "--getmarc-server",
+        type=str,
+        help=f'get-marc server url. Default: "{default_get_marc_server}"'
+        if default_get_marc_server
+        else "get-marc server url.",
+        default=default_get_marc_server,
+    )
+
+    # --------------------------------------------------------------------------
     #  config command
     # --------------------------------------------------------------------------
     config_sub_command = subparsers.add_parser(
@@ -334,6 +404,36 @@ def authorized_terms_command(args: argparse.Namespace):
             authority_check_command(args)
 
 
+def merge_data_command(args: argparse.Namespace):
+    match args.merge_data_command:
+        case "from-getmarc":
+            merge_get_marc_data_command(args)
+        case _:
+            raise ValueError(f"unknown command: {args.merge_data_command}")
+
+
+def merge_get_marc_data_command(args: argparse.Namespace):
+    with manage_module_logs(
+        merge_data.logger, verbosity=get_logger_level_from_args(args)
+    ):
+        match args.from_getmarc_data_command:
+            case "init-mapper":
+                merge_data.generate_mapping_file_for_tsv(
+                    args.source_tsv_file, args.output_file
+                )
+            case "merge":
+                merge_data.merge_from_getmarc(
+                    input_metadata_tsv_file=args.metadata_tsv_file,
+                    output_metadata_tsv_file=args.output_tsv_file,
+                    mapping_file=args.mapping_file,
+                    get_marc_server=args.getmarc_server,
+                )
+            case _:
+                raise ValueError(
+                    f"unknown command: {args.from_getmarc_data_command}"
+                )
+
+
 def config_command(args: argparse.Namespace) -> None:
     match args.config_command:
         case "set":
@@ -383,6 +483,13 @@ def main(cli_args: Optional[List[str]] = None) -> None:
     match args.command:
         case "clean-tsv":
             clean_tsv_command(args)
+
+        case "authorized-terms":
+            authorized_terms_command(args)
+
+        case "merge-data":
+            merge_data_command(args)
+
         case "authority-check":
             authority_check_command(args)
             deprecation_notice = "\n".join(
@@ -395,9 +502,6 @@ def main(cli_args: Optional[List[str]] = None) -> None:
             )
             logger.warning(deprecation_notice)
 
-        case "authorized-terms":
-            authorized_terms_command(args)
-            # resolve_authorized_terms_command(args)
         case "config":
             config_command(args)
 

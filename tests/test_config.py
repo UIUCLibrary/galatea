@@ -1,5 +1,4 @@
-import pathlib
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
 import pytest
 
