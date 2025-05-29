@@ -20,7 +20,8 @@ classifiers = [
 ]
 dependencies = [
     "requests",
-    "argcomplete>=3.6"
+    "argcomplete>=3.6",
+    "tomli >= 1.1.0 ; python_version < '3.11'"
 ]
 
 [project.scripts]

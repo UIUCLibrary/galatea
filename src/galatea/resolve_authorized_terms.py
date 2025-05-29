@@ -1,6 +1,6 @@
 """Resolve unauthorized terms to authorized terms in a tsv file."""
 
-import collections
+import collections.abc
 import csv
 import functools
 import logging

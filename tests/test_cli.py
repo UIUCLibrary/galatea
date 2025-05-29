@@ -18,6 +18,7 @@ import galatea.clean_tsv
 def test_command_called(monkeypatch, args, function_name):
     command = Mock()
     monkeypatch.setattr(galatea.cli, function_name, command)
+    galatea.cli.startup_tasks = []
     galatea.cli.main(args)
     command.assert_called_once()
 
