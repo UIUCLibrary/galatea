@@ -4,11 +4,6 @@
 
 - galatea can merge data from alma records
 - galatea uses a config to configure application
-
-## v0.3.2 (2025-04-16)
-
-### Feat
-
 - Added 'authorized-terms check' subcommand as a replacement for `authority-check`
 - resolving authorized terms with verbose will show diff
 - authorized-terms command
