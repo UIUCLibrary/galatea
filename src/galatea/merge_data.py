@@ -1,4 +1,8 @@
-"""Merge data from one source with another."""
+"""Merge data from one source with another.
+
+Added in version 0.4.0.
+
+"""
 
 import functools
 import logging
@@ -49,6 +53,15 @@ class MappingConfig:
 
 
 def get_keys_from_tsv_fp(fp: TextIO) -> List[str]:
+    """Get the keys from a TSV file.
+
+    Args:
+        fp: file pointer to the TSV file.
+
+    Returns: list of keys (headings) in the TSV file.
+
+    """
+
     def _iter_keys_from_fp(fp: TextIO) -> TableRow[Dict[str, str]]:
         return next(iter(tsv.iter_tsv_fp(fp, dialect="excel-tab")))
 
@@ -78,6 +91,14 @@ def get_keys_from_tsv(
 def generate_mapping_toml_file_for_tsv_fp(
     source_file_name: str, headings: List[str], fp: TextIO
 ) -> None:
+    """Generate a mapping file for a TSV file.
+
+    Args:
+        source_file_name: source file name, used in the mapping file
+        headings: list of headings in the TSV file.
+        fp: file pointer to write the mapping file to.
+
+    """
     boilerplate = f"""# ====================================================
     # Mapping file for "{source_file_name}"
     # ====================================================

@@ -35,10 +35,19 @@ author = metadata['authors'][0]['name']
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.autosectionlabel',
+    'sphinx.ext.napoleon'
 ]
-
+napoleon_google_docstring = True
+autodoc_typehints = "description"
+autodoc_typehints_format = 'fully-qualified'
+autodoc_type_aliases = {
+    'RowDiffReportGeneratorCallback': 'galatea.clean_tsv.RowDiffReportGeneratorCallback',
+    'ResolveStrategyCallback': 'galatea.resolve_authorized_terms.ResolveStrategyCallback',
+}
+add_module_names = False
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 

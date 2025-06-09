@@ -1,4 +1,6 @@
-"""Cleaning tsv file subcommand."""
+"""Clean tsv file content."""
+
+from __future__ import annotations
 
 import functools
 import logging
@@ -15,15 +17,17 @@ from typing import (
 import galatea
 from galatea import modifiers
 from galatea.marc import MarcEntryDataTypes, Marc_Entry
-from galatea.tsv import (
-    TableRow,
-    write_tsv_file,
-    get_tsv_dialect,
-    iter_tsv_fp
-)
+from galatea.tsv import TableRow, write_tsv_file, get_tsv_dialect, iter_tsv_fp
 
 __all__ = ["clean_tsv"]
 
+
+RowDiffReportGeneratorCallback = Callable[
+    [TableRow[Marc_Entry], TableRow[Marc_Entry], List[str]], str
+]
+"""Callback function for generating reports explaining the changes in the row.
+
+"""
 T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
@@ -136,16 +140,12 @@ def default_row_modifier() -> RowTransformer:
     )
 
     transformer.add_transformation(
-        condition=lambda k, _: k
-        in ["600", "610", "611", "700", "710", "711"],
-        transformation=functools.partial(
-            modifiers.remove_relator_terms
-        ),
+        condition=lambda k, _: k in ["600", "610", "611", "700", "710", "711"],
+        transformation=functools.partial(modifiers.remove_relator_terms),
     )
 
     transformer.add_transformation(
-        condition=lambda k, _: k
-        in ["500"],
+        condition=lambda k, _: k in ["500"],
         transformation=functools.partial(
             modifiers.regex_transform,
             pattern=r'"+',
@@ -186,17 +186,17 @@ def transform_row_and_merge(
 def clean_tsv(
     source: pathlib.Path,
     dest: pathlib.Path,
-    row_diff_report_generator: Optional[
-        Callable[[TableRow[Marc_Entry], TableRow[Marc_Entry], List[str]], str]
-    ] = None,
+    row_diff_report_generator: Optional[RowDiffReportGeneratorCallback] = None,
 ) -> None:
-    """Clean tsv file.
+    """Clean tsv file high level function.
 
     Args:
         source: source tsv file
         dest: output file name
-        row_diff_report_generator: function for generating reports explaining
-            the changes in the row
+        row_diff_report_generator: function for generating reports.
+            When not provided, no report is generated.
+
+            See :py:data:`RowDiffReportGeneratorCallback` for details.
 
     """
     logger.debug("Reading %s", source)

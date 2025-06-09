@@ -1,4 +1,6 @@
-"""Resolve unauthorized terms to authorized terms in a tsv file."""
+"""Resolving authorized terms."""
+
+from __future__ import annotations
 
 import collections.abc
 import csv
@@ -17,7 +19,8 @@ from typing import (
     Tuple,
     Iterator,
     Dict,
-    Union, Type,
+    Union,
+    Type,
 )
 
 
@@ -153,33 +156,39 @@ def diff_rows(
     return diff
 
 
+ResolveStrategyCallback = Callable[
+    [
+        Iterable[galatea.tsv.TableRow[galatea.marc.Marc_Entry]],
+        Transform,
+        Collection[str],
+    ],
+    Iterable[
+        Tuple[
+            galatea.tsv.TableRow[galatea.marc.Marc_Entry],
+            galatea.tsv.TableRow[galatea.marc.Marc_Entry],
+        ]
+    ],
+]
+"""Callback function to resolve unauthorized terms to authorized terms."""
+
+
 def resolve_authorized_terms(
     input_tsv: pathlib.Path,
     transformation_file: pathlib.Path,
     output_file: pathlib.Path,
     input_tsv_dialect: Optional[Union[Type[csv.Dialect], csv.Dialect]] = None,
-    resolve_strategy: Callable[
-        [
-            Iterable[galatea.tsv.TableRow[galatea.marc.Marc_Entry]],
-            Transform,
-            Collection[str],
-        ],
-        Iterable[
-            Tuple[
-                galatea.tsv.TableRow[galatea.marc.Marc_Entry],
-                galatea.tsv.TableRow[galatea.marc.Marc_Entry],
-            ]
-        ],
-    ] = iter_resolved_terms,
+    resolve_strategy: ResolveStrategyCallback = iter_resolved_terms,
 ) -> None:
     """Resolve unauthorized terms to authorized terms in found tsv file.
 
     Args:
-        input_tsv_dialect: The dialect of the input tsv file. If None, it will attempt to guess
+        input_tsv_dialect: The dialect of the input tsv file. If None, it will
+            attempt to guess
         input_tsv: The input tsv file to be transformed.
         transformation_file: The file to define transformations.
         output_file: Output file name.
-        resolve_strategy: Callable that returns a tuple of the original and new row.
+        resolve_strategy: Callable that returns a tuple of the original and new
+            row.
 
     """
     # Opening the output file and the input are not done at the same time so

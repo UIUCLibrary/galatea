@@ -7,3 +7,9 @@ Galatea's documentation
 
    cli
    workflow
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Developer Documentation:
+
+   api
