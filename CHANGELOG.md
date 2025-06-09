@@ -12,7 +12,7 @@
 
 - resolve_authorized_terms sniffs input tsv file dialect to match output if unknown dialect
 - tab completion support added via argcomplete
-
+[__init__.py](src/galatea/__init__.py)
 ## v0.3.1 (2025-03-06)
 
 ### Feat
