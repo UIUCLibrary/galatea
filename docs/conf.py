@@ -38,7 +38,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.autosectionlabel',
-    'sphinx.ext.napoleon'
+    'sphinx.ext.napoleon',
 ]
 napoleon_google_docstring = True
 autodoc_typehints = "description"

@@ -171,6 +171,17 @@ _______________________________________________________
 
 .. _authorized-terms_resolve:
 
+merge-data
+++++++++++
+
+Merge data from another source.
+
+.. toctree::
+   :maxdepth: 3
+
+    merge-data command <merge-data.rst>
+
+
 resolve
 +++++++
 
@@ -197,5 +208,36 @@ _______________________________________
 
 .. code-block:: shell-session
 
-    user@WORKMACHINE123 % galatea % python -m galatea authorized-terms resolve authorized_terms_transformation.tsv "River Maps - River Maps.tsv"
+    user@WORKMACHINE123 % galatea % galatea authorized-terms resolve authorized_terms_transformation.tsv "River Maps - River Maps.tsv"
     Wrote to River Maps - River Maps.tsv
+
+.. _config_command:
+
+config
+++++++
+
+Configure galatea settings.
+
+.. code-block:: shell-session
+
+    user@WORKMACHINE123 % galatea config --help
+
+    usage: galatea config [-h] {set,show} ...
+
+    positional arguments:
+      {set,show}
+        set       set config
+        show      show current configuration
+
+    options:
+      -h, --help  show this help message and exit
+
+Example of using the `config` command:
+______________________________________
+
+To set ``get_marc_server_url`` settings to the value ``https://www.example.com``
+
+.. code-block:: shell-session
+
+    user@WORKMACHINE123 % galatea config set get_marc_server_url https://www.example.com
+
