@@ -1,6 +1,6 @@
 [project]
 name = "galatea"
-version = "0.4.0"
+version = "0.4.1.dev0"
 description = "Used for cleaning up metadata used by UIUC metadata"
 requires-python = ">= 3.10"
 authors = [
