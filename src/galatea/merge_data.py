@@ -142,9 +142,9 @@ identifier_key = "Bibliographic Identifier"
         fp.write("\n")
     fp.write(
         """
-    # This file uses the TOML format. If you should need more information about the 
-    # syntax, see: https://toml.io/en/
-    """.lstrip()
+# This file uses the TOML format. If you should need more information about the 
+# syntax, see: https://toml.io/en/
+""".lstrip()
     )
 
 
