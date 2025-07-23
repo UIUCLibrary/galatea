@@ -1,4 +1,4 @@
-## v0.4.0b0 (2025-05-29)
+## v0.4.0 (2025-07-23)
 
 ### Feat
 
@@ -10,9 +10,10 @@
 
 ### Fix
 
+- init-mapper subcommand is now formatted correctly
 - resolve_authorized_terms sniffs input tsv file dialect to match output if unknown dialect
 - tab completion support added via argcomplete
-[__init__.py](src/galatea/__init__.py)
+
 ## v0.3.1 (2025-03-06)
 
 ### Feat
