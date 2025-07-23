@@ -1,6 +1,6 @@
-++++++++++++++++++
-merge-data command
-++++++++++++++++++
+++++++++++
+merge-data
+++++++++++
 
 Merge data from another source
 
