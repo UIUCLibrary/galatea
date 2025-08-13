@@ -512,12 +512,10 @@ def call(){
                                                    uv build --build-constraints requirements-dev.txt
                                                 '''
                                     )
+                                    archiveArtifacts artifacts: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', fingerprint: true
+                                    stash includes: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', name: 'PYTHON_PACKAGES'
                                 }
                                 post{
-                                    success{
-                                        archiveArtifacts artifacts: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', fingerprint: true
-                                        stash includes: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', name: 'PYTHON_PACKAGES'
-                                    }
                                     cleanup{
                                         cleanWs(patterns: [
                                                 [pattern: 'venv/', type: 'INCLUDE'],
@@ -673,12 +671,10 @@ def call(){
                                         }
                                         steps{
                                             sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
+                                            archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
+                                            stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_X86_64'
                                         }
                                         post{
-                                            success{
-                                                archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
-                                                stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_X86_64'
-                                            }
                                             cleanup{
                                                 cleanWs(patterns: [
                                                     [pattern: 'dist/', type: 'INCLUDE'],
@@ -724,12 +720,10 @@ def call(){
                                         }
                                         steps{
                                             sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
+                                            archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
+                                            stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_ARM64'
                                         }
                                         post{
-                                            success{
-                                                archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
-                                                stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_ARM64'
-                                            }
                                             cleanup{
                                                 cleanWs(patterns: [
                                                     [pattern: 'dist/', type: 'INCLUDE'],
