@@ -4,6 +4,7 @@ lxml
 mypy
 pre-commit
 pytest
+pyfakefs
 ruff
 sphinx
 tomli;python_version<"3.11"

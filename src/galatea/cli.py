@@ -59,9 +59,7 @@ class ValidateFilePath(argparse.Action):
                 f"Expected a file path, got {values!r}"
             )
         if not values.exists():
-            raise argparse.ArgumentTypeError(
-                f"File does not exist: {values}"
-            )
+            raise argparse.ArgumentTypeError(f"File does not exist: {values}")
         setattr(namespace, self.dest, values.resolve())
 
 
@@ -195,7 +193,7 @@ def get_arg_parser() -> argparse.ArgumentParser:
     # --------------------------------------------------------------------------
     resolve_authorized_terms_cmd = authorized_terms_parser.add_parser(
         "resolve",
-        help="resolve unauthorized terms to authorized terms in found tsv file ",
+        help="resolve unauthorized terms to authorized terms in found tsv file",
     )
     resolve_authorized_terms_cmd.add_argument(
         "transformation_tsv_file",
@@ -278,7 +276,9 @@ def get_arg_parser() -> argparse.ArgumentParser:
         "mapping_file", type=pathlib.Path, help="Mapping file"
     )
     try:
-        default_get_marc_server = galatea.config.get_config().get_marc_server_url
+        default_get_marc_server = (
+            galatea.config.get_config().get_marc_server_url
+        )
     except FileNotFoundError:
         default_get_marc_server = None
 
@@ -412,6 +412,21 @@ def merge_data_command(args: argparse.Namespace):
             raise ValueError(f"unknown command: {args.merge_data_command}")
 
 
+def merge_from_getmarc(
+    metadata_tsv_file, output_tsv_file, mapping_file, getmarc_server
+) -> None:
+    try:
+        merge_data.merge_from_getmarc(
+            input_metadata_tsv_file=metadata_tsv_file,
+            output_metadata_tsv_file=output_tsv_file,
+            mapping_file=mapping_file,
+            get_marc_server=getmarc_server,
+        )
+    except merge_data.BadMappingFileError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
+
+
 def merge_get_marc_data_command(args: argparse.Namespace):
     with manage_module_logs(
         merge_data.logger, verbosity=get_logger_level_from_args(args)
@@ -422,11 +437,11 @@ def merge_get_marc_data_command(args: argparse.Namespace):
                     args.source_tsv_file, args.output_file
                 )
             case "merge":
-                merge_data.merge_from_getmarc(
-                    input_metadata_tsv_file=args.metadata_tsv_file,
-                    output_metadata_tsv_file=args.output_tsv_file,
+                merge_from_getmarc(
+                    metadata_tsv_file=args.metadata_tsv_file,
+                    output_tsv_file=args.output_tsv_file,
                     mapping_file=args.mapping_file,
-                    get_marc_server=args.getmarc_server,
+                    getmarc_server=args.getmarc_server,
                 )
             case _:
                 raise ValueError(
