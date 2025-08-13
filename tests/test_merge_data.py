@@ -425,65 +425,76 @@ def test_map_marc_mapping_to_mapping_config_is_mapping_config():
     ],
 )
 def test_map_marc_mapping_to_mapping_config(attribute, expected_value):
-    result = merge_data.map_marc_mapping_to_mapping_config({
-        "key": "Uniform Title",
-        "matching_marc_fields": ["120a"],
-        "delimiter": "||",
-        "existing_data": "keep",
-    }, validations=[])
-    assert getattr(result, attribute) == expected_value
-
-def test_map_marc_mapping_to_mapping_config_invalid():
-    with pytest.raises(merge_data.BadMappingDataError):
-        merge_data.map_marc_mapping_to_mapping_config({
+    result = merge_data.map_marc_mapping_to_mapping_config(
+        {
             "key": "Uniform Title",
             "matching_marc_fields": ["120a"],
             "delimiter": "||",
-            "existing_data": "something_invalid",
-        }, validations=[lambda *args: "something_invalid"])
+            "existing_data": "keep",
+        },
+        validations=[],
+    )
+    assert getattr(result, attribute) == expected_value
+
+
+def test_map_marc_mapping_to_mapping_config_invalid():
+    with pytest.raises(merge_data.BadMappingDataError):
+        merge_data.map_marc_mapping_to_mapping_config(
+            {
+                "key": "Uniform Title",
+                "matching_marc_fields": ["120a"],
+                "delimiter": "||",
+                "existing_data": "something_invalid",
+            },
+            validations=[lambda *args: "something_invalid"],
+        )
+
 
 def test_validate_is_not_list_found_issue():
-    assert merge_data.validate_is_not_list(
-        {"key": ["Uniform Title"]},
-        "key"
-    ) is not None
+    assert (
+        merge_data.validate_is_not_list({"key": ["Uniform Title"]}, "key")
+        is not None
+    )
+
 
 def test_validate_is_not_list_found_no_issue():
-    assert merge_data.validate_is_not_list(
-        {"key": "Uniform Title"},
-        "key"
-    ) is None
+    assert (
+        merge_data.validate_is_not_list({"key": "Uniform Title"}, "key")
+        is None
+    )
+
 
 def test_validate_is_list_found_no_issues():
-    assert merge_data.validate_is_list_of_strings(
-        {"key": ["Uniform Title"]},
-        "key"
-    ) is None
+    assert (
+        merge_data.validate_is_list_of_strings(
+            {"key": ["Uniform Title"]}, "key"
+        )
+        is None
+    )
+
 
 def test_validate_is_list_found_issue_not_being_a_list():
-    assert merge_data.validate_is_list_of_strings(
-        {"key": "Uniform Title"},
-        "key"
-    ) is not None
+    assert (
+        merge_data.validate_is_list_of_strings({"key": "Uniform Title"}, "key")
+        is not None
+    )
 
 
 def test_validate_is_list_found_issue_with_not_contain_strings():
-    assert merge_data.validate_is_list_of_strings(
-        {"key": [1,2]},
-        "key"
-    ) is not None
+    assert (
+        merge_data.validate_is_list_of_strings({"key": [1, 2]}, "key")
+        is not None
+    )
+
 
 def test_validate_is_string_found_no_issues():
-    assert merge_data.validate_is_string(
-        {"key": "Uniform Title"},
-        "key"
-    ) is None
+    assert (
+        merge_data.validate_is_string({"key": "Uniform Title"}, "key") is None
+    )
+
 
 def test_validate_is_string_found_issue():
-    assert merge_data.validate_is_string(
-        {"key": 1},
-        "key"
-    ) is not None
+    assert merge_data.validate_is_string({"key": 1}, "key") is not None
 
 
 def test_read_mapping_toml_data_invalid_toml_raises_BadMappingFileError():
@@ -569,7 +580,7 @@ class TestBadMappingFileError:
         with pytest.raises(merge_data.BadMappingFileError) as e:
             raise merge_data.BadMappingFileError(
                 pathlib.Path(
-                    os.path.join("/", "fake_data", "mapping_file.toml")
+                    os.path.join("fake_data", "mapping_file.toml")
                 )
             )
         assert (
