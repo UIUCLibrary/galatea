@@ -32,7 +32,11 @@ from xml.etree import ElementTree as ET
 
 from galatea import tsv
 
-__all__ = ["generate_mapping_file_for_tsv", "merge_from_getmarc"]
+__all__ = [
+    "generate_mapping_file_for_tsv",
+    "merge_from_getmarc",
+    "BadMappingFileError",
+]
 
 from galatea.tsv import TableRow
 
@@ -40,8 +44,39 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+class BadMappingDataError(Exception):
+    """Exception raised when a mapping data is malformed or invalid."""
+
+    def __init__(self, *args, details: Optional[str] = None) -> None:
+        super().__init__(*args)
+        self.details = details
+
+
 class BadMappingFileError(Exception):
-    """Exception raised when a mapping file is malformed or invalid."""
+    """Exception raised when a mapping data in a file malformed or invalid."""
+
+    def __init__(
+        self, source_file: pathlib.Path, *args, details: Optional[str] = None
+    ) -> None:
+        """Initialize a new BadMappingFileError exception.
+
+        Args:
+            source_file: source file containing the error
+            *args: standard exception args
+            details: any details about error
+        """
+        super().__init__(*args)
+        self.source = source_file
+        self.details = details
+
+    def __str__(self) -> str:
+        """Print string."""
+        if self.details:
+            return (
+                f"Issue with mapping file: {self.source}. "
+                f"Details: {self.details}."
+            )
+        return f"Issue with mapping file: {self.source}"
 
 
 @dataclasses.dataclass
@@ -258,7 +293,7 @@ def map_marc_mapping_to_mapping_config(
             errors.append(found_issue)
 
     if errors:
-        raise BadMappingFileError(
+        raise BadMappingDataError(
             "Malformed mapping file: " + ", ".join(errors)
         )
 
@@ -293,8 +328,10 @@ def read_mapping_toml_data(
                         mapping_value
                     )
             except TypeError:
-                raise BadMappingFileError("Malformed mapping file")
+                raise BadMappingDataError("Malformed mapping file")
         return mapping
+    except tomllib.TOMLDecodeError as toml_error:
+        raise BadMappingDataError(details=str(toml_error)) from toml_error
     finally:
         mapping_file_fp.seek(starting)
 
@@ -317,7 +354,7 @@ def get_identifier_key_fp(mapping_file_fp: BinaryIO) -> str:
         try:
             return mapping_data["mappings"]["identifier_key"]
         except KeyError as e:
-            raise BadMappingFileError(
+            raise BadMappingDataError(
                 "Mapping file does not contain 'identifier_key' in the 'mappings' section"
             ) from e
     finally:
@@ -492,17 +529,22 @@ def merge_from_getmarc(
         write_to_file_strategy: strategy to write new rows to the output file.
 
     """
-    with input_metadata_tsv_file.open("r") as input_metadata_tsv_file_fp:
-        dialect = tsv.get_tsv_dialect(input_metadata_tsv_file_fp)
-        with mapping_file.open("rb") as mapping_file_fp:
-            new_rows = row_merge_data_strategy(
-                mapping_file_fp,
-                input_metadata_tsv_file_fp,
-                functools.partial(
-                    get_matching_marc_data, get_marc_server=get_marc_server
-                ),
-                dialect,
-            )
+    try:
+        with input_metadata_tsv_file.open("r") as input_metadata_tsv_file_fp:
+            dialect = tsv.get_tsv_dialect(input_metadata_tsv_file_fp)
+            with mapping_file.open("rb") as mapping_file_fp:
+                new_rows = row_merge_data_strategy(
+                    mapping_file_fp,
+                    input_metadata_tsv_file_fp,
+                    functools.partial(
+                        get_matching_marc_data, get_marc_server=get_marc_server
+                    ),
+                    dialect,
+                )
+    except BadMappingDataError as mapping_data_error:
+        raise BadMappingFileError(
+            source_file=mapping_file, details=mapping_data_error.details
+        ) from mapping_data_error
 
     with output_metadata_tsv_file.open("w") as f:
         write_to_file_strategy(new_rows, dialect, f)

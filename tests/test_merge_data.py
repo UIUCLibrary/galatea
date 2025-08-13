@@ -1,6 +1,8 @@
 import io
+import os
 import pathlib
 import sys
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -142,7 +144,7 @@ def test_read_mapping_toml_data_invalid():
 [key]
 """.lstrip()
     )
-    with pytest.raises(merge_data.BadMappingFileError):
+    with pytest.raises(merge_data.BadMappingDataError):
         merge_data.read_mapping_toml_data(
             mapping_file_fp=sample_mapping_file_fp
         )
@@ -163,7 +165,7 @@ def test_get_identifier_key_fp():
 
 def test_get_identifier_key_fp_invalid():
     sample_mapping_file_fp = io.BytesIO(b"""[mappings]""")
-    with pytest.raises(merge_data.BadMappingFileError):
+    with pytest.raises(merge_data.BadMappingDataError):
         merge_data.get_identifier_key_fp(sample_mapping_file_fp)
 
 
@@ -309,7 +311,7 @@ def test_merge_data_from_getmarc_handles_invalid_existing_data_value():
     "Uniform Title"	"Bibliographic Identifier"
     ""	"dummy_id"
     """.lstrip()
-    with pytest.raises(merge_data.BadMappingFileError):
+    with pytest.raises(merge_data.BadMappingDataError):
         merge_data.merge_data_from_getmarc(
             io.BytesIO(mapping_file_contents),
             input_metadata_tsv_fp=io.StringIO(metadata_tsv_file_contents),
@@ -432,7 +434,7 @@ def test_map_marc_mapping_to_mapping_config(attribute, expected_value):
     assert getattr(result, attribute) == expected_value
 
 def test_map_marc_mapping_to_mapping_config_invalid():
-    with pytest.raises(merge_data.BadMappingFileError):
+    with pytest.raises(merge_data.BadMappingDataError):
         merge_data.map_marc_mapping_to_mapping_config({
             "key": "Uniform Title",
             "matching_marc_fields": ["120a"],
@@ -482,3 +484,110 @@ def test_validate_is_string_found_issue():
         {"key": 1},
         "key"
     ) is not None
+
+
+def test_read_mapping_toml_data_invalid_toml_raises_BadMappingFileError():
+    d = io.BytesIO()
+    d.write(
+        """
+[mappings]
+
+identifier_key = "Local Bib ID
+"
+
+""".lstrip().encode("utf-8")
+    )
+    d.seek(0)
+    with pytest.raises(merge_data.BadMappingDataError) as e:
+        merge_data.read_mapping_toml_data(d)
+    assert "Illegal character '\\n'" in e.value.details
+
+
+def test_row_merge_data_strategy_bad_mapping_data_source(fs):
+    fs.create_file(
+        os.path.join("fake_data", "input_metadata_tsv_file.tsv")
+    )
+    input_metadata_tsv_file = pathlib.Path(
+        os.path.join("fake_data", "input_metadata_tsv_file.tsv")
+    )
+    data = """
+    [mappings]
+    
+    identifier_key = "Local Bib ID
+    "
+    
+    """.lstrip()
+    fs.create_file(
+        os.path.join("fake_data", "mapping_file.toml"),
+        contents=data
+    )
+    mapping_file = pathlib.Path(
+        os.path.join("fake_data", "mapping_file.toml")
+    )
+    with pytest.raises(merge_data.BadMappingFileError) as error:
+        merge_data.merge_from_getmarc(
+            input_metadata_tsv_file=input_metadata_tsv_file,
+            output_metadata_tsv_file=Mock(),
+            mapping_file=mapping_file,
+            get_marc_server=Mock(),
+        )
+    assert error.value.source == mapping_file
+
+
+def test_row_merge_data_strategy_bad_mapping_data_details(fs):
+    fs.create_file(
+        os.path.join("fake_data", "input_metadata_tsv_file.tsv")
+    )
+    input_metadata_tsv_file = pathlib.Path(
+        os.path.join("fake_data", "input_metadata_tsv_file.tsv")
+    )
+    data = """
+    [mappings]
+    
+    identifier_key = "Local Bib ID
+    "
+    
+    """.lstrip()
+    fs.create_file(
+        os.path.join("fake_data", "mapping_file.toml"),
+        contents=data
+    )
+    with pytest.raises(merge_data.BadMappingFileError) as error:
+        merge_data.merge_from_getmarc(
+            input_metadata_tsv_file=input_metadata_tsv_file,
+            output_metadata_tsv_file=Mock(),
+            mapping_file=pathlib.Path(
+                os.path.join("fake_data", "mapping_file.toml")
+            ),
+            get_marc_server=Mock(),
+        )
+    assert error.value.details is not None
+
+
+class TestBadMappingFileError:
+    def test_str_with_no_details(self):
+        with pytest.raises(merge_data.BadMappingFileError) as e:
+            raise merge_data.BadMappingFileError(
+                pathlib.Path(
+                    os.path.join("/", "fake_data", "mapping_file.toml")
+                )
+            )
+        assert (
+            os.path.join("fake_data", "mapping_file.toml") in str(e.value)
+        )
+
+    def test_str_with_details(self):
+        with pytest.raises(merge_data.BadMappingFileError) as e:
+            raise merge_data.BadMappingFileError(
+                source_file=pathlib.Path(
+                    os.path.join("fake_data", "mapping_file.toml")
+                ),
+                details="something bad",
+            )
+        assert all(
+            [
+                os.path.join("fake_data", "mapping_file.toml")
+                in str(e.value),
+                "something bad" in str(e.value),
+            ]
+        ), f"expected both file name and error message, got: {e.value}"
