@@ -193,7 +193,8 @@ def get_arg_parser() -> argparse.ArgumentParser:
     # --------------------------------------------------------------------------
     resolve_authorized_terms_cmd = authorized_terms_parser.add_parser(
         "resolve",
-        help="resolve unauthorized terms to authorized terms in found tsv file",
+        help="resolve unauthorized terms to authorized terms in found tsv "
+        "file",
     )
     resolve_authorized_terms_cmd.add_argument(
         "transformation_tsv_file",
@@ -262,7 +263,9 @@ def get_arg_parser() -> argparse.ArgumentParser:
     )
 
     merge_merge_from_get_marc_cmd = merge_get_marc_data_parser.add_parser(
-        "merge", help="merge data from get-marc server and map to tsv file"
+        "merge",
+        help="merge data from get-marc server and map to tsv file",
+        allow_abbrev=False,
     )
     merge_merge_from_get_marc_cmd.add_argument(
         "metadata_tsv_file", type=pathlib.Path, help="tsv file with metadata"
@@ -289,6 +292,13 @@ def get_arg_parser() -> argparse.ArgumentParser:
         if default_get_marc_server
         else "get-marc server url.",
         default=default_get_marc_server,
+    )
+
+    merge_merge_from_get_marc_cmd.add_argument(
+        "--enable-experimental-features",
+        action="store_true",
+        default=False,
+        help="enable experimental features",
     )
 
     # --------------------------------------------------------------------------
@@ -413,7 +423,11 @@ def merge_data_command(args: argparse.Namespace):
 
 
 def merge_from_getmarc(
-    metadata_tsv_file, output_tsv_file, mapping_file, getmarc_server
+    metadata_tsv_file,
+    output_tsv_file,
+    mapping_file,
+    getmarc_server,
+    enable_experimental_features: bool,
 ) -> None:
     try:
         merge_data.merge_from_getmarc(
@@ -421,7 +435,16 @@ def merge_from_getmarc(
             output_metadata_tsv_file=output_tsv_file,
             mapping_file=mapping_file,
             get_marc_server=getmarc_server,
+            enable_experimental_features=enable_experimental_features,
         )
+    except merge_data.ExperimentalFeatureError as e:
+        print(
+            "Error: attempting to use a feature that is listed as "
+            'Experimental without using "--enable-experimental-features" '
+            f"flag. {e}",
+            file=sys.stderr,
+        )
+        exit(1)
     except merge_data.BadMappingFileError as e:
         print(str(e), file=sys.stderr)
         sys.exit(1)
@@ -442,6 +465,9 @@ def merge_get_marc_data_command(args: argparse.Namespace):
                     output_tsv_file=args.output_tsv_file,
                     mapping_file=args.mapping_file,
                     getmarc_server=args.getmarc_server,
+                    enable_experimental_features=(
+                        args.enable_experimental_features
+                    ),
                 )
             case _:
                 raise ValueError(
@@ -491,10 +517,8 @@ def main(cli_args: Optional[List[str]] = None) -> None:
     arg_parser = get_arg_parser()
     argcomplete.autocomplete(arg_parser)
     args = arg_parser.parse_args(cli_args or sys.argv[1:])
-
     for task in startup_tasks:
         task(args)
-
     match args.command:
         case "clean-tsv":
             clean_tsv_command(args)
@@ -507,14 +531,13 @@ def main(cli_args: Optional[List[str]] = None) -> None:
 
         case "authority-check":
             authority_check_command(args)
-            deprecation_notice = "\n".join(
-                [
-                    "*" * 80,
-                    "DEPRECATION NOTICE: The subcommand `authority-check` is deprecated."
-                    " Use `authorized-terms check` instead of `authority-check`",
-                    "*" * 80,
-                ]
-            )
+            deprecation_notice = "\n".join([
+                "*" * 80,
+                "DEPRECATION NOTICE: The subcommand `authority-check` is "
+                "deprecated. Use `authorized-terms check` instead of "
+                "`authority-check`",
+                "*" * 80,
+            ])
             logger.warning(deprecation_notice)
 
         case "config":
