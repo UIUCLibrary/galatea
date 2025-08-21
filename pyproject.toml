@@ -21,6 +21,7 @@ classifiers = [
 dependencies = [
     "requests",
     "argcomplete>=3.6",
+    "jinja2",
     "tomli >= 1.1.0 ; python_version < '3.11'"
 ]
 

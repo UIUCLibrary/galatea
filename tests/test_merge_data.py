@@ -2,7 +2,6 @@ import io
 import os
 import pathlib
 import sys
-
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -10,6 +9,8 @@ else:
 from unittest.mock import MagicMock, ANY, Mock
 import xml.etree.ElementTree as ET
 import pytest
+
+from jinja2 import Template
 
 from galatea import merge_data
 
@@ -64,17 +65,6 @@ def test_generate_mapping_toml_file_for_tsv_fp(key, expected_value):
         "spam.tsv", ["header1", "header2"], fp
     )
     assert tomllib.loads(fp.getvalue())["mapping"][0][key] == expected_value
-
-
-def test_read_mapping_file():
-    mapping_file = MagicMock()
-    mapping_strategy = Mock(return_value={})
-    merge_data.read_mapping_file(
-        mapping_file=mapping_file, mapping_strategy=mapping_strategy
-    )
-    mapping_strategy.assert_called_once_with(
-        mapping_file.open("rb").__enter__()
-    )
 
 
 SAMPLE_MAPPING_FILE_CONTENTS = b"""
@@ -190,6 +180,7 @@ def test_merge_from_getmarc_uses_row_merge_data_strategy(monkeypatch):
         input_metadata_tsv_file.open("rb").__enter__(),
         ANY,
         "excel-tab",
+        False
     )
 
 
@@ -280,6 +271,65 @@ existing_data = "{existing_data}"
             "Uniform Title": expected_value,
         }
     ]
+
+
+@pytest.mark.filterwarnings("ignore::UserWarning")
+def test_serialize_getmarc_using_jinja2_template():
+    alma_record = """
+    <record xmlns="http://www.loc.gov/MARC21/slim" 
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+            xsi:schemaLocation="http://www.loc.gov/MARC21/slim 
+                                http://www.loc.gov/standards/marcxml/schema/MARC21slim.xsd">
+    <datafield ind1=" " ind2=" " tag="120">
+    <subfield code="a">Bacon</subfield>
+    <subfield code="c">Eggs</subfield>
+    </datafield>
+    <datafield ind1="1" ind2=" " tag="700">
+        <subfield code="a">Shakespeare, William,</subfield>
+        <subfield code="d">1564-1616</subfield>
+    </datafield>
+    <datafield ind1="1" ind2=" " tag="700">
+        <subfield code="a">Jung, C. G.</subfield>
+        <subfield code="q">(Carl Gustav),</subfield>
+        <subfield code="d">1875-1961</subfield>
+    </datafield>
+    </record>
+    """.lstrip()
+
+    marc_record = ET.fromstring(alma_record)
+    template_string = "{% for field in fields['700'] %}{{ field['a'] }}{% if field['q'] %} {{field['q']}}{%endif%} {{ field['d'] }}{% if not loop.last %}||{% endif %}{% endfor %}"
+    template = Template(template_string)
+    result = template.render(
+        fields={
+            "700": [
+                {
+                    "a": "Shakespeare, William,",
+                    "d": "1564-1616"
+                },
+                {
+                    "a": "Jung, C. G.",
+                    "q": "(Carl Gustav),",
+                    "d": "1875-1961",
+                }
+            ]
+        }
+    )
+    assert result == "Shakespeare, William, 1564-1616||Jung, C. G. (Carl Gustav), 1875-1961"
+    result = merge_data.serialize_with_jinja_template(
+        marc_record=marc_record,
+        config=merge_data.MappingConfig(
+            key='Name',
+            matching_keys=['700'],
+            delimiter='||',
+            existing_data='replace',
+            serialize_method="jinja2template",
+            experimental={
+                "jinja2template": {"template": template_string}
+            }
+        ),
+        enable_experimental_features=True
+    )
+    assert result == "Shakespeare, William, 1564-1616||Jung, C. G. (Carl Gustav), 1875-1961"
 
 
 def test_merge_data_from_getmarc_handles_invalid_existing_data_value():

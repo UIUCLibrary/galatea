@@ -5,6 +5,7 @@ import requests
 
 from galatea import validate_authorized_terms
 
+
 class TestCachedApiCheck:
     def test_adds_to_cache(self):
         cached_api = validate_authorized_terms.CachedApiCheck(
@@ -44,6 +45,7 @@ class TestCachedApiCheck:
         cached_api.get_data("https://example.com/api/spam")
         assert "https://example.com/api/spam" in cached_api
 
+
 class TestNameCheck:
     def test_contains(self):
         response = Mock(spec_set=requests.Request)
@@ -71,6 +73,7 @@ class TestNameCheck:
             "https://id.loc.gov/authorities/names/label/spam"
         )
 
+
 @pytest.mark.parametrize(
     "status_code, expected", [
         (200, True),
@@ -85,6 +88,7 @@ def test_check_name(status_code, expected):
     )
     assert validate_authorized_terms.check_terms("spam", cache) is expected
 
+
 def test_optional_rate_limited_callable_generator_passes_values():
     assert next(
         iter(
@@ -94,6 +98,7 @@ def test_optional_rate_limited_callable_generator_passes_values():
             )
         )
     ) == (True, "a")
+
 
 def test_optional_rate_limited_callable_generator_passes_calls_sleep():
     sleep_func = Mock()
@@ -124,6 +129,7 @@ def test_validate_authorized_terms(monkeypatch):
     )
     validate_authorized_terms.validate_authorized_terms("spam")
     check_terms.assert_called_once()
+
 
 def test_validate_authorized_terms_logs_if_return_false(
         monkeypatch, caplog):

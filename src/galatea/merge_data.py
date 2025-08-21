@@ -4,12 +4,16 @@ Added in version 0.4.0.
 
 """
 
+import collections
 import functools
 import logging
 import pathlib
 import re
 import csv
 import sys
+import warnings
+
+import jinja2
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -41,8 +45,16 @@ __all__ = [
 
 from galatea.tsv import TableRow
 
+MARC_RECORD = ET.Element
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+class ExperimentalFeatureError(Exception):
+    def __init__(self, *args, source):
+        super().__init__(*args)
+        self.source = source
 
 
 class BadMappingDataError(Exception):
@@ -80,12 +92,18 @@ class BadMappingFileError(Exception):
         return f"Issue with mapping file: {self.source}"
 
 
+serialization_methods = {"verbatim": None}
+
+
 @dataclasses.dataclass
 class MappingConfig:
     key: str
     matching_keys: List[str]
     delimiter: str
     existing_data: str
+    serialize_method: str = "verbatim"
+    experimental: Dict[str, Dict[str, Union[str, List[str]]]] =\
+        dataclasses.field(default_factory=dict)
 
 
 def get_keys_from_tsv_fp(fp: TextIO) -> List[str]:
@@ -219,7 +237,7 @@ MARC_REGEX = r"^(?P<datafield>\d{3})((\$?(?P<subfield>[a-zA-Z0-9]{1}))?$)"
 def get_xpath(datafield: str, subfield: Union[str, None], prefix: str) -> str:
     if not subfield:
         return f".//{prefix}:datafield[@tag='{datafield}']"
-    return f".//{prefix}:datafield[@tag='{datafield}']/{prefix}:subfield[@code='{subfield}']"  # noqa: 212
+    return f".//{prefix}:datafield[@tag='{datafield}']/{prefix}:subfield[@code='{subfield}']"  # noqa: E501
 
 
 # ===================================================================
@@ -274,13 +292,22 @@ def validate_limited_to_values(
 
 
 # ===================================================================
+def matching_marc_fields(
+    entry: Dict[str, Union[str, List[str]]],
+) -> Optional[str]:
+    if (
+        "serialize_method" not in entry
+        or entry["serialize_method"] == "verbatim"
+    ):
+        return validate_is_list_of_strings(entry, key="matching_marc_fields")
+    return None
 
 
 DEFAULT_MARC_MAPPING_VALIDATIONS: List[
     Callable[[Dict[str, Union[str, List[str]]]], Optional[str]]
 ] = [
     functools.partial(validate_is_not_list, key="key"),
-    functools.partial(validate_is_list_of_strings, key="matching_marc_fields"),
+    matching_marc_fields,
     functools.partial(validate_is_string, key="delimiter"),
     functools.partial(
         validate_limited_to_values,
@@ -288,6 +315,15 @@ DEFAULT_MARC_MAPPING_VALIDATIONS: List[
         allowed_values=["keep", "replace", "append"],
     ),
 ]
+
+
+def get_experimental_values(
+    entry,
+) -> Dict[str, Dict[str, Union[str, List[str]]]]:
+    if "serialize_method" in entry:
+        if entry["serialize_method"] == "jinja2template":
+            return {"jinja2template": {"template": entry["jinja_template"]}}
+    return {}
 
 
 def map_marc_mapping_to_mapping_config(
@@ -306,14 +342,17 @@ def map_marc_mapping_to_mapping_config(
         raise BadMappingDataError(
             "Malformed mapping file: " + ", ".join(errors)
         )
-
     return MappingConfig(
         key=typing.cast(str, entry["key"]),
         matching_keys=(
             typing.cast(List[str], entry.get("matching_marc_fields", []))
         ),
+        serialize_method=typing.cast(
+            str, entry.get("serialize_method", "verbatim")
+        ),
         delimiter=typing.cast(str, entry.get("delimiter", "||")),
         existing_data=typing.cast(str, entry.get("existing_data", "keep")),
+        experimental=get_experimental_values(entry),
     )
 
 
@@ -322,6 +361,7 @@ def read_mapping_toml_data(
     mapping_to_config_strategy: Optional[
         Callable[[Dict[str, Union[str, List[str]]]], MappingConfig]
     ] = None,
+    _: bool = False,
 ) -> Dict[str, MappingConfig]:
     starting = mapping_file_fp.tell()
     mapping = {}
@@ -336,7 +376,7 @@ def read_mapping_toml_data(
                     )
                 else:
                     mapping[mapping_value["key"]] = mapping_to_config_strategy(
-                        mapping_value
+                        mapping_value,
                     )
             except TypeError:
                 raise BadMappingDataError("Malformed mapping file")
@@ -345,16 +385,6 @@ def read_mapping_toml_data(
         raise BadMappingDataError(details=str(toml_error)) from toml_error
     finally:
         mapping_file_fp.seek(starting)
-
-
-def read_mapping_file(
-    mapping_file: pathlib.Path,
-    mapping_strategy: Callable[
-        [BinaryIO], Dict[str, MappingConfig]
-    ] = read_mapping_toml_data,
-) -> Dict[str, MappingConfig]:
-    with mapping_file.open("rb") as fp:
-        return mapping_strategy(fp)
 
 
 def get_identifier_key_fp(mapping_file_fp: BinaryIO) -> str:
@@ -424,14 +454,133 @@ def locate_marc_value_in_record(
     return config.delimiter.join(new_data)
 
 
+def experimental_feature(func):
+    def inner(*args, **kwargs):
+        if "enable_experimental_features" in kwargs:
+            if kwargs["enable_experimental_features"] is False:
+                raise ExperimentalFeatureError(
+                    f'"{func.__name__}" is an experimental feature.',
+                    source=func.__name__,
+                )
+            else:
+                warnings.warn(
+                    "Using an experimental feature. Notice that this "
+                    "could change at any time",
+                    UserWarning,
+                )
+        return func(*args, **kwargs)
+
+    return inner
+
+
+@experimental_feature
+def serialize_with_jinja_template(
+    marc_record, config, enable_experimental_features
+):
+    serialization_method = config.experimental[config.serialize_method]
+    template = jinja2.Template(serialization_method["template"])
+    fields = collections.defaultdict(list)
+    ns = {"marc": "http://www.loc.gov/MARC21/slim"}
+    for res in marc_record.findall(".//marc:datafield", ns):
+        subfield_data = {}
+        for sub_field in res.findall(".//marc:subfield", ns):
+            subfield_data[sub_field.attrib["code"]] = sub_field.text
+        fields[res.attrib["tag"]].append(subfield_data)
+    return template.render(fields=fields)
+
+
+class MergeRowData:
+    def __init__(self, marc_record: MARC_RECORD) -> None:
+        self.marc_record = marc_record
+        self.serialize_value_strategy: Callable[
+            [MARC_RECORD, MappingConfig, bool], Optional[str]
+        ] = lambda _marc_record, config, _: locate_marc_value_in_record(
+            config, _marc_record
+        )
+        self.enable_experimental_features: bool = False
+
+    def merge_row_data(
+        self,
+        mapped_source_key: str,
+        row: Dict[str, str],
+        mapping_configuration: MappingConfig,
+        line_number: int,
+    ) -> None:
+        if (
+            row[mapped_source_key]
+            and mapping_configuration.existing_data == "keep"
+        ):
+            logger.debug(
+                'Use existing value for "%s" on line %d',
+                mapped_source_key,
+                line_number,
+            )
+            return
+        if serialized_value := self.serialize_value_strategy(
+            self.marc_record,
+            mapping_configuration,
+            self.enable_experimental_features,
+        ):
+            if not row[mapped_source_key]:
+                row[mapped_source_key] = serialized_value
+                logger.info(
+                    'Setting "%s" to "%s" on line %d',
+                    mapped_source_key,
+                    serialized_value,
+                    line_number,
+                )
+                return
+
+            match mapping_configuration.existing_data:
+                case "replace":
+                    logger.info(
+                        'Overwriting existing value for "%s"',
+                        mapped_source_key,
+                    )
+                    row[mapped_source_key] = serialized_value
+
+                case "append":
+                    logger.info(
+                        'Appending existing value for "%s"',
+                        mapped_source_key,
+                    )
+                    delim = mapping_configuration.delimiter
+                    row[mapped_source_key] = (
+                        f"{row[mapped_source_key]}{delim}{serialized_value}"
+                    )
+
+                case _:
+                    raise ValueError(
+                        "Unknown value for existing_data: "
+                        f"{mapping_configuration.existing_data}"
+                    )
+
+
+def serialization_base_on_config(
+    record: ET.Element, config: MappingConfig, enable_experimental_features
+):
+    match config.serialize_method:
+        case "verbatim":
+            return locate_marc_value_in_record(config, record)
+        case "jinja2template":
+            return serialize_with_jinja_template(
+                record,
+                config,
+                enable_experimental_features=enable_experimental_features,
+            )
+
+
 def merge_data_from_getmarc(
     mapping_file_fp: BinaryIO,
     input_metadata_tsv_fp: TextIO,
     get_marc_server_strategy: Callable[[str], ET.Element],
     dialect: Union[Type[csv.Dialect], csv.Dialect],
-) -> List[Dict[str, str]]:
+    enable_experimental_features: bool = False,
+) -> List[Dict[str, Union[str, str]]]:
     mapping = read_mapping_toml_data(
-        mapping_file_fp, map_marc_mapping_to_mapping_config
+        mapping_file_fp,
+        map_marc_mapping_to_mapping_config,
+        enable_experimental_features,
     )
     identifier_key: str = get_identifier_key_fp(mapping_file_fp)
 
@@ -443,59 +592,23 @@ def merge_data_from_getmarc(
         yield from tsv.iter_tsv_fp(fp, dialect=_dialect)
 
     for row in _iter_row(input_metadata_tsv_fp, dialect):
-        record = get_marc_server_strategy(row.entry[identifier_key])
-        merged_row = row.entry.copy()
-
+        record = get_marc_server_strategy(
+            typing.cast(str, row.entry[identifier_key])
+        )
+        merged_row: Dict[str, str] = row.entry.copy()
+        merger = MergeRowData(record)
+        merger.serialize_value_strategy = serialization_base_on_config
+        merger.enable_experimental_features = enable_experimental_features
         for mapped_source_key, mapping_configuration in mapping.items():
             # Optimization: if there is already data and existing_data is
             # set to ignored anyway, skip this key and move on to the next
             # one
-            if (
-                merged_row[mapped_source_key].strip()
-                and mapping_configuration.existing_data == "keep"
-            ):
-                logger.debug(
-                    'Use existing value for "%s" on line %d',
-                    mapped_source_key,
-                    row.line_number,
-                )
-                continue
-
-            if new_value := locate_marc_value_in_record(
-                mapping_configuration, record
-            ):
-                if not merged_row[mapped_source_key].strip():
-                    merged_row[mapped_source_key] = new_value
-                    logger.info(
-                        'Setting "%s" to "%s" on line %d',
-                        mapped_source_key,
-                        new_value,
-                        row.line_number,
-                    )
-                    continue
-
-                match mapping_configuration.existing_data:
-                    case "replace":
-                        logger.info(
-                            'Overwriting existing value for "%s"',
-                            mapped_source_key,
-                        )
-                        merged_row[mapped_source_key] = new_value
-
-                    case "append":
-                        logger.info(
-                            'Appending existing value for "%s"',
-                            mapped_source_key,
-                        )
-                        merged_row[mapped_source_key] = (
-                            f"{merged_row[mapped_source_key]}{mapping_configuration.delimiter}{new_value}"  # noqa: E501
-                        )
-
-                    case _:
-                        raise ValueError(
-                            "Unknown value for existing_data: "
-                            f"{mapping_configuration.existing_data}"
-                        )
+            merger.merge_row_data(
+                mapped_source_key,
+                merged_row,
+                mapping_configuration,
+                row.line_number,
+            )
         new_rows.append(merged_row)
     return new_rows
 
@@ -522,6 +635,7 @@ def merge_from_getmarc(
             TextIO,
             Callable[[str], ET.Element],
             Union[Type[csv.Dialect], csv.Dialect],
+            bool,
         ],
         List[Dict[str, str]],
     ] = merge_data_from_getmarc,
@@ -529,6 +643,7 @@ def merge_from_getmarc(
         [List[Dict[str, str]], Union[Type[csv.Dialect], csv.Dialect], TextIO],
         None,
     ] = write_new_rows_to_file,
+    enable_experimental_features: bool = False,
 ) -> None:
     """Merge data from GetMARC server into a TSV file using a mapping file.
 
@@ -540,6 +655,7 @@ def merge_from_getmarc(
         row_merge_data_strategy: strategy to create new rows from GetMARC
             server and input tsv file.
         write_to_file_strategy: strategy to write new rows to the output file.
+        enable_experimental_features: enable experimental features that are not
 
     """
     try:
@@ -553,6 +669,7 @@ def merge_from_getmarc(
                         get_matching_marc_data, get_marc_server=get_marc_server
                     ),
                     dialect,
+                    enable_experimental_features,
                 )
     except BadMappingDataError as mapping_data_error:
         raise BadMappingFileError(

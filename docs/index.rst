@@ -8,6 +8,7 @@ Galatea's documentation
 
    cli
    workflow
+   reference/reference
 
 .. toctree::
    :maxdepth: 1
