@@ -1,3 +1,13 @@
+## v0.4.1 (2025-08-27)
+
+### Feat
+
+- add experimental Jinja2 support for merging data
+
+### Fix
+
+- merge_data.read_mapping_toml_data catches bad toml formatting
+
 ## v0.4.0 (2025-07-23)
 
 ### Feat

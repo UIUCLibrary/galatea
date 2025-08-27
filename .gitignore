@@ -167,4 +167,8 @@ galatea/add_authorities.py
 hello_decode_LOC_NAF_json.py
 *.db
 
-
+.DS_Store
+/*.toml
+/demo/
+todo.md
+authorized_terms_transformation.tsv.old
