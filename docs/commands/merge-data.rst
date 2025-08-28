@@ -65,7 +65,8 @@ The argument, `<metadata_tsv_file>`, is the tsv file with metadata and `<mapping
                             write changes to another file instead of inplace
       --getmarc-server GETMARC_SERVER
                             get-marc server url.
-
+      --enable-experimental-features
+                            enable experimental features
 
 
 Example of `merge` usage:
