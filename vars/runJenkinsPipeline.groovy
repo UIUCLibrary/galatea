@@ -148,7 +148,6 @@ def call(){
                     stage('Build and Test'){
                         environment{
                             PIP_CACHE_DIR='/tmp/pipcache'
-                            UV_INDEX_STRATEGY='unsafe-best-match'
                             UV_TOOL_DIR='/tmp/uvtools'
                             UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                             UV_CACHE_DIR='/tmp/uvcache'
@@ -283,6 +282,13 @@ def call(){
                                                     }
                                                 }
                                             }
+                                            stage('Audit Lockfile Dependencies'){
+                                                steps{
+                                                    catchError(buildResult: 'SUCCESS', message: 'uv-secure found issues', stageResult: 'UNSTABLE') {
+                                                        sh './venv/bin/uvx uv-secure --cache-path=/tmp/cache/uv-secure uv.lock'
+                                                    }
+                                                }
+                                            }
                                         }
                                         post{
                                             always{
@@ -364,7 +370,6 @@ def call(){
                             stage('Linux'){
                                 environment{
                                     PIP_CACHE_DIR='/tmp/pipcache'
-                                    UV_INDEX_STRATEGY='unsafe-best-match'
                                     UV_TOOL_DIR='/tmp/uvtools'
                                     UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                     UV_CACHE_DIR='/tmp/uvcache'
@@ -442,7 +447,6 @@ def call(){
                                     expression {return nodesByLabel('windows && docker && x86').size() > 0}
                                 }
                                 environment{
-                                    UV_INDEX_STRATEGY='unsafe-best-match'
                                     PIP_CACHE_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\pipcache'
                                     UV_TOOL_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvtools'
                                     UV_PYTHON_INSTALL_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvpython'
@@ -531,7 +535,6 @@ def call(){
                             stage('Create Python Packages'){
                                 environment{
                                     PIP_CACHE_DIR='/tmp/pipcache'
-                                    UV_INDEX_STRATEGY='unsafe-best-match'
                                     UV_CACHE_DIR='/tmp/uvcache'
                                     UV_BUILD_CONSTRAINT='build_requirements.txt'
                                 }
@@ -570,7 +573,6 @@ def call(){
                                     equals expected: true, actual: params.TEST_PACKAGES
                                 }
                                 environment{
-                                    UV_INDEX_STRATEGY='unsafe-best-match'
                                     UV_CONSTRAINT='constraints.txt'
                                 }
                                 steps{
@@ -723,7 +725,7 @@ def call(){
                                         }
                                         steps{
                                             withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
+                                                sh './contrib/create_mac_distrib.sh'
                                             }
                                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                             stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_X86_64'
@@ -774,7 +776,7 @@ def call(){
                                         }
                                         steps{
                                             withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
+                                                sh './contrib/create_mac_distrib.sh'
                                             }
                                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                             stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_ARM64'
@@ -825,9 +827,6 @@ def call(){
                                                 image 'python'
                                                 label 'windows && docker && x86_64'
                                             }
-                                        }
-                                        environment{
-                                            UV_INDEX_STRATEGY='unsafe-best-match'
                                         }
                                         steps{
                                             withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
