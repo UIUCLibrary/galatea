@@ -310,6 +310,7 @@ def call(){
                                         }
                                         environment{
                                             VERSION="${readTOML( file: 'pyproject.toml')['project'].version}"
+                                            SONAR_USER_HOME='/tmp/sonar_cache'
                                         }
                                         when{
                                             allOf{
@@ -329,10 +330,12 @@ def call(){
                                         steps{
                                             milestone ordinal: 1, label: 'sonarcloud'
                                             withSonarQubeEnv(installationName: 'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
-                                                sh(
-                                                    label: 'Running Sonar Scanner',
-                                                    script: "./venv/bin/uvx pysonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
-                                                )
+                                                withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'token')]) {
+                                                    sh(
+                                                        label: 'Running Sonar Scanner',
+                                                        script: "./venv/bin/uvx pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
+                                                    )
+                                                }
                                             }
                                             script{
                                                 timeout(time: 1, unit: 'HOURS') {
