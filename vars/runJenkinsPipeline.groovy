@@ -59,7 +59,7 @@ def getToxEnvs(){
                 bat(script: 'python -m venv venv && venv\\Scripts\\pip install --disable-pip-version-check uv')
                 return bat(
                     label: 'Get tox environments',
-                    script: '@.\\venv\\Scripts\\uvx --constraint=requirements-dev.txt --quiet --with tox-uv tox list -d --no-desc',
+                    script: '@.\\venv\\Scripts\\uvx --quiet --with tox-uv tox list -d --no-desc',
                     returnStdout: true,
                 ).trim().split('\r\n')
             } finally{
@@ -90,6 +90,29 @@ def shouldRun(params){
         return params.containsKey("INCLUDE_${OS}-${ARCHITECTURE}".toUpperCase()) && params["INCLUDE_${OS}-${ARCHITECTURE}".toUpperCase()]
     }
 }
+
+
+def createWindowUVConfig(){
+    def scriptFile = "ci\\scripts\\new-uv-global-config.ps1"
+    if(! fileExists(scriptFile)){
+        checkout scm
+    }
+    return powershell(
+        label: 'Setting up uv.toml config file',
+        script: "& ${scriptFile} \$env:UV_INDEX_URL \$env:UV_EXTRA_INDEX_URL",
+        returnStdout: true
+    ).trim()
+}
+
+def createUnixUvConfig(){
+
+    def scriptFile = 'ci/scripts/create_uv_config.sh'
+    if(! fileExists(scriptFile)){
+        checkout scm
+    }
+    return sh(label: 'Setting up uv.toml config file', script: "sh ${scriptFile} " + '$UV_INDEX_URL $UV_EXTRA_INDEX_URL', returnStdout: true).trim()
+}
+
 def call(){
     library(
         identifier: 'JenkinsPythonHelperLibrary@2024.12.0',
@@ -129,6 +152,7 @@ def call(){
                             UV_TOOL_DIR='/tmp/uvtools'
                             UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                             UV_CACHE_DIR='/tmp/uvcache'
+                            UV_CONFIG_FILE=createUnixUvConfig()
                         }
                         agent {
                             docker{
@@ -142,21 +166,15 @@ def call(){
                                 steps{
                                     sh(
                                         label: 'Create virtual environment',
-                                        script: '''python3 -m venv bootstrap_uv
+                                        script: '''python3 -m venv --clear bootstrap_uv
+                                                   trap "rm -rf bootstrap_uv" EXIT
                                                    bootstrap_uv/bin/pip install --disable-pip-version-check uv
-                                                   bootstrap_uv/bin/uv venv --python 3.11  venv
+                                                   bootstrap_uv/bin/uv venv  --python-preference=only-system  venv
                                                    . ./venv/bin/activate
-                                                   bootstrap_uv/bin/uv pip install uv
-                                                   rm -rf bootstrap_uv
-                                                   uv pip install -r requirements-dev.txt
+                                                   bootstrap_uv/bin/uv sync --locked --group ci --active
+                                                   bootstrap_uv/bin/uv pip install uv --python venv
                                                    '''
                                                )
-                                    sh(
-                                        label: 'Install package in development mode',
-                                        script: '''. ./venv/bin/activate
-                                                   uv pip install -e .
-                                                '''
-                                        )
                                 }
                             }
                             stage('Build Documentation'){
@@ -286,6 +304,7 @@ def call(){
                                         }
                                         environment{
                                             VERSION="${readTOML( file: 'pyproject.toml')['project'].version}"
+                                            SONAR_USER_HOME='/tmp/sonar_cache'
                                         }
                                         when{
                                             allOf{
@@ -305,10 +324,12 @@ def call(){
                                         steps{
                                             milestone ordinal: 1, label: 'sonarcloud'
                                             withSonarQubeEnv(installationName: 'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
-                                                sh(
-                                                    label: 'Running Sonar Scanner',
-                                                    script: "./venv/bin/uvx pysonar-scanner -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
-                                                )
+                                                withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'token')]) {
+                                                    sh(
+                                                        label: 'Running Sonar Scanner',
+                                                        script: "./venv/bin/pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
+                                                    )
+                                                }
                                             }
                                             script{
                                                 timeout(time: 1, unit: 'HOURS') {
@@ -347,6 +368,7 @@ def call(){
                                     UV_TOOL_DIR='/tmp/uvtools'
                                     UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                     UV_CACHE_DIR='/tmp/uvcache'
+                                    UV_CONSTRAINT='constraints.txt'
                                 }
                                 steps{
                                     script{
@@ -354,13 +376,18 @@ def call(){
                                         node('docker && linux'){
                                             try{
                                                 checkout scm
-                                                docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
-                                                    sh(script: 'python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv')
-                                                    envs = sh(
-                                                        label: 'Get tox environments',
-                                                        script: './venv/bin/uvx --quiet --constraint=requirements-dev.txt --with tox-uv tox list -d --no-desc',
-                                                        returnStdout: true,
-                                                    ).trim().split('\n')
+                                                withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
+                                                    docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
+                                                        sh(script: '''python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
+                                                                      ./venv/bin/uv export --frozen --only-group dev --no-hashes --format requirements.txt --no-emit-project --no-annotate > $UV_CONSTRAINT
+                                                                   '''
+                                                        )
+                                                        envs = sh(
+                                                            label: 'Get tox environments',
+                                                            script: './venv/bin/uvx --quiet --with tox-uv tox list -d --no-desc',
+                                                            returnStdout: true,
+                                                        ).trim().split('\n')
+                                                    }
                                                 }
                                             } finally{
                                                 sh "${tool(name: 'Default', type: 'git')} clean -dfx"
@@ -378,13 +405,16 @@ def call(){
                                                                 docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
                                                                     try{
                                                                         retry(3){
-                                                                            sh( label: 'Running Tox',
-                                                                                script: """python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
-                                                                                           . ./venv/bin/activate
-                                                                                           uv python install cpython-${version}
-                                                                                           uvx -p ${version} --constraint=requirements-dev.txt --with tox-uv tox run -e ${toxEnv}
-                                                                                        """
-                                                                                )
+                                                                            withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
+                                                                                sh( label: 'Running Tox',
+                                                                                    script: """python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
+                                                                                               . ./venv/bin/activate
+                                                                                               uv export --frozen --only-group dev --no-hashes --format requirements.txt --no-emit-project --no-annotate > \$UV_CONSTRAINT
+                                                                                               uv python install cpython-${version}
+                                                                                               uvx -p ${version} --with tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner
+                                                                                            """
+                                                                                    )
+                                                                            }
                                                                         }
                                                                     } catch(e) {
                                                                         if (fileExists('./venv/bin/activate')) {
@@ -417,6 +447,7 @@ def call(){
                                     UV_TOOL_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvtools'
                                     UV_PYTHON_INSTALL_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvpython'
                                     UV_CACHE_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvcache'
+                                    UV_CONSTRAINT='constraints.txt'
                                 }
                                 steps{
                                     script{
@@ -425,18 +456,21 @@ def call(){
                                             try{
                                                 checkout scm
                                                 docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: 'python')
-                                                    .inside("\
-                                                        --mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR} \
-                                                        --mount type=volume,source=pipcache,target=${env.PIP_CACHE_DIR} \
-                                                        --mount type=volume,source=uv_cache_dir,target=${env.UV_CACHE_DIR}\
-                                                        "
+                                                    .inside("--mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR}"
+                                                         + " --mount type=volume,source=pipcache,target=${env.PIP_CACHE_DIR}"
+                                                         + " --mount type=volume,source=uv_cache_dir,target=${env.UV_CACHE_DIR}"
                                                     ){
-                                                    bat(script: 'python -m venv venv && venv\\Scripts\\pip install --disable-pip-version-check uv')
-                                                    envs = bat(
-                                                        label: 'Get tox environments',
-                                                        script: '@.\\venv\\Scripts\\uvx --quiet --constraint=requirements-dev.txt --with tox-uv tox list -d --no-desc',
-                                                        returnStdout: true,
-                                                    ).trim().split('\r\n')
+                                                    withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}",]){
+                                                        bat(script: '''python -m pip install --disable-pip-version-check uv && uv python update-shell
+                                                                       uv export --frozen --only-group dev --no-hashes --format requirements.txt --no-emit-project --no-annotate > %UV_CONSTRAINT%
+                                                                    '''
+                                                        )
+                                                        envs = bat(
+                                                            label: 'Get tox environments',
+                                                            script: '@uvx --quiet --with tox-uv tox list -d --no-desc',
+                                                            returnStdout: true,
+                                                        ).trim().split('\r\n')
+                                                    }
                                                 }
                                             } finally{
                                                 bat "${tool(name: 'Default', type: 'git')} clean -dfx"
@@ -459,14 +493,17 @@ def call(){
                                                                         "
                                                                     ){
                                                                     bat(label: 'Install uv',
-                                                                        script: 'python -m venv venv && venv\\Scripts\\pip install --disable-pip-version-check uv'
+                                                                        script: 'python -m pip install --disable-pip-version-check uv && uv python update-shell'
                                                                     )
+                                                                    bat(script: 'uv export --frozen --only-group dev --no-hashes --format requirements.txt --no-emit-project --no-annotate > %UV_CONSTRAINT%')
                                                                     retry(3){
-                                                                        bat(label: 'Running Tox',
-                                                                            script: """venv\\Scripts\\uv python install cpython-${version}
-                                                                                       venv\\Scripts\\uvx -p ${version} --constraint=requirements-dev.txt --with tox-uv tox run -e ${toxEnv}
-                                                                                    """
-                                                                        )
+                                                                        withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
+                                                                            bat(label: 'Running Tox',
+                                                                                script: """uv python install cpython-${version}
+                                                                                           uvx -p ${version} --with tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner
+                                                                                        """
+                                                                            )
+                                                                        }
                                                                     }
                                                                 }
                                                             } finally{
@@ -496,6 +533,7 @@ def call(){
                                     PIP_CACHE_DIR='/tmp/pipcache'
                                     UV_INDEX_STRATEGY='unsafe-best-match'
                                     UV_CACHE_DIR='/tmp/uvcache'
+                                    UV_BUILD_CONSTRAINT='build_requirements.txt'
                                 }
                                 agent {
                                     docker {
@@ -505,13 +543,16 @@ def call(){
                                     }
                                 }
                                 steps{
-                                    sh(
-                                        label: 'Package',
-                                        script: '''python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
-                                                   . ./venv/bin/activate
-                                                   uv build --build-constraints requirements-dev.txt
-                                                '''
-                                    )
+                                    withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
+                                        sh(
+                                            label: 'Package',
+                                            script: '''python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
+                                                       . ./venv/bin/activate
+                                                       uv export --frozen --no-hashes --format requirements.txt --no-emit-project --group dev > $UV_BUILD_CONSTRAINT
+                                                       uv build
+                                                    '''
+                                        )
+                                    }
                                     archiveArtifacts artifacts: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', fingerprint: true
                                     stash includes: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', name: 'PYTHON_PACKAGES'
                                 }
@@ -530,6 +571,7 @@ def call(){
                                 }
                                 environment{
                                     UV_INDEX_STRATEGY='unsafe-best-match'
+                                    UV_CONSTRAINT='constraints.txt'
                                 }
                                 steps{
                                     customMatrix(
@@ -586,13 +628,15 @@ def call(){
                                                                             'UV_TOOL_DIR=/tmp/uvtools',
                                                                             'UV_PYTHON_INSTALL_DIR=/tmp/uvpython',
                                                                             'UV_CACHE_DIR=/tmp/uvcache',
+                                                                            "UV_CONFIG_FILE=${createUnixUvConfig()}"
                                                                         ]){
                                                                              sh(
                                                                                 label: 'Testing with tox',
                                                                                 script: """python3 -m venv venv
                                                                                            ./venv/bin/pip install --disable-pip-version-check uv
+                                                                                           ./venv/bin/uv export --frozen --only-group dev --no-hashes --format requirements.txt --no-emit-project --no-annotate > \$UV_CONSTRAINT
                                                                                            ./venv/bin/uv python install cpython-${entry.PYTHON_VERSION}
-                                                                                           ./venv/bin/uvx --constraint=requirements-dev.txt --with tox-uv tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
+                                                                                           ./venv/bin/uvx --with tox-uv tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
                                                                                         """
                                                                             )
                                                                         }
@@ -602,13 +646,15 @@ def call(){
                                                                             'UV_TOOL_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvtools',
                                                                             'UV_PYTHON_INSTALL_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython',
                                                                             'UV_CACHE_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvcache',
+                                                                            "UV_CONFIG_FILE=${createWindowUVConfig()}"
                                                                         ]){
                                                                             bat(
                                                                                 label: 'Testing with tox',
                                                                                 script: """python -m venv venv
                                                                                            .\\venv\\Scripts\\pip install --disable-pip-version-check uv
+                                                                                           .\\venv\\Scripts\\uv export --frozen --only-group dev --no-hashes --format requirements.txt --no-emit-project --no-annotate > %UV_CONSTRAINT%
                                                                                            .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
-                                                                                           .\\venv\\Scripts\\uvx --constraint=requirements-dev.txt --with tox-uv tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
+                                                                                           .\\venv\\Scripts\\uvx --with tox-uv tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
                                                                                         """
                                                                             )
                                                                         }
@@ -616,22 +662,28 @@ def call(){
                                                                 }
                                                             } else {
                                                                 if(isUnix()){
-                                                                    sh(
-                                                                        label: 'Testing with tox',
-                                                                        script: """python3 -m venv venv
-                                                                                   ./venv/bin/pip install --disable-pip-version-check uv
-                                                                                   ./venv/bin/uvx --constraint=requirements-dev.txt --with tox-uv tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
-                                                                                """
-                                                                    )
+                                                                    withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
+                                                                        sh(
+                                                                            label: 'Testing with tox',
+                                                                            script: """python3 -m venv venv
+                                                                                       ./venv/bin/pip install --disable-pip-version-check uv
+                                                                                       ./venv/bin/uv export --frozen --only-group dev --no-hashes --format requirements.txt --no-emit-project --no-annotate > \$UV_CONSTRAINT
+                                                                                       ./venv/bin/uvx --with tox-uv tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
+                                                                                    """
+                                                                        )
+                                                                    }
                                                                 } else {
-                                                                    bat(
-                                                                        label: 'Testing with tox',
-                                                                        script: """python -m venv venv
-                                                                                   .\\venv\\Scripts\\pip install --disable-pip-version-check uv
-                                                                                   .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
-                                                                                   .\\venv\\Scripts\\uvx --constraint=requirements-dev.txt --with tox-uv tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
-                                                                                """
-                                                                    )
+                                                                    withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
+                                                                        bat(
+                                                                            label: 'Testing with tox',
+                                                                            script: """python -m venv venv
+                                                                                       .\\venv\\Scripts\\pip install --disable-pip-version-check uv
+                                                                                       .\\venv\\Scripts\\uv export --frozen --only-group dev --no-hashes --format requirements.txt --no-emit-project --no-annotate > %UV_CONSTRAINT%
+                                                                                       .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
+                                                                                       .\\venv\\Scripts\\uvx --with tox-uv tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
+                                                                                    """
+                                                                        )
+                                                                    }
                                                                 }
                                                             }
                                                         } finally{
@@ -670,7 +722,9 @@ def call(){
                                             label 'mac && python3.11 && x86_64'
                                         }
                                         steps{
-                                            sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
+                                            withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
+                                                sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
+                                            }
                                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                             stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_X86_64'
                                         }
@@ -719,7 +773,9 @@ def call(){
                                             label 'mac && python3.11 && arm64'
                                         }
                                         steps{
-                                            sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
+                                            withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
+                                                sh 'UV_INDEX_STRATEGY=unsafe-best-match ./contrib/create_mac_distrib.sh'
+                                            }
                                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                             stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_ARM64'
                                         }
@@ -774,8 +830,10 @@ def call(){
                                             UV_INDEX_STRATEGY='unsafe-best-match'
                                         }
                                         steps{
-                                            tee('reports/windows_cpack.log'){
-                                                bat(script: 'contrib/create_windows_distrib.bat')
+                                            withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
+                                                tee('reports/windows_cpack.log'){
+                                                    bat(script: 'contrib/create_windows_distrib.bat')
+                                                }
                                             }
                                             archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
                                             stash includes: 'dist/*.zip', name: 'WINDOWS_APPLICATION_X86_64'

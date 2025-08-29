@@ -28,6 +28,35 @@ dependencies = [
 [project.scripts]
 galatea = "galatea.cli:main"
 
+[dependency-groups]
+test = [
+    "coverage",
+    "pytest",
+    "pyfakefs",
+]
+
+docs = [
+    "sphinx",
+    'tomli;python_version<"3.11"',
+]
+
+dev = [
+    'build',
+    'lxml',
+    'mypy',
+    'pre-commit',
+    'ruff',
+    'tox',
+    'types-requests',
+    {include-group = "docs"},
+    {include-group = "test"},
+]
+
+ci = [
+    "pysonar",
+    {include-group = "dev"},
+]
+
 [build-system]
 requires = ["setuptools>=77.0.0"]
 build-backend = "setuptools.build_meta"
