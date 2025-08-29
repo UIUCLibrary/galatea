@@ -14,11 +14,16 @@ create_standalone(){
     uv_path=$1
     echo 'create_standalone'
     shift;
+    tmp_path=`mktemp -d`
+    UV_BUILD_CONSTRAINT="${tmp_path}/galatea_build_constraints.txt"
+    REQUIREMENTS_FILE="${tmp_path}/galatea_requirements.txt"
 
 #     Generates the galatea.egg-info needed for the version metadata
-    $uv_path build --build-constraints "${SCRIPT_DIR}/../requirements-dev.txt" --wheel
+    $uv_path export --frozen --only-group dev --no-hashes --format requirements.txt --no-emit-project --no-annotate > $UV_BUILD_CONSTRAINT
+    $uv_path build --build-constraints "${UV_BUILD_CONSTRAINT}" --wheel
 
-    $uv_path run --with-requirements "${SCRIPT_DIR}/../requirements.txt" $FREEZE_SCRIPT --include-tab-completions galatea ./contrib/bootstrap_standalone.py
+    $uv_path export --frozen --format requirements.txt --no-emit-project --no-annotate > $REQUIREMENTS_FILE
+    $uv_path run --with-requirements "${REQUIREMENTS_FILE}" $FREEZE_SCRIPT --include-tab-completions galatea ./contrib/bootstrap_standalone.py
 }
 
 
