@@ -170,7 +170,7 @@ def call(){
                                                    bootstrap_uv/bin/pip install --disable-pip-version-check uv
                                                    bootstrap_uv/bin/uv venv  --python-preference=only-system  venv
                                                    . ./venv/bin/activate
-                                                   bootstrap_uv/bin/uv sync --locked --group ci --active
+                                                   bootstrap_uv/bin/uv sync --frozen --group ci --active
                                                    bootstrap_uv/bin/uv pip install uv --python venv
                                                    '''
                                                )
