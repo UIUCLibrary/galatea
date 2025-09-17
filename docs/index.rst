@@ -15,3 +15,4 @@ Galatea's documentation
    :caption: Developer Documentation:
 
    api
+   develop
