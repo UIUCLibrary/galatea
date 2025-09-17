@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv
-          uv sync --only-group docs
+          uv sync --group docs --no-dev
       - name: Sphinx build
         run: |
           . ./.venv/bin/activate
