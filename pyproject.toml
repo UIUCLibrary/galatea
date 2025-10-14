@@ -68,7 +68,8 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
 "galatea" = [
-    "relator_terms.txt"
+    "relator_terms.txt",
+    "py.typed"
 ]
 
 [tool.commitizen]
