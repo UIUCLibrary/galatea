@@ -1,3 +1,9 @@
+## v0.4.2 (2025-10-14)
+
+### Feat
+
+- jinja template expressions can be written on multiple lines
+
 ## v0.4.1 (2025-08-27)
 
 ### Feat
