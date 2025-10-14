@@ -478,7 +478,8 @@ def serialize_with_jinja_template(
     marc_record, config, enable_experimental_features
 ):
     serialization_method = config.experimental[config.serialize_method]
-    template = jinja2.Template(serialization_method["template"])
+    jinja_template = "".join(serialization_method["template"].split("\n"))
+    template = jinja2.Template(jinja_template)
     fields = collections.defaultdict(list)
     ns = {"marc": "http://www.loc.gov/MARC21/slim"}
     for res in marc_record.findall(".//marc:datafield", ns):
@@ -486,6 +487,7 @@ def serialize_with_jinja_template(
         for sub_field in res.findall(".//marc:subfield", ns):
             subfield_data[sub_field.attrib["code"]] = sub_field.text
         fields[res.attrib["tag"]].append(subfield_data)
+
     return template.render(fields=fields)
 
 

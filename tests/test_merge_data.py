@@ -272,9 +272,39 @@ existing_data = "{existing_data}"
         }
     ]
 
-
+def test_jinja2_template():
+    template_string = "{% for field in fields['700'] %}{{ field['a'] }}{% if field['q'] %} {{field['q']}}{%endif%} {{ field['d'] }}{% if not loop.last %}||{% endif %}{% endfor %}"
+    template = Template(template_string)
+    result = template.render(
+        fields={
+            "700": [
+                {
+                    "a": "Shakespeare, William,",
+                    "d": "1564-1616"
+                },
+                {
+                    "a": "Jung, C. G.",
+                    "q": "(Carl Gustav),",
+                    "d": "1875-1961",
+                }
+            ]
+        }
+    )
+    assert result == "Shakespeare, William, 1564-1616||Jung, C. G. (Carl Gustav), 1875-1961"
+@pytest.mark.parametrize(
+    "template_string",
+    [
+        """
+{% for field in fields['700'] %}
+{{ field['a'] }}{% if field['q'] %} {{field['q']}}{%endif%} {{ field['d'] }}
+{% if not loop.last %}||{% endif %}
+{% endfor %}
+""".lstrip(),
+        "{% for field in fields['700'] %}{{ field['a'] }}{% if field['q'] %} {{field['q']}}{%endif%} {{ field['d'] }}{% if not loop.last %}||{% endif %}{% endfor %}",
+    ]
+)
 @pytest.mark.filterwarnings("ignore::UserWarning")
-def test_serialize_getmarc_using_jinja2_template():
+def test_serialize_getmarc_using_jinja2_template(template_string):
     alma_record = """
     <record xmlns="http://www.loc.gov/MARC21/slim" 
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
@@ -297,24 +327,6 @@ def test_serialize_getmarc_using_jinja2_template():
     """.lstrip()
 
     marc_record = ET.fromstring(alma_record)
-    template_string = "{% for field in fields['700'] %}{{ field['a'] }}{% if field['q'] %} {{field['q']}}{%endif%} {{ field['d'] }}{% if not loop.last %}||{% endif %}{% endfor %}"
-    template = Template(template_string)
-    result = template.render(
-        fields={
-            "700": [
-                {
-                    "a": "Shakespeare, William,",
-                    "d": "1564-1616"
-                },
-                {
-                    "a": "Jung, C. G.",
-                    "q": "(Carl Gustav),",
-                    "d": "1875-1961",
-                }
-            ]
-        }
-    )
-    assert result == "Shakespeare, William, 1564-1616||Jung, C. G. (Carl Gustav), 1875-1961"
     result = merge_data.serialize_with_jinja_template(
         marc_record=marc_record,
         config=merge_data.MappingConfig(
