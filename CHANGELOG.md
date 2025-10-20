@@ -1,3 +1,9 @@
+## v0.4.3 (2025-10-20)
+
+### Feat
+
+- added py.typed to package
+
 ## v0.4.2 (2025-10-14)
 
 ### Feat
