@@ -1,3 +1,5 @@
+import groovy.json.JsonOutput
+
 def getStandAloneStorageServers(){
     retry(conditions: [agent()], count: 3) {
         node(){
@@ -34,6 +36,43 @@ def deployStandalone(glob, url) {
                 throw e;
             }
         }
+    }
+}
+
+def createGithubRelease(releaseName, githubCredentialsId, repo_username, repository, glob) {
+    withCredentials([string(credentialsId: githubCredentialsId, variable: 'GITHUB_TOKEN')]) {
+       def createReleaseResponse = httpRequest(
+           httpMode: 'POST',
+           contentType: 'APPLICATION_JSON',
+           url: "https://api.github.com/repos/${repo_username}/${repository}/releases",
+           customHeaders: [
+               [name: 'Authorization', value: "token ${GITHUB_TOKEN}"]
+           ],
+           requestBody: JsonOutput.toJson([
+               tag_name: env.BRANCH_NAME,
+               name: releaseName,
+               generate_release_notes: false,
+               draft: false,
+               prerelease: false
+           ]),
+           validResponseCodes: '201' // Expect a 201 Created status code
+           )
+
+       def releaseData = readJSON text: createReleaseResponse.content
+       findFiles(glob: glob).each{
+           def uploadResponse = httpRequest(
+               url: "${releaseData.upload_url.replace('{?name,label}', '')}?name=${it.name}",
+               httpMode: 'POST',
+               uploadFile: it.path,
+               customHeaders: [[name: 'Authorization', value: "token ${GITHUB_TOKEN}"]],
+               wrapAsMultipart: false
+           )
+           if (uploadResponse.status >= 200 && uploadResponse.status < 300) {
+               echo "File uploaded successfully to GitHub release."
+           } else {
+               error "Failed to upload file: ${uploadResponse.status} - ${uploadResponse.content}"
+           }
+       }
     }
 }
 
@@ -137,6 +176,7 @@ def call(){
             booleanParam(name: 'INCLUDE_MACOS-X86_64', defaultValue: false, description: 'Include x86_64 architecture for Mac')
             booleanParam(name: 'INCLUDE_MACOS-ARM64', defaultValue: false, description: 'Include ARM(m1) architecture for Mac')
             booleanParam(name: 'INCLUDE_WINDOWS-X86_64', defaultValue: false, description: 'Include x86_64 architecture for Windows')
+            booleanParam(name: 'CREATE_GITHUB_RELEASE', defaultValue: false, description: 'Deploy to Github Release. Requires the current commit to be tagged. Note: This is experimental')
             booleanParam(name: 'PACKAGE_STANDALONE_WINDOWS_INSTALLER', defaultValue: false, description: 'Create a standalone Windows version that does not require a user to install python first')
             booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_X86_64', defaultValue: false, description: 'Create a standalone version for MacOS X86_64 (m1) machines')
             booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_ARM64', defaultValue: false, description: 'Create a standalone version for MacOS ARM64 (Intel) machines')
@@ -891,85 +931,150 @@ def call(){
                     }
                 }
             }
-            stage('Deploy Standalone'){
-                when {
-                    allOf{
+            stage('Release and Deploy'){
+                when{
+                    anyOf{
                         equals expected: true, actual: params.DEPLOY_STANDALONE_PACKAGERS
-                        anyOf{
-                            equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
-                            equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
-                            equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
+                        allOf{
+                            equals expected: true, actual: params.BUILD_PACKAGES
+                            equals expected: true, actual: params.CREATE_GITHUB_RELEASE
+                            tag '*'
                         }
-                    }
-                    beforeAgent true
-                    beforeInput true
-                }
-                input {
-                    message 'Upload to Nexus server?'
-                    parameters {
-                        credentials credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'jenkins-nexus', name: 'NEXUS_CREDS', required: true
-                        choice(
-                            choices: getStandAloneStorageServers(),
-                            description: 'Url to upload artifact.',
-                            name: 'SERVER_URL'
-                        )
-                        string defaultValue: "galatea/${get_version()}", description: 'subdirectory to store artifact', name: 'archiveFolder'
                     }
                 }
-                parallel{
-                    stage('Deploy Standalone Applications: Windows x86_64'){
+                stages{
+                    stage('GitHub Release'){
                         agent any
                         when{
-                            equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
+                            beforeInput true
                             beforeAgent true
-                        }
-                        environment{
-                            GENERATED_CHOCOLATEY_CONFIG_FILE='dist/chocolatey/config.json'
-                        }
-                        steps{
-                            script{
-                                unstash 'WINDOWS_APPLICATION_X86_64'
-                                def deploymentFile = findFiles(glob: 'dist/*.zip')[0]
-                                def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
-                                createChocolateyConfigFile(env.GENERATED_CHOCOLATEY_CONFIG_FILE, deploymentFile, deployedUrl)
-                                archiveArtifacts artifacts: env.GENERATED_CHOCOLATEY_CONFIG_FILE
-                                echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                            beforeOptions true
+                            allOf{
+                                equals expected: true, actual: params.BUILD_PACKAGES
+                                equals expected: true, actual: params.CREATE_GITHUB_RELEASE
+                                tag '*'
                             }
-                        }
-                        post{
-                            success{
-                                echo "Use ${env.GENERATED_CHOCOLATEY_CONFIG_FILE} for deploying to Chocolatey with https://github.com/UIUCLibrary/chocolatey-hosted-public.git. Found in the artifacts for this build."
-                                echo "${readFile(env.GENERATED_CHOCOLATEY_CONFIG_FILE)}"
-                            }
-                        }
+                       }
+                       input {
+                           message 'Create GitHub Release'
+                           id 'GITHUB_DEPLOYMENT'
+                           parameters {
+                               credentials(
+                                   credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl',
+                                   description: 'GitHub credential Id',
+                                   name: 'GITHUB_CREDENTIALS_ID',
+                                   required: true
+                               )
+                           }
+                       }
+                       options{
+                           lock("${env.JOB_NAME}")
+                       }
+                       steps{
+                           script {
+                                unstash 'PYTHON_PACKAGES'
+                                createGithubRelease(
+                                    "Version ${readTOML( file: 'pyproject.toml')['project'].version}",
+                                    GITHUB_CREDENTIALS_ID,
+                                    "UIUCLibrary",
+                                    "galatea",
+                                    'dist/*'
+                                    )
+                           }
+                       }
+                       post{
+                           cleanup{
+                               script{
+                                   if(isUnix()){
+                                       sh "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                   } else {
+                                       bat "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                   }
+                               }
+                           }
+                       }
                     }
-                    stage('Deploy Standalone Applications: MacOS ARM64'){
-                        agent any
-                        when{
-                            equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
+                    stage('Deploy Standalone'){
+                        when {
+                            allOf{
+                                equals expected: true, actual: params.DEPLOY_STANDALONE_PACKAGERS
+                                anyOf{
+                                    equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
+                                    equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
+                                    equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
+                                }
+                            }
                             beforeAgent true
+                            beforeInput true
                         }
-                        steps{
-                            script{
-                                unstash 'APPLE_APPLICATION_ARM64'
-                                def deploymentFile = findFiles(glob: 'dist/*.tar.gz')[0]
-                                def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
-                                echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                        input {
+                            message 'Upload to Nexus server?'
+                            parameters {
+                                credentials credentialType: 'com.cloudbees.plugins.credentials.common.StandardCredentials', defaultValue: 'jenkins-nexus', name: 'NEXUS_CREDS', required: true
+                                choice(
+                                    choices: getStandAloneStorageServers(),
+                                    description: 'Url to upload artifact.',
+                                    name: 'SERVER_URL'
+                                )
+                                string defaultValue: "galatea/${get_version()}", description: 'subdirectory to store artifact', name: 'archiveFolder'
                             }
                         }
-                    }
-                    stage('Deploy Standalone Applications: MacOS X86_64'){
-                        agent any
-                        when{
-                            equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
-                            beforeAgent true
-                        }
-                        steps{
-                            script{
-                                unstash 'APPLE_APPLICATION_X86_64'
-                                def deploymentFile = findFiles(glob: 'dist/*.tar.gz')[0]
-                                def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
-                                echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                        parallel{
+                            stage('Deploy Standalone Applications: Windows x86_64'){
+                                agent any
+                                when{
+                                    equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
+                                    beforeAgent true
+                                }
+                                environment{
+                                    GENERATED_CHOCOLATEY_CONFIG_FILE='dist/chocolatey/config.json'
+                                }
+                                steps{
+                                    script{
+                                        unstash 'WINDOWS_APPLICATION_X86_64'
+                                        def deploymentFile = findFiles(glob: 'dist/*.zip')[0]
+                                        def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
+                                        createChocolateyConfigFile(env.GENERATED_CHOCOLATEY_CONFIG_FILE, deploymentFile, deployedUrl)
+                                        archiveArtifacts artifacts: env.GENERATED_CHOCOLATEY_CONFIG_FILE
+                                        echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                                    }
+                                }
+                                post{
+                                    success{
+                                        echo "Use ${env.GENERATED_CHOCOLATEY_CONFIG_FILE} for deploying to Chocolatey with https://github.com/UIUCLibrary/chocolatey-hosted-public.git. Found in the artifacts for this build."
+                                        echo "${readFile(env.GENERATED_CHOCOLATEY_CONFIG_FILE)}"
+                                    }
+                                }
+                            }
+                            stage('Deploy Standalone Applications: MacOS ARM64'){
+                                agent any
+                                when{
+                                    equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
+                                    beforeAgent true
+                                }
+                                steps{
+                                    script{
+                                        unstash 'APPLE_APPLICATION_ARM64'
+                                        def deploymentFile = findFiles(glob: 'dist/*.tar.gz')[0]
+                                        def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
+                                        echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                                    }
+                                }
+                            }
+                            stage('Deploy Standalone Applications: MacOS X86_64'){
+                                agent any
+                                when{
+                                    equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
+                                    beforeAgent true
+                                }
+                                steps{
+                                    script{
+                                        unstash 'APPLE_APPLICATION_X86_64'
+                                        def deploymentFile = findFiles(glob: 'dist/*.tar.gz')[0]
+                                        def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
+                                        echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                                    }
+                                }
                             }
                         }
                     }
