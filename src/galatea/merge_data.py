@@ -102,8 +102,9 @@ class MappingConfig:
     delimiter: str
     existing_data: str
     serialize_method: str = "verbatim"
-    experimental: Dict[str, Dict[str, Union[str, List[str]]]] =\
+    experimental: Dict[str, Dict[str, Union[str, List[str]]]] = (
         dataclasses.field(default_factory=dict)
+    )
 
 
 def get_keys_from_tsv_fp(fp: TextIO) -> List[str]:
@@ -473,13 +474,7 @@ def experimental_feature(func):
     return inner
 
 
-@experimental_feature
-def serialize_with_jinja_template(
-    marc_record, config, enable_experimental_features
-):
-    serialization_method = config.experimental[config.serialize_method]
-    jinja_template = "".join(serialization_method["template"].split("\n"))
-    template = jinja2.Template(jinja_template)
+def organize_marc_one_code_per_subfield(marc_record):
     fields = collections.defaultdict(list)
     ns = {"marc": "http://www.loc.gov/MARC21/slim"}
     for res in marc_record.findall(".//marc:datafield", ns):
@@ -487,7 +482,32 @@ def serialize_with_jinja_template(
         for sub_field in res.findall(".//marc:subfield", ns):
             subfield_data[sub_field.attrib["code"]] = sub_field.text
         fields[res.attrib["tag"]].append(subfield_data)
+    return fields
 
+
+def organize_with_code_and_value(marc_record):
+    fields = collections.defaultdict(list)
+    ns = {"marc": "http://www.loc.gov/MARC21/slim"}
+    for res in marc_record.findall(".//marc:datafield", ns):
+        subfield_data = []
+        for sub_field in res.findall(".//marc:subfield", ns):
+            subfield_data.append({
+                "code": sub_field.attrib["code"],
+                "value": sub_field.text,
+            })
+        fields[res.attrib["tag"]].append(subfield_data)
+    return fields
+
+
+@experimental_feature
+def serialize_with_jinja_template(
+    marc_record, config, enable_experimental_features
+):
+    serialization_method = config.experimental[config.serialize_method]
+    jinja_template = "".join(serialization_method["template"].split("\n"))
+    template = jinja2.Template(jinja_template)
+    fields = organize_with_code_and_value(marc_record)
+    # fields = organize_marc_one_code_per_subfield(marc_record)
     return template.render(fields=fields)
 
 

@@ -2,6 +2,7 @@ import io
 import os
 import pathlib
 import sys
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -180,7 +181,7 @@ def test_merge_from_getmarc_uses_row_merge_data_strategy(monkeypatch):
         input_metadata_tsv_file.open("rb").__enter__(),
         ANY,
         "excel-tab",
-        False
+        False,
     )
 
 
@@ -272,76 +273,26 @@ existing_data = "{existing_data}"
         }
     ]
 
+
 def test_jinja2_template():
     template_string = "{% for field in fields['700'] %}{{ field['a'] }}{% if field['q'] %} {{field['q']}}{%endif%} {{ field['d'] }}{% if not loop.last %}||{% endif %}{% endfor %}"
     template = Template(template_string)
     result = template.render(
         fields={
             "700": [
-                {
-                    "a": "Shakespeare, William,",
-                    "d": "1564-1616"
-                },
+                {"a": "Shakespeare, William,", "d": "1564-1616"},
                 {
                     "a": "Jung, C. G.",
                     "q": "(Carl Gustav),",
                     "d": "1875-1961",
-                }
+                },
             ]
         }
     )
-    assert result == "Shakespeare, William, 1564-1616||Jung, C. G. (Carl Gustav), 1875-1961"
-@pytest.mark.parametrize(
-    "template_string",
-    [
-        """
-{% for field in fields['700'] %}
-{{ field['a'] }}{% if field['q'] %} {{field['q']}}{%endif%} {{ field['d'] }}
-{% if not loop.last %}||{% endif %}
-{% endfor %}
-""".lstrip(),
-        "{% for field in fields['700'] %}{{ field['a'] }}{% if field['q'] %} {{field['q']}}{%endif%} {{ field['d'] }}{% if not loop.last %}||{% endif %}{% endfor %}",
-    ]
-)
-@pytest.mark.filterwarnings("ignore::UserWarning")
-def test_serialize_getmarc_using_jinja2_template(template_string):
-    alma_record = """
-    <record xmlns="http://www.loc.gov/MARC21/slim" 
-            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-            xsi:schemaLocation="http://www.loc.gov/MARC21/slim 
-                                http://www.loc.gov/standards/marcxml/schema/MARC21slim.xsd">
-    <datafield ind1=" " ind2=" " tag="120">
-    <subfield code="a">Bacon</subfield>
-    <subfield code="c">Eggs</subfield>
-    </datafield>
-    <datafield ind1="1" ind2=" " tag="700">
-        <subfield code="a">Shakespeare, William,</subfield>
-        <subfield code="d">1564-1616</subfield>
-    </datafield>
-    <datafield ind1="1" ind2=" " tag="700">
-        <subfield code="a">Jung, C. G.</subfield>
-        <subfield code="q">(Carl Gustav),</subfield>
-        <subfield code="d">1875-1961</subfield>
-    </datafield>
-    </record>
-    """.lstrip()
-
-    marc_record = ET.fromstring(alma_record)
-    result = merge_data.serialize_with_jinja_template(
-        marc_record=marc_record,
-        config=merge_data.MappingConfig(
-            key='Name',
-            matching_keys=['700'],
-            delimiter='||',
-            existing_data='replace',
-            serialize_method="jinja2template",
-            experimental={
-                "jinja2template": {"template": template_string}
-            }
-        ),
-        enable_experimental_features=True
+    assert (
+        result
+        == "Shakespeare, William, 1564-1616||Jung, C. G. (Carl Gustav), 1875-1961"
     )
-    assert result == "Shakespeare, William, 1564-1616||Jung, C. G. (Carl Gustav), 1875-1961"
 
 
 def test_merge_data_from_getmarc_handles_invalid_existing_data_value():
@@ -380,6 +331,145 @@ def test_merge_data_from_getmarc_handles_invalid_existing_data_value():
             get_marc_server_strategy=get_marc_server_strategy,
             dialect="excel-tab",
         )
+
+
+alma_record_with_multiple_same_letter_codes = """
+    <record xmlns="http://www.loc.gov/MARC21/slim" 
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+            xsi:schemaLocation="http://www.loc.gov/MARC21/slim 
+                                http://www.loc.gov/standards/marcxml/schema/MARC21slim.xsd">
+        <datafield ind1=" " ind2="0" tag="650">
+            <subfield code="a">Toll roads</subfield>
+            <subfield code="x">Law and legislation</subfield>
+            <subfield code="z">Ireland</subfield>
+            <subfield code="z">Dublin</subfield>
+            <subfield code="v">Early works to 1800.</subfield>
+        </datafield>
+        <datafield ind1=" " ind2="0" tag="650">
+            <subfield code="a">Highway law</subfield>
+            <subfield code="z">Ireland</subfield>
+            <subfield code="z">Dublin</subfield>
+            <subfield code="v">Early works to 1800.</subfield>
+        </datafield>
+        <datafield ind1=" " ind2="0" tag="650">
+            <subfield code="a">Tolls</subfield>
+            <subfield code="z">Ireland</subfield>
+            <subfield code="z">Dublin</subfield>
+            <subfield code="v">Early works to 1800.</subfield>
+        </datafield>
+    </record>
+    """
+
+
+def test_organize_with_code_and_value_gets_number_of_fields_right():
+    assert (
+        len(
+            merge_data.organize_with_code_and_value(
+                ET.fromstring(alma_record_with_multiple_same_letter_codes)
+            )
+        )
+        == 1
+    )
+
+
+def test_organize_with_code_and_value_gets_number_of_fields_within_a_field_type_right():
+    assert (
+        len(
+            merge_data.organize_with_code_and_value(
+                ET.fromstring(alma_record_with_multiple_same_letter_codes)
+            )["650"]
+        )
+        == 3
+    )
+
+
+def test_organize_with_code_and_value_gets_subfields_right():
+    assert (
+        len(
+            merge_data.organize_with_code_and_value(
+                ET.fromstring(alma_record_with_multiple_same_letter_codes)
+            )["650"][0]
+        )
+        == 5
+    )
+
+
+def test_organize_with_code_and_value_gets_subfield_code_right():
+    assert (
+        merge_data.organize_with_code_and_value(
+            ET.fromstring(alma_record_with_multiple_same_letter_codes)
+        )["650"][0][0]["code"]
+        == "a"
+    )
+
+
+@pytest.mark.parametrize(
+    "template_string, expected_result",
+    [
+        (
+            """
+{% set ns = namespace(values = []) %}
+{% for field in fields['650'] %}
+{% set ns.values = ns.values + [field | selectattr('code', 'equalto', 'a') | map(attribute='value') | join('||')] %}
+{% endfor %}
+{{ ns.values | join('||') }}
+""".lstrip(),
+            "Toll roads||Highway law||Tolls",
+        ),
+        (
+            """
+{% set ns = namespace(values = []) %}
+{% for field in fields['650'] %}
+{% set ns.values = ns.values + [field | selectattr('code', 'equalto', 'z') | map(attribute='value') | join('||')] %}
+{% endfor %}
+{{ ns.values | unique | join('||') }}
+""".lstrip(),
+            "Ireland||Dublin",
+        ),
+    ],
+)
+def test_field_with_code_and_value(template_string, expected_result):
+    alma_record = """
+    <record xmlns="http://www.loc.gov/MARC21/slim" 
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+            xsi:schemaLocation="http://www.loc.gov/MARC21/slim 
+                                http://www.loc.gov/standards/marcxml/schema/MARC21slim.xsd">
+        <datafield ind1=" " ind2="0" tag="650">
+            <subfield code="a">Toll roads</subfield>
+            <subfield code="x">Law and legislation</subfield>
+            <subfield code="z">Ireland</subfield>
+            <subfield code="z">Dublin</subfield>
+            <subfield code="v">Early works to 1800.</subfield>
+        </datafield>
+        <datafield ind1=" " ind2="0" tag="650">
+            <subfield code="a">Highway law</subfield>
+            <subfield code="z">Ireland</subfield>
+            <subfield code="z">Dublin</subfield>
+            <subfield code="v">Early works to 1800.</subfield>
+        </datafield>
+        <datafield ind1=" " ind2="0" tag="650">
+            <subfield code="a">Tolls</subfield>
+            <subfield code="z">Ireland</subfield>
+            <subfield code="z">Dublin</subfield>
+            <subfield code="v">Early works to 1800.</subfield>
+        </datafield>
+    </record>
+    """
+    assert (
+        merge_data.serialize_with_jinja_template(
+            marc_record=ET.fromstring(alma_record),
+            config=merge_data.MappingConfig(
+                key="Name",
+                matching_keys=["650"],
+                delimiter="||",
+                existing_data="replace",
+                serialize_method="jinja2template",
+                experimental={"jinja2template": {"template": template_string}},
+            ),
+            enable_experimental_features=True,
+        )
+        == expected_result
+    )
 
 
 def test_get_matching_marc_data():
@@ -577,9 +667,7 @@ identifier_key = "Local Bib ID
 
 
 def test_row_merge_data_strategy_bad_mapping_data_source(fs):
-    fs.create_file(
-        os.path.join("fake_data", "input_metadata_tsv_file.tsv")
-    )
+    fs.create_file(os.path.join("fake_data", "input_metadata_tsv_file.tsv"))
     input_metadata_tsv_file = pathlib.Path(
         os.path.join("fake_data", "input_metadata_tsv_file.tsv")
     )
@@ -591,12 +679,9 @@ def test_row_merge_data_strategy_bad_mapping_data_source(fs):
     
     """.lstrip()
     fs.create_file(
-        os.path.join("fake_data", "mapping_file.toml"),
-        contents=data
+        os.path.join("fake_data", "mapping_file.toml"), contents=data
     )
-    mapping_file = pathlib.Path(
-        os.path.join("fake_data", "mapping_file.toml")
-    )
+    mapping_file = pathlib.Path(os.path.join("fake_data", "mapping_file.toml"))
     with pytest.raises(merge_data.BadMappingFileError) as error:
         merge_data.merge_from_getmarc(
             input_metadata_tsv_file=input_metadata_tsv_file,
@@ -608,9 +693,7 @@ def test_row_merge_data_strategy_bad_mapping_data_source(fs):
 
 
 def test_row_merge_data_strategy_bad_mapping_data_details(fs):
-    fs.create_file(
-        os.path.join("fake_data", "input_metadata_tsv_file.tsv")
-    )
+    fs.create_file(os.path.join("fake_data", "input_metadata_tsv_file.tsv"))
     input_metadata_tsv_file = pathlib.Path(
         os.path.join("fake_data", "input_metadata_tsv_file.tsv")
     )
@@ -622,8 +705,7 @@ def test_row_merge_data_strategy_bad_mapping_data_details(fs):
     
     """.lstrip()
     fs.create_file(
-        os.path.join("fake_data", "mapping_file.toml"),
-        contents=data
+        os.path.join("fake_data", "mapping_file.toml"), contents=data
     )
     with pytest.raises(merge_data.BadMappingFileError) as error:
         merge_data.merge_from_getmarc(
@@ -641,13 +723,9 @@ class TestBadMappingFileError:
     def test_str_with_no_details(self):
         with pytest.raises(merge_data.BadMappingFileError) as e:
             raise merge_data.BadMappingFileError(
-                pathlib.Path(
-                    os.path.join("fake_data", "mapping_file.toml")
-                )
+                pathlib.Path(os.path.join("fake_data", "mapping_file.toml"))
             )
-        assert (
-            os.path.join("fake_data", "mapping_file.toml") in str(e.value)
-        )
+        assert os.path.join("fake_data", "mapping_file.toml") in str(e.value)
 
     def test_str_with_details(self):
         with pytest.raises(merge_data.BadMappingFileError) as e:
@@ -657,10 +735,7 @@ class TestBadMappingFileError:
                 ),
                 details="something bad",
             )
-        assert all(
-            [
-                os.path.join("fake_data", "mapping_file.toml")
-                in str(e.value),
-                "something bad" in str(e.value),
-            ]
-        ), f"expected both file name and error message, got: {e.value}"
+        assert all([
+            os.path.join("fake_data", "mapping_file.toml") in str(e.value),
+            "something bad" in str(e.value),
+        ]), f"expected both file name and error message, got: {e.value}"
