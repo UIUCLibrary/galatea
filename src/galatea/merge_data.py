@@ -140,7 +140,7 @@ def get_keys_from_tsv(
     tsv_file: pathlib.Path,
     strategy: Callable[[TextIO], List[str]] = get_keys_from_tsv_fp,
 ) -> List[str]:
-    with tsv_file.open("r") as f:
+    with tsv_file.open("r", encoding="utf-8") as f:
         return strategy(f)
 
 
@@ -219,7 +219,7 @@ def generate_mapping_file_for_tsv(
     The mapping file will contain the field names and what index they are
     mapped from
     """
-    with output_file.open("w") as f:
+    with output_file.open("w", encoding="utf-8") as f:
         writing_strategy(tsv_file.name, headers_reading_strategy(tsv_file), f)
     print(f"Wrote mapping file to {output_file.absolute()}")
 
@@ -682,7 +682,9 @@ def merge_from_getmarc(
 
     """
     try:
-        with input_metadata_tsv_file.open("r") as input_metadata_tsv_file_fp:
+        with input_metadata_tsv_file.open(
+            "r", encoding="utf-8"
+        ) as input_metadata_tsv_file_fp:
             dialect = tsv.get_tsv_dialect(input_metadata_tsv_file_fp)
             with mapping_file.open("rb") as mapping_file_fp:
                 new_rows = row_merge_data_strategy(
@@ -699,5 +701,5 @@ def merge_from_getmarc(
             source_file=mapping_file, details=mapping_data_error.details
         ) from mapping_data_error
 
-    with output_metadata_tsv_file.open("w") as f:
+    with output_metadata_tsv_file.open("w", encoding="utf-8") as f:
         write_to_file_strategy(new_rows, dialect, f)

@@ -194,12 +194,12 @@ def resolve_authorized_terms(
     # Opening the output file and the input are not done at the same time so
     # that a user can write the modified data to the same file as the input.
 
-    with transformation_file.open("r") as fp:
+    with transformation_file.open("r", encoding="utf-8") as fp:
         transformer = Transform(fp)
         new_data: List[galatea.marc.Marc_Entry] = []
 
         if input_tsv_dialect is None:
-            with input_tsv.open("r") as input_tsv_fp:
+            with input_tsv.open("r", encoding="utf-8") as input_tsv_fp:
                 input_tsv_dialect = galatea.tsv.get_tsv_dialect(input_tsv_fp)
 
         for original_row, new_row in resolve_strategy(
@@ -215,7 +215,7 @@ def resolve_authorized_terms(
                         original_row=original_row, new_row=new_row
                     ),
                 )
-    with output_file.open("w") as fp:
+    with output_file.open("w", encoding="utf-8") as fp:
         galatea.tsv.write_tsv_fp(fp, data=new_data, dialect=input_tsv_dialect)
     logger.info(f"Wrote to {output_file.name}")
 
@@ -238,7 +238,7 @@ def create_init_transformation_file(
     logger.debug("creating new transformation tsv file")
     if output.exists():
         raise FileExistsError(output.absolute())
-    with output.open("w") as fp:
+    with output.open("w", encoding="utf-8") as fp:
         write_strategy(fp)
     logger.info(f"Wrote new transformation tsv file to {output.absolute()}")
     return None
