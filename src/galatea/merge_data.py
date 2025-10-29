@@ -36,6 +36,7 @@ import requests
 from xml.etree import ElementTree as ET
 
 from galatea import tsv
+from galatea.tsv import TableRow
 
 __all__ = [
     "generate_mapping_file_for_tsv",
@@ -43,7 +44,7 @@ __all__ = [
     "BadMappingFileError",
 ]
 
-from galatea.tsv import TableRow
+MARC_SLIM_XML_NAMESPACE = "http://www.loc.gov/MARC21/slim"  # NOSONAR
 
 MARC_RECORD = ET.Element
 
@@ -415,7 +416,7 @@ def get_identifier_key(
 def _get_new_data_from_marc(
     mapped_value: str, record: ET.Element
 ) -> List[str]:
-    ns = {"marc": "http://www.loc.gov/MARC21/slim"}
+    ns = {"marc": MARC_SLIM_XML_NAMESPACE}
     marc_re = re.compile(MARC_REGEX)
     re_results = marc_re.search(mapped_value)
     if not re_results:
@@ -476,7 +477,7 @@ def experimental_feature(func):
 
 def organize_marc_one_code_per_subfield(marc_record):
     fields = collections.defaultdict(list)
-    ns = {"marc": "http://www.loc.gov/MARC21/slim"}
+    ns = {"marc": MARC_SLIM_XML_NAMESPACE}
     for res in marc_record.findall(".//marc:datafield", ns):
         subfield_data = {}
         for sub_field in res.findall(".//marc:subfield", ns):
@@ -487,7 +488,7 @@ def organize_marc_one_code_per_subfield(marc_record):
 
 def organize_with_code_and_value(marc_record):
     fields = collections.defaultdict(list)
-    ns = {"marc": "http://www.loc.gov/MARC21/slim"}
+    ns = {"marc": MARC_SLIM_XML_NAMESPACE}
     for res in marc_record.findall(".//marc:datafield", ns):
         subfield_data = []
         for sub_field in res.findall(".//marc:subfield", ns):
