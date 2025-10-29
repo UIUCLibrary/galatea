@@ -85,7 +85,9 @@ update_changelog_on_bump = true
 major_version_zero = true
 changelog_merge_prerelease = true
 changelog_start_rev = "v0.0.1"
-
+pre_bump_hooks = [
+    "uv lock"
+]
 
 [tool.mypy]
 mypy_path = "src"
