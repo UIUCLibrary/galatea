@@ -1,3 +1,18 @@
+## v0.5.0 (2025-10-29)
+
+### BREAKING CHANGE
+
+- jinja template changed to allow for multiple subfields with the same code letter
+
+### Feat
+
+- all files open and write in utf-8
+- jinja template changed to allow for multiple subfields with the same code letter
+
+### Refactor
+
+- use constant for marc namespace
+
 ## v0.4.3 (2025-10-20)
 
 ### Feat
