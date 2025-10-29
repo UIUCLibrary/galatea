@@ -40,21 +40,25 @@ docs = [
     'tomli;python_version<"3.11"',
 ]
 
+audit-dependencies = ["uv-secure"]
+tox = ["tox"]
 dev = [
     'build',
     'lxml',
     'mypy',
     'pre-commit',
     'ruff',
-    'tox',
     'types-requests',
+    {include-group = "tox"},
+    {include-group = "audit-dependencies"},
     {include-group = "docs"},
     {include-group = "test"},
 ]
-
+release = ["twine"]
 ci = [
     "pysonar",
     {include-group = "dev"},
+    {include-group = "release"},
 ]
 
 [build-system]
