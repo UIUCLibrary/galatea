@@ -36,6 +36,7 @@ import requests
 from xml.etree import ElementTree as ET
 
 from galatea import tsv
+from galatea.tsv import TableRow
 
 __all__ = [
     "generate_mapping_file_for_tsv",
@@ -43,7 +44,7 @@ __all__ = [
     "BadMappingFileError",
 ]
 
-from galatea.tsv import TableRow
+MARC_SLIM_XML_NAMESPACE = "http://www.loc.gov/MARC21/slim"  # NOSONAR
 
 MARC_RECORD = ET.Element
 
@@ -139,7 +140,7 @@ def get_keys_from_tsv(
     tsv_file: pathlib.Path,
     strategy: Callable[[TextIO], List[str]] = get_keys_from_tsv_fp,
 ) -> List[str]:
-    with tsv_file.open("r") as f:
+    with tsv_file.open("r", encoding="utf-8") as f:
         return strategy(f)
 
 
@@ -218,7 +219,7 @@ def generate_mapping_file_for_tsv(
     The mapping file will contain the field names and what index they are
     mapped from
     """
-    with output_file.open("w") as f:
+    with output_file.open("w", encoding="utf-8") as f:
         writing_strategy(tsv_file.name, headers_reading_strategy(tsv_file), f)
     print(f"Wrote mapping file to {output_file.absolute()}")
 
@@ -415,7 +416,7 @@ def get_identifier_key(
 def _get_new_data_from_marc(
     mapped_value: str, record: ET.Element
 ) -> List[str]:
-    ns = {"marc": "http://www.loc.gov/MARC21/slim"}
+    ns = {"marc": MARC_SLIM_XML_NAMESPACE}
     marc_re = re.compile(MARC_REGEX)
     re_results = marc_re.search(mapped_value)
     if not re_results:
@@ -476,7 +477,7 @@ def experimental_feature(func):
 
 def organize_marc_one_code_per_subfield(marc_record):
     fields = collections.defaultdict(list)
-    ns = {"marc": "http://www.loc.gov/MARC21/slim"}
+    ns = {"marc": MARC_SLIM_XML_NAMESPACE}
     for res in marc_record.findall(".//marc:datafield", ns):
         subfield_data = {}
         for sub_field in res.findall(".//marc:subfield", ns):
@@ -487,7 +488,7 @@ def organize_marc_one_code_per_subfield(marc_record):
 
 def organize_with_code_and_value(marc_record):
     fields = collections.defaultdict(list)
-    ns = {"marc": "http://www.loc.gov/MARC21/slim"}
+    ns = {"marc": MARC_SLIM_XML_NAMESPACE}
     for res in marc_record.findall(".//marc:datafield", ns):
         subfield_data = []
         for sub_field in res.findall(".//marc:subfield", ns):
@@ -681,7 +682,9 @@ def merge_from_getmarc(
 
     """
     try:
-        with input_metadata_tsv_file.open("r") as input_metadata_tsv_file_fp:
+        with input_metadata_tsv_file.open(
+            "r", encoding="utf-8"
+        ) as input_metadata_tsv_file_fp:
             dialect = tsv.get_tsv_dialect(input_metadata_tsv_file_fp)
             with mapping_file.open("rb") as mapping_file_fp:
                 new_rows = row_merge_data_strategy(
@@ -698,5 +701,5 @@ def merge_from_getmarc(
             source_file=mapping_file, details=mapping_data_error.details
         ) from mapping_data_error
 
-    with output_metadata_tsv_file.open("w") as f:
+    with output_metadata_tsv_file.open("w", encoding="utf-8") as f:
         write_to_file_strategy(new_rows, dialect, f)

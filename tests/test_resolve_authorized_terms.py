@@ -96,7 +96,7 @@ def test_resolve_authorized_terms_calls_resolve_strategy():
         resolve_strategy=resolve_strategy,
     )
     resolve_strategy.assert_called_once()
-    output_file.open.assert_called_once_with("w")
+    output_file.open.assert_called_once_with("w", encoding='utf-8')
 
 
 @pytest.mark.parametrize(
