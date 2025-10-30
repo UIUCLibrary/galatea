@@ -37,6 +37,8 @@ from xml.etree import ElementTree as ET
 
 from galatea import tsv
 from galatea.tsv import TableRow
+from galatea.utils import GalateaException
+
 
 __all__ = [
     "generate_mapping_file_for_tsv",
@@ -52,13 +54,13 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class ExperimentalFeatureError(Exception):
+class ExperimentalFeatureError(GalateaException):
     def __init__(self, *args, source):
         super().__init__(*args)
         self.source = source
 
 
-class BadMappingDataError(Exception):
+class BadMappingDataError(GalateaException):
     """Exception raised when a mapping data is malformed or invalid."""
 
     def __init__(self, *args, details: Optional[str] = None) -> None:
@@ -66,7 +68,7 @@ class BadMappingDataError(Exception):
         self.details = details
 
 
-class BadMappingFileError(Exception):
+class BadMappingFileError(GalateaException):
     """Exception raised when a mapping data in a file malformed or invalid."""
 
     def __init__(
@@ -91,6 +93,9 @@ class BadMappingFileError(Exception):
                 f"Details: {self.details}."
             )
         return f"Issue with mapping file: {self.source}"
+
+
+class SerialzationError(GalateaException): ...
 
 
 serialization_methods = {"verbatim": None}
@@ -492,10 +497,12 @@ def organize_with_code_and_value(marc_record):
     for res in marc_record.findall(".//marc:datafield", ns):
         subfield_data = []
         for sub_field in res.findall(".//marc:subfield", ns):
-            subfield_data.append({
-                "code": sub_field.attrib["code"],
-                "value": sub_field.text,
-            })
+            subfield_data.append(
+                {
+                    "code": sub_field.attrib["code"],
+                    "value": sub_field.text,
+                }
+            )
         fields[res.attrib["tag"]].append(subfield_data)
     return fields
 
@@ -508,8 +515,13 @@ def serialize_with_jinja_template(
     jinja_template = "".join(serialization_method["template"].split("\n"))
     template = jinja2.Template(jinja_template)
     fields = organize_with_code_and_value(marc_record)
-    # fields = organize_marc_one_code_per_subfield(marc_record)
-    return template.render(fields=fields)
+    try:
+        return template.render(fields=fields)
+    except TypeError as error:
+        raise SerialzationError(
+            f"Unable to render Jinja template due to an issue related to types "
+            f"used in the template. {error}"
+        ) from error
 
 
 class MergeRowData:
@@ -629,18 +641,26 @@ def merge_data_from_getmarc(
             if mapped_source_key not in row.entry:
                 if mapped_source_key not in warned_extra_keys:
                     warned_extra_keys.add(mapped_source_key)
-                    logger.warning('Mapping contains key not found in table: "%s"', mapped_source_key)
+                    logger.warning(
+                        'Mapping contains key not found in table: "%s"',
+                        mapped_source_key,
+                    )
                 continue
 
             # Optimization: if there is already data and existing_data is
             # set to ignored anyway, skip this key and move on to the next
             # one
-            merger.merge_row_data(
-                mapped_source_key,
-                merged_row,
-                mapping_configuration,
-                row.line_number,
-            )
+            try:
+                merger.merge_row_data(
+                    mapped_source_key,
+                    merged_row,
+                    mapping_configuration,
+                    row.line_number,
+                )
+            except SerialzationError as e:
+                raise SerialzationError(
+                    f'Tried to serialize line {row.line_number}, column "{mapped_source_key}" of tsv file. {str(e)}'
+                ) from e
         new_rows.append(merged_row)
     return new_rows
 
