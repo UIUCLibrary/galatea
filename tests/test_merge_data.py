@@ -226,6 +226,45 @@ def test_merge_data_from_getmarc_uses_getmarc_strategy():
     get_marc_server_strategy.assert_called_once_with("dummy_id")
 
 
+def test_merge_data_from_getmarc_warns_about_extra_mapping_keys(caplog):
+    sample_metadata_tsv_file_contents = """
+"Uniform Title"	"Bibliographic Identifier"
+"spam"	"spam_id"
+"bacon"	"bacon_id"
+""".lstrip()
+
+    sample_mapping_with_extra_mappings = b"""
+[mappings]
+identifier_key = "Bibliographic Identifier"  
+
+[[mapping]]
+key = "Uniform Title"
+matching_marc_fields = []
+delimiter = "||"
+existing_data = "keep"
+
+[[mapping]]
+key = "Some Other Mapping not found in the tsv"
+matching_marc_fields = []
+delimiter = "||"
+existing_data = "keep"
+""".lstrip()
+    merge_data.merge_data_from_getmarc(
+        io.BytesIO(sample_mapping_with_extra_mappings),
+        input_metadata_tsv_fp=io.StringIO(sample_metadata_tsv_file_contents),
+        get_marc_server_strategy=Mock(return_value="Bacon"),
+        dialect="excel-tab",
+    )
+    assert (
+        caplog.records[0].levelname == "WARNING"
+        and caplog.records[0].message
+        == 'Mapping contains key not found in table: "Some Other Mapping not '
+        'found in the tsv"'
+    )
+    assert len(caplog.records) == 1
+    # assert ["Foo"] == [rec.message for rec in caplog.records]
+
+
 @pytest.mark.parametrize(
     "existing_data, starting_value, expected_value",
     [
@@ -302,7 +341,7 @@ def test_merge_data_from_getmarc_handles_invalid_existing_data_value():
     
     [[mapping]]
     key = "Uniform Title"
-    matching_marc_fields = ["120a"]
+    matching_marc_fsyncields = ["120a"]
     delimiter = "||"
     existing_data = "something_invalid"
     """.lstrip().encode("ascii")

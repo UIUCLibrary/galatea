@@ -614,6 +614,7 @@ def merge_data_from_getmarc(
     ) -> Iterable[TableRow[Dict[str, str]]]:
         yield from tsv.iter_tsv_fp(fp, dialect=_dialect)
 
+    warned_extra_keys = set()
     for row in _iter_row(input_metadata_tsv_fp, dialect):
         record = get_marc_server_strategy(
             typing.cast(str, row.entry[identifier_key])
@@ -623,6 +624,14 @@ def merge_data_from_getmarc(
         merger.serialize_value_strategy = serialization_base_on_config
         merger.enable_experimental_features = enable_experimental_features
         for mapped_source_key, mapping_configuration in mapping.items():
+            # Don't fail if the mapper contains extra keys, just warn the user
+            # about it once.
+            if mapped_source_key not in row.entry:
+                if mapped_source_key not in warned_extra_keys:
+                    warned_extra_keys.add(mapped_source_key)
+                    logger.warning('Mapping contains key not found in table: "%s"', mapped_source_key)
+                continue
+
             # Optimization: if there is already data and existing_data is
             # set to ignored anyway, skip this key and move on to the next
             # one
