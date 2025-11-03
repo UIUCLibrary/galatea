@@ -497,12 +497,10 @@ def organize_with_code_and_value(marc_record):
     for res in marc_record.findall(".//marc:datafield", ns):
         subfield_data = []
         for sub_field in res.findall(".//marc:subfield", ns):
-            subfield_data.append(
-                {
-                    "code": sub_field.attrib["code"],
-                    "value": sub_field.text,
-                }
-            )
+            subfield_data.append({
+                "code": sub_field.attrib["code"],
+                "value": sub_field.text,
+            })
         fields[res.attrib["tag"]].append(subfield_data)
     return fields
 
@@ -669,11 +667,21 @@ def write_new_rows_to_file(
     rows: List[Dict[str, str]],
     dialect: Union[Type[csv.Dialect], csv.Dialect],
     fp: TextIO,
+    dict_writer: Type[csv.DictWriter] = csv.DictWriter,
 ) -> None:
-    writer = csv.DictWriter(fp, fieldnames=rows[0].keys(), dialect=dialect)
+    field_names = rows[0].keys()
+    # Just make sure that every row has the same keys
+    if all([r.keys() == rows[0].keys() for r in rows]) is False:
+        raise ValueError("Not all row have the same keys")
+
+    writer = dict_writer(fp, fieldnames=field_names, dialect=dialect)
     writer.writeheader()
     for row in rows:
-        writer.writerow(row)
+        try:
+            writer.writerow(row)
+        except csv.Error as e:
+            logger.error(f"Failed to write: {row}")
+            raise GalateaException("Unable to write row") from e
 
 
 def merge_from_getmarc(
