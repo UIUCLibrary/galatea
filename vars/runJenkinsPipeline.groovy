@@ -254,6 +254,9 @@ def call(){
                                 }
                                 stages{
                                     stage('Run Tests'){
+                                        environment{
+                                            UV_FROZEN='1'
+                                        }
                                         parallel{
                                             stage('Documentation linkcheck'){
                                                 steps {
