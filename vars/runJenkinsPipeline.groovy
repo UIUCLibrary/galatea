@@ -940,7 +940,7 @@ def call(){
                         }
                     }
                 }
-                stages{
+                parallel{
                     stage('GitHub Release'){
                         agent any
                         when{
