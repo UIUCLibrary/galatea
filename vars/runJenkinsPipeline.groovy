@@ -11,6 +11,15 @@ def getStandAloneStorageServers(){
     }
 }
 
+def getPypiConfig() {
+    node(){
+        configFileProvider([configFile(fileId: 'pypi_config', variable: 'CONFIG_FILE')]) {
+            def config = readJSON( file: CONFIG_FILE)
+            return config['deployment']['indexes']
+        }
+    }
+}
+
 def createChocolateyConfigFile(configJsonFile, installerPackage, url){
     def deployJsonMetadata = [
         "PackageVersion": readTOML( file: 'pyproject.toml')['project'].version,
@@ -153,6 +162,8 @@ def createUnixUvConfig(){
 }
 
 def call(){
+    def standaloneMacOSDeploymentStashes = []
+    def standaloneWindowsDeploymentStashes = []
     library(
         identifier: 'JenkinsPythonHelperLibrary@2024.12.0',
         retriever: modernSCM(
@@ -176,11 +187,12 @@ def call(){
             booleanParam(name: 'INCLUDE_MACOS-X86_64', defaultValue: false, description: 'Include x86_64 architecture for Mac')
             booleanParam(name: 'INCLUDE_MACOS-ARM64', defaultValue: false, description: 'Include ARM(m1) architecture for Mac')
             booleanParam(name: 'INCLUDE_WINDOWS-X86_64', defaultValue: false, description: 'Include x86_64 architecture for Windows')
-            booleanParam(name: 'CREATE_GITHUB_RELEASE', defaultValue: false, description: 'Deploy to Github Release. Requires the current commit to be tagged. Note: This is experimental')
             booleanParam(name: 'PACKAGE_STANDALONE_WINDOWS_INSTALLER', defaultValue: false, description: 'Create a standalone Windows version that does not require a user to install python first')
             booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_X86_64', defaultValue: false, description: 'Create a standalone version for MacOS X86_64 (m1) machines')
             booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_ARM64', defaultValue: false, description: 'Create a standalone version for MacOS ARM64 (Intel) machines')
+            booleanParam(name: 'CREATE_GITHUB_RELEASE', defaultValue: false, description: 'Deploy to Github Release. Requires the current commit to be tagged. Note: This is experimental')
             booleanParam(name: 'DEPLOY_STANDALONE_PACKAGERS', defaultValue: false, description: 'Deploy standalone packages')
+            booleanParam(name: 'DEPLOY_PYPI', defaultValue: false, description: 'Deploy to pypi. Must be used with BUILD_PACKAGES')
         }
         stages {
             stage('Testing'){
@@ -219,9 +231,7 @@ def call(){
                             stage('Build Documentation'){
                                 steps{
                                     catchError(buildResult: 'UNSTABLE', message: 'Sphinx has warnings', stageResult: 'UNSTABLE') {
-                                        sh '''. ./venv/bin/activate
-                                              python -m sphinx --builder=html -W --keep-going -w logs/build_sphinx_html.log -d build/docs/.doctrees docs dist/docs/html
-                                           '''
+                                        sh './venv/bin/uv run -m sphinx --builder=html -W --keep-going -w logs/build_sphinx_html.log -d build/docs/.doctrees docs dist/docs/html'
                                    }
                                 }
                                 post{
@@ -244,15 +254,16 @@ def call(){
                                 }
                                 stages{
                                     stage('Run Tests'){
+                                        environment{
+                                            UV_FROZEN='1'
+                                        }
                                         parallel{
                                             stage('Documentation linkcheck'){
                                                 steps {
                                                     catchError(buildResult: 'SUCCESS', message: 'Sphinx docs linkcheck', stageResult: 'UNSTABLE') {
                                                         sh(
                                                             label: 'Running Sphinx docs linkcheck',
-                                                            script: '''. ./venv/bin/activate
-                                                                       python -m sphinx -b doctest docs/ build/docs -d build/docs/doctrees --no-color --builder=linkcheck --fail-on-warning
-                                                                       '''
+                                                            script: './venv/bin/uv run -m sphinx -b doctest docs/ build/docs -d build/docs/doctrees --no-color --builder=linkcheck --fail-on-warning'
                                                             )
                                                     }
                                                 }
@@ -261,9 +272,7 @@ def call(){
                                                 steps {
                                                     sh(
                                                         label: 'Running Doctest Tests',
-                                                        script: '''. ./venv/bin/activate
-                                                                   coverage run --parallel-mode --source=src -m sphinx -b doctest docs/ dist/docs/html -d build/docs/doctrees --no-color -w logs/doctest.txt
-                                                                '''
+                                                        script: './venv/bin/uv run coverage run --parallel-mode --source=src -m sphinx -b doctest docs/ dist/docs/html -d build/docs/doctrees --no-color -w logs/doctest.txt'
                                                         )
                                                 }
                                                 post{
@@ -276,9 +285,7 @@ def call(){
                                                 steps{
                                                     sh(
                                                         label: 'Run Pytest',
-                                                        script: '''. ./venv/bin/activate
-                                                                coverage run --parallel-mode --source=src -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml
-                                                                '''
+                                                        script: './venv/bin/uv run coverage run --parallel-mode --source=src -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml'
                                                     )
                                                 }
                                                 post{
@@ -292,7 +299,7 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'MyPy found issues', stageResult: 'UNSTABLE') {
                                                         tee('logs/mypy.log'){
                                                             sh(label: 'Running MyPy',
-                                                               script: '. ./venv/bin/activate && mypy -p galatea --html-report reports/mypy/html'
+                                                               script: './venv/bin/uv run mypy -p galatea --html-report reports/mypy/html'
                                                             )
                                                         }
                                                     }
@@ -309,9 +316,8 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
                                                         sh(
                                                          label: 'Running Ruff',
-                                                         script: '''. ./venv/bin/activate
-                                                                    ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
-                                                                    ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
+                                                         script: '''./venv/bin/uv run ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
+                                                                    ./venv/bin/uv run ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
                                                                 '''
                                                          )
                                                     }
@@ -334,11 +340,10 @@ def call(){
                                             always{
                                                 sh(
                                                     label: 'Combining coverage data and generating report',
-                                                    script: '''. ./venv/bin/activate
-                                                              coverage combine
-                                                              coverage xml -o reports/coverage.xml
-                                                              coverage html -d reports/coverage
-                                                              '''
+                                                    script: '''./venv/bin/uv run coverage combine
+                                                               ./venv/bin/uv run coverage xml -o reports/coverage.xml
+                                                               ./venv/bin/uv run coverage html -d reports/coverage
+                                                            '''
                                                 )
                                                 recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
                                             }
@@ -457,11 +462,8 @@ def call(){
                                                                             }
                                                                         }
                                                                     } catch(e) {
-                                                                        if (fileExists('./venv/bin/activate')) {
-                                                                            sh(script: '''. ./venv/bin/activate
-                                                                                  uv python list
-                                                                                  '''
-                                                                                    )
+                                                                        if (fileExists('./venv/bin/uv')) {
+                                                                            sh(script: './venv/bin/uv python list')
                                                                         }
                                                                         throw e
                                                                     }
@@ -579,8 +581,7 @@ def call(){
                                         sh(
                                             label: 'Package',
                                             script: '''python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
-                                                       . ./venv/bin/activate
-                                                       uv build
+                                                       ./venv/bin/uv build
                                                     '''
                                         )
                                     }
@@ -750,6 +751,11 @@ def call(){
                                             }
                                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                             stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_X86_64'
+                                            script{
+                                                if(params.DEPLOY_STANDALONE_PACKAGERS){
+                                                    standaloneMacOSDeploymentStashes << 'APPLE_APPLICATION_X86_64'
+                                                }
+                                            }
                                         }
                                         post{
                                             cleanup{
@@ -801,6 +807,11 @@ def call(){
                                             }
                                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                             stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_ARM64'
+                                            script{
+                                                if(params.DEPLOY_STANDALONE_PACKAGERS){
+                                                    standaloneMacOSDeploymentStashes << 'APPLE_APPLICATION_ARM64'
+                                                }
+                                            }
                                         }
                                         post{
                                             cleanup{
@@ -857,6 +868,11 @@ def call(){
                                             }
                                             archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
                                             stash includes: 'dist/*.zip', name: 'WINDOWS_APPLICATION_X86_64'
+                                            script{
+                                                if(params.DEPLOY_STANDALONE_PACKAGERS){
+                                                    standaloneWindowsDeploymentStashes << 'WINDOWS_APPLICATION_X86_64'
+                                                }
+                                            }
                                         }
                                         post{
                                             always{
@@ -918,12 +934,16 @@ def call(){
                         equals expected: true, actual: params.DEPLOY_STANDALONE_PACKAGERS
                         allOf{
                             equals expected: true, actual: params.BUILD_PACKAGES
+                            equals expected: true, actual: params.DEPLOY_PYPI
+                        }
+                        allOf{
+                            equals expected: true, actual: params.BUILD_PACKAGES
                             equals expected: true, actual: params.CREATE_GITHUB_RELEASE
                             tag '*'
                         }
                     }
                 }
-                stages{
+                parallel{
                     stage('GitHub Release'){
                         agent any
                         when{
@@ -975,6 +995,70 @@ def call(){
                            }
                        }
                     }
+                    stage('Deploy to pypi') {
+                        environment{
+                            PIP_CACHE_DIR='/tmp/pipcache'
+                            UV_TOOL_DIR='/tmp/uvtools'
+                            UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                            UV_CACHE_DIR='/tmp/uvcache'
+                        }
+                        agent {
+                            docker{
+                                image 'python'
+                                label 'docker && linux'
+                                args '--mount source=python-tmp-galatea,target=/tmp'
+                            }
+                        }
+                        when{
+                            allOf{
+                                equals expected: true, actual: params.BUILD_PACKAGES
+                                equals expected: true, actual: params.DEPLOY_PYPI
+                            }
+                            beforeAgent true
+                            beforeInput true
+                        }
+                        options{
+                            retry(3)
+                        }
+                        input {
+                            message 'Upload to pypi server?'
+                            parameters {
+                                choice(
+                                    choices: getPypiConfig(),
+                                    description: 'Url to the pypi index to upload python packages.',
+                                    name: 'SERVER_URL'
+                                )
+                            }
+                        }
+                        steps{
+                            unstash 'PYTHON_PACKAGES'
+                            withEnv(["TWINE_REPOSITORY_URL=${SERVER_URL}",]){
+                                withCredentials(
+                                    [
+                                        usernamePassword(
+                                            credentialsId: 'jenkins-nexus',
+                                            passwordVariable: 'TWINE_PASSWORD',
+                                            usernameVariable: 'TWINE_USERNAME'
+                                        )
+                                    ]
+                                ){
+                                    sh(
+                                        label: 'Uploading to pypi',
+                                        script: '''python3 -m venv venv
+                                                   trap "rm -rf venv" EXIT
+                                                   ./venv/bin/pip install --disable-pip-version-check uv
+                                                   ./venv/bin/uv run --only-group=release --isolated twine upload --disable-progress-bar --non-interactive dist/*
+                                                '''
+                                    )
+                                }
+                            }
+                        }
+                        post{
+                            cleanup{
+                                sh 'git clean -dfx'
+                            }
+                        }
+                    }
                     stage('Deploy Standalone'){
                         when {
                             allOf{
@@ -1000,60 +1084,26 @@ def call(){
                                 string defaultValue: "galatea/${get_version()}", description: 'subdirectory to store artifact', name: 'archiveFolder'
                             }
                         }
-                        parallel{
-                            stage('Deploy Standalone Applications: Windows x86_64'){
+                        stages{
+                            stage('Deploy Standalone Applications'){
                                 agent any
-                                when{
-                                    equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
-                                    beforeAgent true
-                                }
-                                environment{
-                                    GENERATED_CHOCOLATEY_CONFIG_FILE='dist/chocolatey/config.json'
-                                }
                                 steps{
                                     script{
-                                        unstash 'WINDOWS_APPLICATION_X86_64'
-                                        def deploymentFile = findFiles(glob: 'dist/*.zip')[0]
-                                        def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
-                                        createChocolateyConfigFile(env.GENERATED_CHOCOLATEY_CONFIG_FILE, deploymentFile, deployedUrl)
-                                        archiveArtifacts artifacts: env.GENERATED_CHOCOLATEY_CONFIG_FILE
-                                        echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
-                                    }
-                                }
-                                post{
-                                    success{
-                                        echo "Use ${env.GENERATED_CHOCOLATEY_CONFIG_FILE} for deploying to Chocolatey with https://github.com/UIUCLibrary/chocolatey-hosted-public.git. Found in the artifacts for this build."
-                                        echo "${readFile(env.GENERATED_CHOCOLATEY_CONFIG_FILE)}"
-                                    }
-                                }
-                            }
-                            stage('Deploy Standalone Applications: MacOS ARM64'){
-                                agent any
-                                when{
-                                    equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
-                                    beforeAgent true
-                                }
-                                steps{
-                                    script{
-                                        unstash 'APPLE_APPLICATION_ARM64'
-                                        def deploymentFile = findFiles(glob: 'dist/*.tar.gz')[0]
-                                        def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
-                                        echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
-                                    }
-                                }
-                            }
-                            stage('Deploy Standalone Applications: MacOS X86_64'){
-                                agent any
-                                when{
-                                    equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
-                                    beforeAgent true
-                                }
-                                steps{
-                                    script{
-                                        unstash 'APPLE_APPLICATION_X86_64'
-                                        def deploymentFile = findFiles(glob: 'dist/*.tar.gz')[0]
-                                        def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
-                                        echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                                        standaloneMacOSDeploymentStashes.each{
+                                            unstash "${it}"
+                                        }
+                                        findFiles(glob: 'dist/*.tar.gz').each{ deploymentFile ->
+                                            deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
+                                        }
+                                        standaloneWindowsDeploymentStashes.each{
+                                            unstash "${it}"
+                                        }
+                                        findFiles(glob: 'dist/*.zip').each{ deploymentFile ->
+                                            def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
+                                            createChocolateyConfigFile('dist/chocolatey/config.json', deploymentFile, deployedUrl)
+                                            archiveArtifacts(artifacts: 'dist/chocolatey/config.json')
+                                            echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                                        }
                                     }
                                 }
                             }
