@@ -22,7 +22,7 @@ create_standalone(){
     $uv_path export --frozen --only-group dev --no-hashes --format requirements.txt --no-emit-project --no-annotate > $UV_BUILD_CONSTRAINT
     $uv_path build --build-constraints "${UV_BUILD_CONSTRAINT}" --wheel
 
-    $uv_path export --frozen --format requirements.txt --no-emit-project --no-annotate > $REQUIREMENTS_FILE
+    $uv_path export --frozen --format requirements.txt --no-dev --no-emit-project --no-annotate > $REQUIREMENTS_FILE
     $uv_path run --index-strategy=unsafe-best-match --with-requirements "${REQUIREMENTS_FILE}" $FREEZE_SCRIPT --include-tab-completions galatea ./contrib/bootstrap_standalone.py
 }
 
