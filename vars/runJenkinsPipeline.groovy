@@ -153,6 +153,8 @@ def createUnixUvConfig(){
 }
 
 def call(){
+    def standaloneMacOSDeploymentStashes = []
+    def standaloneWindowsDeploymentStashes = []
     library(
         identifier: 'JenkinsPythonHelperLibrary@2024.12.0',
         retriever: modernSCM(
@@ -750,6 +752,11 @@ def call(){
                                             }
                                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                             stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_X86_64'
+                                            script{
+                                                if(params.DEPLOY_STANDALONE_PACKAGERS){
+                                                    standaloneMacOSDeploymentStashes << 'APPLE_APPLICATION_X86_64'
+                                                }
+                                            }
                                         }
                                         post{
                                             cleanup{
@@ -801,6 +808,11 @@ def call(){
                                             }
                                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                             stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_ARM64'
+                                            script{
+                                                if(params.DEPLOY_STANDALONE_PACKAGERS){
+                                                    standaloneMacOSDeploymentStashes << 'APPLE_APPLICATION_ARM64'
+                                                }
+                                            }
                                         }
                                         post{
                                             cleanup{
@@ -857,6 +869,11 @@ def call(){
                                             }
                                             archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
                                             stash includes: 'dist/*.zip', name: 'WINDOWS_APPLICATION_X86_64'
+                                            script{
+                                                if(params.DEPLOY_STANDALONE_PACKAGERS){
+                                                    standaloneWindowsDeploymentStashes << 'WINDOWS_APPLICATION_X86_64'
+                                                }
+                                            }
                                         }
                                         post{
                                             always{
@@ -1000,60 +1017,26 @@ def call(){
                                 string defaultValue: "galatea/${get_version()}", description: 'subdirectory to store artifact', name: 'archiveFolder'
                             }
                         }
-                        parallel{
-                            stage('Deploy Standalone Applications: Windows x86_64'){
+                        stages{
+                            stage('Deploy Standalone Applications'){
                                 agent any
-                                when{
-                                    equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
-                                    beforeAgent true
-                                }
-                                environment{
-                                    GENERATED_CHOCOLATEY_CONFIG_FILE='dist/chocolatey/config.json'
-                                }
                                 steps{
                                     script{
-                                        unstash 'WINDOWS_APPLICATION_X86_64'
-                                        def deploymentFile = findFiles(glob: 'dist/*.zip')[0]
-                                        def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
-                                        createChocolateyConfigFile(env.GENERATED_CHOCOLATEY_CONFIG_FILE, deploymentFile, deployedUrl)
-                                        archiveArtifacts artifacts: env.GENERATED_CHOCOLATEY_CONFIG_FILE
-                                        echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
-                                    }
-                                }
-                                post{
-                                    success{
-                                        echo "Use ${env.GENERATED_CHOCOLATEY_CONFIG_FILE} for deploying to Chocolatey with https://github.com/UIUCLibrary/chocolatey-hosted-public.git. Found in the artifacts for this build."
-                                        echo "${readFile(env.GENERATED_CHOCOLATEY_CONFIG_FILE)}"
-                                    }
-                                }
-                            }
-                            stage('Deploy Standalone Applications: MacOS ARM64'){
-                                agent any
-                                when{
-                                    equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
-                                    beforeAgent true
-                                }
-                                steps{
-                                    script{
-                                        unstash 'APPLE_APPLICATION_ARM64'
-                                        def deploymentFile = findFiles(glob: 'dist/*.tar.gz')[0]
-                                        def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
-                                        echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
-                                    }
-                                }
-                            }
-                            stage('Deploy Standalone Applications: MacOS X86_64'){
-                                agent any
-                                when{
-                                    equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
-                                    beforeAgent true
-                                }
-                                steps{
-                                    script{
-                                        unstash 'APPLE_APPLICATION_X86_64'
-                                        def deploymentFile = findFiles(glob: 'dist/*.tar.gz')[0]
-                                        def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
-                                        echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                                        standaloneMacOSDeploymentStashes.each{
+                                            unstash "${it}"
+                                        }
+                                        findFiles(glob: 'dist/*.tar.gz').each{ deploymentFile ->
+                                            deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
+                                        }
+                                        standaloneWindowsDeploymentStashes.each{
+                                            unstash "${it}"
+                                        }
+                                        findFiles(glob: 'dist/*.zip').each{ deploymentFile ->
+                                            def deployedUrl = deploySingleStandalone(deploymentFile, "${SERVER_URL}/${archiveFolder}", NEXUS_CREDS)
+                                            createChocolateyConfigFile('dist/chocolatey/config.json', deploymentFile, deployedUrl)
+                                            archiveArtifacts(artifacts: 'dist/chocolatey/config.json')
+                                            echo "Deployed ${deploymentFile} to ${deployedUrl} -> SHA256: ${sha256(deploymentFile.path)}"
+                                        }
                                     }
                                 }
                             }
