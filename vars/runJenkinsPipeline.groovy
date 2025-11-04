@@ -187,10 +187,10 @@ def call(){
             booleanParam(name: 'INCLUDE_MACOS-X86_64', defaultValue: false, description: 'Include x86_64 architecture for Mac')
             booleanParam(name: 'INCLUDE_MACOS-ARM64', defaultValue: false, description: 'Include ARM(m1) architecture for Mac')
             booleanParam(name: 'INCLUDE_WINDOWS-X86_64', defaultValue: false, description: 'Include x86_64 architecture for Windows')
-            booleanParam(name: 'CREATE_GITHUB_RELEASE', defaultValue: false, description: 'Deploy to Github Release. Requires the current commit to be tagged. Note: This is experimental')
             booleanParam(name: 'PACKAGE_STANDALONE_WINDOWS_INSTALLER', defaultValue: false, description: 'Create a standalone Windows version that does not require a user to install python first')
             booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_X86_64', defaultValue: false, description: 'Create a standalone version for MacOS X86_64 (m1) machines')
             booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_ARM64', defaultValue: false, description: 'Create a standalone version for MacOS ARM64 (Intel) machines')
+            booleanParam(name: 'CREATE_GITHUB_RELEASE', defaultValue: false, description: 'Deploy to Github Release. Requires the current commit to be tagged. Note: This is experimental')
             booleanParam(name: 'DEPLOY_STANDALONE_PACKAGERS', defaultValue: false, description: 'Deploy standalone packages')
             booleanParam(name: 'DEPLOY_PYPI', defaultValue: false, description: 'Deploy to pypi. Must be used with BUILD_PACKAGES')
         }
