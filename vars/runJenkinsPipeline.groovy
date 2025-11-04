@@ -231,9 +231,7 @@ def call(){
                             stage('Build Documentation'){
                                 steps{
                                     catchError(buildResult: 'UNSTABLE', message: 'Sphinx has warnings', stageResult: 'UNSTABLE') {
-                                        sh '''. ./venv/bin/activate
-                                              python -m sphinx --builder=html -W --keep-going -w logs/build_sphinx_html.log -d build/docs/.doctrees docs dist/docs/html
-                                           '''
+                                        sh './venv/bin/uv run -m sphinx --builder=html -W --keep-going -w logs/build_sphinx_html.log -d build/docs/.doctrees docs dist/docs/html'
                                    }
                                 }
                                 post{
@@ -262,9 +260,7 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'Sphinx docs linkcheck', stageResult: 'UNSTABLE') {
                                                         sh(
                                                             label: 'Running Sphinx docs linkcheck',
-                                                            script: '''. ./venv/bin/activate
-                                                                       python -m sphinx -b doctest docs/ build/docs -d build/docs/doctrees --no-color --builder=linkcheck --fail-on-warning
-                                                                       '''
+                                                            script: './venv/bin/uv run -m sphinx -b doctest docs/ build/docs -d build/docs/doctrees --no-color --builder=linkcheck --fail-on-warning'
                                                             )
                                                     }
                                                 }
@@ -273,9 +269,7 @@ def call(){
                                                 steps {
                                                     sh(
                                                         label: 'Running Doctest Tests',
-                                                        script: '''. ./venv/bin/activate
-                                                                   coverage run --parallel-mode --source=src -m sphinx -b doctest docs/ dist/docs/html -d build/docs/doctrees --no-color -w logs/doctest.txt
-                                                                '''
+                                                        script: './venv/bin/uv run coverage run --parallel-mode --source=src -m sphinx -b doctest docs/ dist/docs/html -d build/docs/doctrees --no-color -w logs/doctest.txt'
                                                         )
                                                 }
                                                 post{
@@ -288,9 +282,7 @@ def call(){
                                                 steps{
                                                     sh(
                                                         label: 'Run Pytest',
-                                                        script: '''. ./venv/bin/activate
-                                                                coverage run --parallel-mode --source=src -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml
-                                                                '''
+                                                        script: './venv/bin/uv run coverage run --parallel-mode --source=src -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml'
                                                     )
                                                 }
                                                 post{
@@ -304,7 +296,7 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'MyPy found issues', stageResult: 'UNSTABLE') {
                                                         tee('logs/mypy.log'){
                                                             sh(label: 'Running MyPy',
-                                                               script: '. ./venv/bin/activate && mypy -p galatea --html-report reports/mypy/html'
+                                                               script: './venv/bin/uv run mypy -p galatea --html-report reports/mypy/html'
                                                             )
                                                         }
                                                     }
@@ -321,9 +313,8 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
                                                         sh(
                                                          label: 'Running Ruff',
-                                                         script: '''. ./venv/bin/activate
-                                                                    ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
-                                                                    ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
+                                                         script: '''./venv/bin/uv run ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
+                                                                    ./venv/bin/uv run ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
                                                                 '''
                                                          )
                                                     }
@@ -346,11 +337,10 @@ def call(){
                                             always{
                                                 sh(
                                                     label: 'Combining coverage data and generating report',
-                                                    script: '''. ./venv/bin/activate
-                                                              coverage combine
-                                                              coverage xml -o reports/coverage.xml
-                                                              coverage html -d reports/coverage
-                                                              '''
+                                                    script: '''./venv/bin/uv run coverage combine
+                                                               ./venv/bin/uv run coverage xml -o reports/coverage.xml
+                                                               ./venv/bin/uv run coverage html -d reports/coverage
+                                                            '''
                                                 )
                                                 recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
                                             }
@@ -469,11 +459,8 @@ def call(){
                                                                             }
                                                                         }
                                                                     } catch(e) {
-                                                                        if (fileExists('./venv/bin/activate')) {
-                                                                            sh(script: '''. ./venv/bin/activate
-                                                                                  uv python list
-                                                                                  '''
-                                                                                    )
+                                                                        if (fileExists('./venv/bin/uv')) {
+                                                                            sh(script: './venv/bin/uv python list')
                                                                         }
                                                                         throw e
                                                                     }
@@ -591,8 +578,7 @@ def call(){
                                         sh(
                                             label: 'Package',
                                             script: '''python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
-                                                       . ./venv/bin/activate
-                                                       uv build
+                                                       ./venv/bin/uv build
                                                     '''
                                         )
                                     }
