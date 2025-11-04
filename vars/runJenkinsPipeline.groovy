@@ -11,6 +11,15 @@ def getStandAloneStorageServers(){
     }
 }
 
+def getPypiConfig() {
+    node(){
+        configFileProvider([configFile(fileId: 'pypi_config', variable: 'CONFIG_FILE')]) {
+            def config = readJSON( file: CONFIG_FILE)
+            return config['deployment']['indexes']
+        }
+    }
+}
+
 def createChocolateyConfigFile(configJsonFile, installerPackage, url){
     def deployJsonMetadata = [
         "PackageVersion": readTOML( file: 'pyproject.toml')['project'].version,
@@ -183,6 +192,7 @@ def call(){
             booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_X86_64', defaultValue: false, description: 'Create a standalone version for MacOS X86_64 (m1) machines')
             booleanParam(name: 'PACKAGE_MAC_OS_STANDALONE_ARM64', defaultValue: false, description: 'Create a standalone version for MacOS ARM64 (Intel) machines')
             booleanParam(name: 'DEPLOY_STANDALONE_PACKAGERS', defaultValue: false, description: 'Deploy standalone packages')
+            booleanParam(name: 'DEPLOY_PYPI', defaultValue: false, description: 'Deploy to pypi. Must be used with BUILD_PACKAGES')
         }
         stages {
             stage('Testing'){
@@ -935,6 +945,10 @@ def call(){
                         equals expected: true, actual: params.DEPLOY_STANDALONE_PACKAGERS
                         allOf{
                             equals expected: true, actual: params.BUILD_PACKAGES
+                            equals expected: true, actual: params.DEPLOY_PYPI
+                        }
+                        allOf{
+                            equals expected: true, actual: params.BUILD_PACKAGES
                             equals expected: true, actual: params.CREATE_GITHUB_RELEASE
                             tag '*'
                         }
@@ -991,6 +1005,70 @@ def call(){
                                }
                            }
                        }
+                    }
+                    stage('Deploy to pypi') {
+                        environment{
+                            PIP_CACHE_DIR='/tmp/pipcache'
+                            UV_TOOL_DIR='/tmp/uvtools'
+                            UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                            UV_CACHE_DIR='/tmp/uvcache'
+                        }
+                        agent {
+                            docker{
+                                image 'python'
+                                label 'docker && linux'
+                                args '--mount source=python-tmp-galatea,target=/tmp'
+                            }
+                        }
+                        when{
+                            allOf{
+                                equals expected: true, actual: params.BUILD_PACKAGES
+                                equals expected: true, actual: params.DEPLOY_PYPI
+                            }
+                            beforeAgent true
+                            beforeInput true
+                        }
+                        options{
+                            retry(3)
+                        }
+                        input {
+                            message 'Upload to pypi server?'
+                            parameters {
+                                choice(
+                                    choices: getPypiConfig(),
+                                    description: 'Url to the pypi index to upload python packages.',
+                                    name: 'SERVER_URL'
+                                )
+                            }
+                        }
+                        steps{
+                            unstash 'PYTHON_PACKAGES'
+                            withEnv(["TWINE_REPOSITORY_URL=${SERVER_URL}",]){
+                                withCredentials(
+                                    [
+                                        usernamePassword(
+                                            credentialsId: 'jenkins-nexus',
+                                            passwordVariable: 'TWINE_PASSWORD',
+                                            usernameVariable: 'TWINE_USERNAME'
+                                        )
+                                    ]
+                                ){
+                                    sh(
+                                        label: 'Uploading to pypi',
+                                        script: '''python3 -m venv venv
+                                                   trap "rm -rf venv" EXIT
+                                                   ./venv/bin/pip install --disable-pip-version-check uv
+                                                   ./venv/bin/uv run --only-group=release --isolated twine upload --disable-progress-bar --non-interactive dist/*
+                                                '''
+                                    )
+                                }
+                            }
+                        }
+                        post{
+                            cleanup{
+                                sh 'git clean -dfx'
+                            }
+                        }
                     }
                     stage('Deploy Standalone'){
                         when {
