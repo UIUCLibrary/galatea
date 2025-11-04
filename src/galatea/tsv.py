@@ -154,7 +154,15 @@ def _sniff_tsv_dialect(fp: TextIO) -> Union[Type[csv.Dialect], csv.Dialect]:
     with remembered_file_pointer_head(fp):
         try:
             sniffer = csv.Sniffer()
-            return sniffer.sniff(fp.read(1024 * 2), delimiters="\t")
+            dialect = sniffer.sniff(fp.read(1024 * 2), delimiters="\t")
+            if dialect.doublequote is False:
+                logger.warning(
+                    f"dialog deterimined by {_sniff_tsv_dialect.__name__} using "
+                    f"double quotes, dispite not detected them in source tsv "
+                    f"file."
+                )
+                dialect.doublequote = True
+            return dialect
         except csv.Error as e:
             raise UnknownDialect() from e
 

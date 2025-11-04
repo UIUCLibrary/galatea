@@ -55,7 +55,7 @@ logger.setLevel(logging.INFO)
 
 
 class ExperimentalFeatureError(GalateaException):
-    def __init__(self, *args, source):
+    def __init__(self, *args, source: str) -> None:
         super().__init__(*args)
         self.source = source
 
@@ -480,7 +480,7 @@ def experimental_feature(func):
     return inner
 
 
-def organize_marc_one_code_per_subfield(marc_record):
+def organize_marc_one_code_per_subfield(marc_record: ET.Element):
     fields = collections.defaultdict(list)
     ns = {"marc": MARC_SLIM_XML_NAMESPACE}
     for res in marc_record.findall(".//marc:datafield", ns):
@@ -491,28 +491,30 @@ def organize_marc_one_code_per_subfield(marc_record):
     return fields
 
 
-def organize_with_code_and_value(marc_record):
+def organize_with_code_and_value(marc_record: ET.Element):
     fields = collections.defaultdict(list)
     ns = {"marc": MARC_SLIM_XML_NAMESPACE}
     for res in marc_record.findall(".//marc:datafield", ns):
         subfield_data = []
         for sub_field in res.findall(".//marc:subfield", ns):
-            subfield_data.append(
-                {
-                    "code": sub_field.attrib["code"],
-                    "value": sub_field.text,
-                }
-            )
+            subfield_data.append({
+                "code": sub_field.attrib["code"],
+                "value": sub_field.text,
+            })
         fields[res.attrib["tag"]].append(subfield_data)
     return fields
 
 
 @experimental_feature
 def serialize_with_jinja_template(
-    marc_record, config, enable_experimental_features
-):
+    marc_record: ET.Element,
+    config: MappingConfig,
+    enable_experimental_features: bool,
+) -> str:
     serialization_method = config.experimental[config.serialize_method]
-    jinja_template = "".join(serialization_method["template"].split("\n"))
+    jinja_template = "".join(
+        typing.cast(str, serialization_method["template"]).split("\n")
+    )
     template = jinja2.Template(jinja_template)
     fields = organize_with_code_and_value(marc_record)
     try:
@@ -592,8 +594,10 @@ class MergeRowData:
 
 
 def serialization_base_on_config(
-    record: ET.Element, config: MappingConfig, enable_experimental_features
-):
+    record: ET.Element,
+    config: MappingConfig,
+    enable_experimental_features: bool,
+) -> Optional[str]:
     match config.serialize_method:
         case "verbatim":
             return locate_marc_value_in_record(config, record)
@@ -603,6 +607,7 @@ def serialization_base_on_config(
                 config,
                 enable_experimental_features=enable_experimental_features,
             )
+    return None
 
 
 def merge_data_from_getmarc(
@@ -669,11 +674,21 @@ def write_new_rows_to_file(
     rows: List[Dict[str, str]],
     dialect: Union[Type[csv.Dialect], csv.Dialect],
     fp: TextIO,
+    dict_writer: Type[csv.DictWriter] = csv.DictWriter,
 ) -> None:
-    writer = csv.DictWriter(fp, fieldnames=rows[0].keys(), dialect=dialect)
+    field_names = rows[0].keys()
+    # Just make sure that every row has the same keys
+    if all([r.keys() == rows[0].keys() for r in rows]) is False:
+        raise ValueError("Not all row have the same keys")
+
+    writer = dict_writer(fp, fieldnames=field_names, dialect=dialect)
     writer.writeheader()
     for row in rows:
-        writer.writerow(row)
+        try:
+            writer.writerow(row)
+        except csv.Error as e:
+            logger.error(f"Failed to write: {row}")
+            raise GalateaException("Unable to write row") from e
 
 
 def merge_from_getmarc(

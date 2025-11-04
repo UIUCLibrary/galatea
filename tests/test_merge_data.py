@@ -1,3 +1,4 @@
+import csv
 import io
 import os
 import pathlib
@@ -14,6 +15,7 @@ import pytest
 from jinja2 import Template
 
 from galatea import merge_data
+from galatea.utils import GalateaException
 
 
 def test_generate_mapping_file_for_tsv_calls_strategy() -> None:
@@ -226,17 +228,27 @@ def test_merge_data_from_getmarc_uses_getmarc_strategy():
     get_marc_server_strategy.assert_called_once_with("dummy_id")
 
 
-def test_merge_data_from_getmarc_captures_line_in_serialization_error(monkeypatch):
+def test_merge_data_from_getmarc_captures_line_in_serialization_error(
+    monkeypatch,
+):
     get_marc_server_strategy = Mock(return_value="Bacon")
-    monkeypatch.setattr(merge_data.MergeRowData, "merge_row_data", Mock(side_effect=merge_data.SerialzationError))
+    monkeypatch.setattr(
+        merge_data.MergeRowData,
+        "merge_row_data",
+        Mock(side_effect=merge_data.SerialzationError),
+    )
     with pytest.raises(merge_data.SerialzationError) as error:
         merge_data.merge_data_from_getmarc(
             io.BytesIO(SAMPLE_MAPPING_FILE_CONTENTS),
-            input_metadata_tsv_fp=io.StringIO(SAMPLE_METADATA_TSV_FILE_CONTENTS),
+            input_metadata_tsv_fp=io.StringIO(
+                SAMPLE_METADATA_TSV_FILE_CONTENTS
+            ),
             get_marc_server_strategy=get_marc_server_strategy,
             dialect="excel-tab",
-    )
-    assert "line 2" in str(error)    # get_marc_server_strategy.assert_called_once_with("dummy_id")
+        )
+    assert "line 2" in str(
+        error
+    )  # get_marc_server_strategy.assert_called_once_with("dummy_id")
 
 
 def test_merge_data_from_getmarc_warns_about_extra_mapping_keys(caplog):
@@ -523,14 +535,13 @@ def test_field_with_code_and_value(template_string, expected_result):
         == expected_result
     )
 
-def test_serialize_with_jinja_template_type_error_raise_serialization_error(monkeypatch):
+
+def test_serialize_with_jinja_template_type_error_raise_serialization_error(
+    monkeypatch,
+):
     config = Mock(
         serialize_method="jinja2template",
-        experimental={
-            "jinja2template": {
-                'template': ""
-            }
-        }
+        experimental={"jinja2template": {"template": ""}},
     )
     monkeypatch.setattr(
         merge_data.jinja2.Template,
@@ -539,11 +550,16 @@ def test_serialize_with_jinja_template_type_error_raise_serialization_error(monk
             name="render",
             side_effect=TypeError(
                 'can only concatenate list (not "str") to list'
-            )
-        )
+            ),
+        ),
     )
     with pytest.raises(merge_data.SerialzationError):
-        merge_data.serialize_with_jinja_template(marc_record=MagicMock(), config=config, enable_experimental_features=True)
+        merge_data.serialize_with_jinja_template(
+            marc_record=MagicMock(),
+            config=config,
+            enable_experimental_features=True,
+        )
+
 
 def test_get_matching_marc_data():
     request_strategy = Mock(return_value=Mock(text="<spam></spam>"))
@@ -563,6 +579,26 @@ def test_write_new_rows_to_file():
     merge_data.write_new_rows_to_file(rows, "excel-tab", data)
     results = data.getvalue()
     assert "header1\theader2" in results
+
+
+def test_write_new_rows_to_file_catches_csv_error():
+    data = io.StringIO()
+    rows = [{"header1": "value1", "header2": "value2"}]
+    dict_writer = Mock(name="DictWriter", writerow=Mock(side_effect=csv.Error))
+    with pytest.raises(GalateaException):
+        merge_data.write_new_rows_to_file(
+            rows, "excel-tab", data, Mock(return_value=dict_writer)
+        )
+
+
+def test_write_new_rows_to_file_errors_if_rows_have_different_keys():
+    data = io.StringIO()
+    rows = [
+        {"header1": "value1", "header2": "value2"},
+        {"header3": "value1", "header4": "value2"},
+    ]
+    with pytest.raises(ValueError):
+        merge_data.write_new_rows_to_file(rows, "excel-tab", data)
 
 
 @pytest.mark.parametrize(
