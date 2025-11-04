@@ -1,3 +1,15 @@
+## v0.5.1 (2025-11-04)
+
+### Feat
+
+- write_new_rows_to_file now verifies rows are valid
+
+### Fix
+
+- _sniff_tsv_dialect defaults tsv file dialog with double quotes.
+- better error messages for jinja template throwing a TypeError Exception
+- extra mappings in a mapping toml only produces a warning
+
 ## v0.5.0 (2025-10-29)
 
 ### BREAKING CHANGE
