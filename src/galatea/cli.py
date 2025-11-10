@@ -18,6 +18,7 @@ from galatea import clean_tsv
 from galatea import validate_authorized_terms
 from galatea import resolve_authorized_terms
 from galatea import merge_data
+from galatea.utils import CommandFinishedWithException
 
 import argcomplete
 
@@ -428,6 +429,7 @@ def merge_from_getmarc(
     mapping_file,
     getmarc_server,
     enable_experimental_features: bool,
+    exit_strategy: Callable[[int], None] = sys.exit,
 ) -> None:
     try:
         merge_data.merge_from_getmarc(
@@ -437,6 +439,9 @@ def merge_from_getmarc(
             get_marc_server=getmarc_server,
             enable_experimental_features=enable_experimental_features,
         )
+    except CommandFinishedWithException as e:
+        print(str(e), file=sys.stderr)
+        exit_strategy(1)
     except merge_data.ExperimentalFeatureError as e:
         print(
             "Error: attempting to use a feature that is listed as "
@@ -444,10 +449,10 @@ def merge_from_getmarc(
             f"flag. {e}",
             file=sys.stderr,
         )
-        exit(1)
+        exit_strategy(1)
     except merge_data.BadMappingFileError as e:
         print(str(e), file=sys.stderr)
-        sys.exit(1)
+        exit_strategy(1)
 
 
 def merge_get_marc_data_command(args: argparse.Namespace):

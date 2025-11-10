@@ -6,6 +6,8 @@ import pytest
 
 import galatea.cli
 import galatea.clean_tsv
+import galatea.merge_data
+import galatea.utils
 
 
 @pytest.mark.parametrize(
@@ -94,3 +96,31 @@ def test_authority_check_command(monkeypatch):
     )
     galatea.cli.authority_check_command(args)
     validate_authorized_terms.assert_called_once_with("dummy.tsv")
+
+
+@pytest.mark.parametrize(
+    "thrown_exception, expected_exit_value",
+    [
+        (galatea.utils.CommandFinishedWithException, 1),
+        (galatea.merge_data.ExperimentalFeatureError(source="spam"), 1),
+        (galatea.merge_data.BadMappingFileError(source_file=Mock()), 1),
+    ],
+)
+def test_merge_from_getmarc_exit_with_errors(
+    monkeypatch, thrown_exception, expected_exit_value
+):
+    monkeypatch.setattr(
+        galatea.cli.merge_data,
+        "merge_from_getmarc",
+        Mock(side_effect=thrown_exception),
+    )
+    exit_strategy = Mock()
+    galatea.cli.merge_from_getmarc(
+        metadata_tsv_file="spam.tsv",
+        output_tsv_file="output_spam.tsv",
+        mapping_file="mapping.toml",
+        getmarc_server="bacon",
+        enable_experimental_features=False,
+        exit_strategy=exit_strategy,
+    )
+    exit_strategy.assert_called_once_with(expected_exit_value)

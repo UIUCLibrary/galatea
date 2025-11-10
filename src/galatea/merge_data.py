@@ -12,6 +12,7 @@ import re
 import csv
 import sys
 import warnings
+import xml
 
 import jinja2
 
@@ -37,7 +38,7 @@ from xml.etree import ElementTree as ET
 
 from galatea import tsv
 from galatea.tsv import TableRow
-from galatea.utils import GalateaException
+from galatea.utils import GalateaException, CommandFinishedWithException
 
 
 __all__ = [
@@ -96,6 +97,19 @@ class BadMappingFileError(GalateaException):
 
 
 class SerialzationError(GalateaException): ...
+
+
+class GetMarcRetrievalError(GalateaException):
+    """Unable to access record from GetMarc Server."""
+
+    def __init__(self, mmsid=None, *args):
+        super().__init__(*args)
+        self.mmsid = mmsid
+
+    def __str__(self):
+        if self.mmsid:
+            return f'GetMarcRetrievalError: Unable to get record "{self.mmsid}" record from getmarc server.'
+        return "GetMarcRetrievalError"
 
 
 serialization_methods = {"verbatim": None}
@@ -235,7 +249,10 @@ def get_matching_marc_data(
     request_strategy: Callable[[str], requests.Response] = requests.get,
 ) -> ET.Element:
     result = request_strategy(f"{get_marc_server}/api/record?mms_id={mmsid}")
-    return ET.fromstring(result.text)
+    try:
+        return ET.fromstring(result.text)
+    except xml.etree.ElementTree.ParseError as e:
+        raise GetMarcRetrievalError(mmsid=mmsid) from e
 
 
 MARC_REGEX = r"^(?P<datafield>\d{3})((\$?(?P<subfield>[a-zA-Z0-9]{1}))?$)"
@@ -560,7 +577,7 @@ class MergeRowData:
         ):
             if not row[mapped_source_key]:
                 row[mapped_source_key] = serialized_value
-                logger.info(
+                logger.debug(
                     'Setting "%s" to "%s" on line %d',
                     mapped_source_key,
                     serialized_value,
@@ -570,14 +587,14 @@ class MergeRowData:
 
             match mapping_configuration.existing_data:
                 case "replace":
-                    logger.info(
+                    logger.debug(
                         'Overwriting existing value for "%s"',
                         mapped_source_key,
                     )
                     row[mapped_source_key] = serialized_value
 
                 case "append":
-                    logger.info(
+                    logger.debug(
                         'Appending existing value for "%s"',
                         mapped_source_key,
                     )
@@ -610,6 +627,28 @@ def serialization_base_on_config(
     return None
 
 
+class NonFatalMergingRowError(GalateaException):
+    """Error but that should be logged without causing termination."""
+
+    def __init__(
+        self, message: Optional[str] = None, recovered_data=None, *args
+    ):
+        self.recovered_data = recovered_data
+        self.message = message
+        super().__init__(*args)
+
+    def __str__(self):
+        if self.message:
+            return self.message
+        return "NonFatalMergingRowError"
+
+
+def is_row_empty(
+    row: Dict[str, str],
+) -> bool:
+    return all(not str(e).strip() for e in row.values())
+
+
 def merge_data_from_getmarc(
     mapping_file_fp: BinaryIO,
     input_metadata_tsv_fp: TextIO,
@@ -617,6 +656,7 @@ def merge_data_from_getmarc(
     dialect: Union[Type[csv.Dialect], csv.Dialect],
     enable_experimental_features: bool = False,
 ) -> List[Dict[str, Union[str, str]]]:
+    non_fatal_errors = []
     mapping = read_mapping_toml_data(
         mapping_file_fp,
         map_marc_mapping_to_mapping_config,
@@ -633,40 +673,67 @@ def merge_data_from_getmarc(
 
     warned_extra_keys = set()
     for row in _iter_row(input_metadata_tsv_fp, dialect):
-        record = get_marc_server_strategy(
-            typing.cast(str, row.entry[identifier_key])
-        )
-        merged_row: Dict[str, str] = row.entry.copy()
-        merger = MergeRowData(record)
-        merger.serialize_value_strategy = serialization_base_on_config
-        merger.enable_experimental_features = enable_experimental_features
-        for mapped_source_key, mapping_configuration in mapping.items():
-            # Don't fail if the mapper contains extra keys, just warn the user
-            # about it once.
-            if mapped_source_key not in row.entry:
-                if mapped_source_key not in warned_extra_keys:
-                    warned_extra_keys.add(mapped_source_key)
-                    logger.warning(
-                        'Mapping contains key not found in table: "%s"',
-                        mapped_source_key,
-                    )
+        try:
+            if is_row_empty(row.entry):
+                logger.warning("Row #%s is empty", row.line_number)
+                new_rows.append(row.entry)
                 continue
-
-            # Optimization: if there is already data and existing_data is
-            # set to ignored anyway, skip this key and move on to the next
-            # one
+            logger.info("Mapping row #%s.", row.line_number)
             try:
-                merger.merge_row_data(
-                    mapped_source_key,
-                    merged_row,
-                    mapping_configuration,
-                    row.line_number,
+                record = get_marc_server_strategy(
+                    typing.cast(str, row.entry[identifier_key])
                 )
-            except SerialzationError as e:
-                raise SerialzationError(
-                    f'Tried to serialize line {row.line_number}, column "{mapped_source_key}" of tsv file. {str(e)}'
-                ) from e
-        new_rows.append(merged_row)
+            except GetMarcRetrievalError as e:
+                logger.error(
+                    "Unable to access marc information from row #%s. Reason: %s",
+                    row.line_number,
+                    e,
+                )
+                new_rows.append(row.entry)
+                raise NonFatalMergingRowError(
+                    f"Unable to merge data from row #{row.line_number}"
+                )
+
+            merged_row: Dict[str, str] = row.entry.copy()
+            merger = MergeRowData(record)
+            merger.serialize_value_strategy = serialization_base_on_config
+            merger.enable_experimental_features = enable_experimental_features
+            for mapped_source_key, mapping_configuration in mapping.items():
+                # Don't fail if the mapper contains extra keys, just warn the user
+                # about it once.
+                if mapped_source_key not in row.entry:
+                    if mapped_source_key not in warned_extra_keys:
+                        warned_extra_keys.add(mapped_source_key)
+                        logger.warning(
+                            'Mapping contains key not found in table: "%s"',
+                            mapped_source_key,
+                        )
+                    continue
+
+                # Optimization: if there is already data and existing_data is
+                # set to ignored anyway, skip this key and move on to the next
+                # one
+                try:
+                    merger.merge_row_data(
+                        mapped_source_key,
+                        merged_row,
+                        mapping_configuration,
+                        row.line_number,
+                    )
+                except SerialzationError as e:
+                    raise SerialzationError(
+                        f'Tried to serialize line {row.line_number}, column "{mapped_source_key}" of tsv file. {str(e)}'
+                    ) from e
+            new_rows.append(merged_row)
+        except NonFatalMergingRowError as e:
+            non_fatal_errors.append(str(e))
+
+    if non_fatal_errors:
+        errors_list = "\n".join([f"* {e}" for e in non_fatal_errors])
+        logger.error(
+            f"The following error(s) occured while trying to merge data.\n{errors_list}"
+        )
+        raise NonFatalMergingRowError(recovered_data=new_rows)
     return new_rows
 
 
@@ -725,21 +792,27 @@ def merge_from_getmarc(
         enable_experimental_features: enable experimental features that are not
 
     """
+    successful_with_no_issues = True
     try:
         with input_metadata_tsv_file.open(
             "r", encoding="utf-8"
         ) as input_metadata_tsv_file_fp:
             dialect = tsv.get_tsv_dialect(input_metadata_tsv_file_fp)
             with mapping_file.open("rb") as mapping_file_fp:
-                new_rows = row_merge_data_strategy(
-                    mapping_file_fp,
-                    input_metadata_tsv_file_fp,
-                    functools.partial(
-                        get_matching_marc_data, get_marc_server=get_marc_server
-                    ),
-                    dialect,
-                    enable_experimental_features,
-                )
+                try:
+                    new_rows = row_merge_data_strategy(
+                        mapping_file_fp,
+                        input_metadata_tsv_file_fp,
+                        functools.partial(
+                            get_matching_marc_data,
+                            get_marc_server=get_marc_server,
+                        ),
+                        dialect,
+                        enable_experimental_features,
+                    )
+                except NonFatalMergingRowError as e:
+                    new_rows = e.recovered_data
+                    successful_with_no_issues = False
     except BadMappingDataError as mapping_data_error:
         raise BadMappingFileError(
             source_file=mapping_file, details=mapping_data_error.details
@@ -747,3 +820,9 @@ def merge_from_getmarc(
 
     with output_metadata_tsv_file.open("w", encoding="utf-8") as f:
         write_to_file_strategy(new_rows, dialect, f)
+
+    if not successful_with_no_issues:
+        raise CommandFinishedWithException(
+            f"Unable to complete merge data from GetMARC. "
+            f"{output_metadata_tsv_file} was written to the best it could."
+        )
