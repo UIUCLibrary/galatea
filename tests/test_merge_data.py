@@ -3,19 +3,22 @@ import io
 import os
 import pathlib
 import sys
+import xml
+
+from galatea.merge_data import GetMarcRetrievalError
 
 if sys.version_info >= (3, 11):
     import tomllib
 else:
     import tomli as tomllib
-from unittest.mock import MagicMock, ANY, Mock
+from unittest.mock import MagicMock, ANY, Mock, PropertyMock
 import xml.etree.ElementTree as ET
 import pytest
 
 from jinja2 import Template
 
 from galatea import merge_data
-from galatea.utils import GalateaException
+from galatea.utils import GalateaException, CommandFinishedWithException
 
 
 def test_generate_mapping_file_for_tsv_calls_strategy() -> None:
@@ -251,6 +254,99 @@ def test_merge_data_from_getmarc_captures_line_in_serialization_error(
     )  # get_marc_server_strategy.assert_called_once_with("dummy_id")
 
 
+def test_merge_data_from_getmarc_NonFatalMergingRowError(monkeypatch):
+    sample_metadata_tsv_file_contents = """
+"Uniform Title"	"Bibliographic Identifier"
+"spam"	"spam_id"
+"bacon"	"bacon_id"
+""".lstrip()
+
+    sample_mapping_with_extra_mappings = b"""
+[mappings]
+identifier_key = "Bibliographic Identifier"  
+
+[[mapping]]
+key = "Uniform Title"
+matching_marc_fields = []
+delimiter = "||"
+existing_data = "keep"
+
+[[mapping]]
+key = "Some Other Mapping not found in the tsv"
+matching_marc_fields = []
+delimiter = "||"
+existing_data = "keep"
+""".lstrip()
+    with pytest.raises(merge_data.NonFatalMergingRowError):
+        merge_data.merge_data_from_getmarc(
+            io.BytesIO(sample_mapping_with_extra_mappings),
+            input_metadata_tsv_fp=io.StringIO(
+                sample_metadata_tsv_file_contents
+            ),
+            get_marc_server_strategy=Mock(
+                side_effect=merge_data.GetMarcRetrievalError
+            ),
+            dialect="excel-tab",
+        )
+
+
+def test_merge_from_getmarc_raise_CommandFinishedWithException(monkeypatch):
+    with pytest.raises(CommandFinishedWithException) as error:
+        monkeypatch.setattr(
+            merge_data.tsv, "get_tsv_dialect", Mock(return_value="excel-tab")
+        )
+        merge_data.merge_from_getmarc(
+            input_metadata_tsv_file=MagicMock(),
+            output_metadata_tsv_file=MagicMock(),
+            mapping_file=MagicMock(),
+            get_marc_server="dummy",
+            row_merge_data_strategy=Mock(
+                side_effect=merge_data.NonFatalMergingRowError()
+            ),
+            write_to_file_strategy=Mock(),
+        )
+    assert "Unable to complete merge data from" in str(error.value)
+
+
+def test_merge_data_from_getmarc_is_row_empty(monkeypatch, caplog):
+    sample_metadata_tsv_file_contents = """
+"Uniform Title"	"Bibliographic Identifier"
+"spam"	"spam_id"
+"bacon"	"bacon_id"
+""".lstrip()
+
+    sample_mapping_with_extra_mappings = b"""
+[mappings]
+identifier_key = "Bibliographic Identifier"  
+
+[[mapping]]
+key = "Uniform Title"
+matching_marc_fields = []
+delimiter = "||"
+existing_data = "keep"
+
+[[mapping]]
+key = "Some Other Mapping not found in the tsv"
+matching_marc_fields = []
+delimiter = "||"
+existing_data = "keep"
+""".lstrip()
+    monkeypatch.setattr(merge_data, "is_row_empty", lambda *_: True)
+    merge_data.merge_data_from_getmarc(
+        io.BytesIO(sample_mapping_with_extra_mappings),
+        input_metadata_tsv_fp=io.StringIO(sample_metadata_tsv_file_contents),
+        get_marc_server_strategy=Mock(return_value="Bacon"),
+        dialect="excel-tab",
+    )
+    assert any([
+        all([
+            record.levelname == "WARNING",
+            record.message == "Row #2 is empty",
+        ])
+        for record in caplog.records
+    ])
+
+
 def test_merge_data_from_getmarc_warns_about_extra_mapping_keys(caplog):
     sample_metadata_tsv_file_contents = """
 "Uniform Title"	"Bibliographic Identifier"
@@ -280,13 +376,14 @@ existing_data = "keep"
         get_marc_server_strategy=Mock(return_value="Bacon"),
         dialect="excel-tab",
     )
-    assert (
-        caplog.records[0].levelname == "WARNING"
-        and caplog.records[0].message
-        == 'Mapping contains key not found in table: "Some Other Mapping not '
-        'found in the tsv"'
-    )
-    assert len(caplog.records) == 1
+    assert any([
+        all([
+            record.levelname == "WARNING",
+            record.message == "Mapping contains key not found in table: "
+            '"Some Other Mapping not found in the tsv"',
+        ])
+        for record in caplog.records
+    ])
     # assert ["Foo"] == [rec.message for rec in caplog.records]
 
 
@@ -573,6 +670,23 @@ def test_get_matching_marc_data():
     )
 
 
+def test_get_matching_marc_data_parse_error_raises_GetMarcRetrevialError():
+    response = MagicMock(name="Response")
+    type(response).text = PropertyMock(
+        side_effect=xml.etree.ElementTree.ParseError
+    )
+
+    request_strategy = Mock(return_value=response)
+
+    with pytest.raises(GetMarcRetrievalError) as e:
+        merge_data.get_matching_marc_data(
+            mmsid="12344556677",
+            get_marc_server="https://spamserver",
+            request_strategy=request_strategy,
+        )
+    assert e.value.mmsid == "12344556677"
+
+
 def test_write_new_rows_to_file():
     data = io.StringIO()
     rows = [{"header1": "value1", "header2": "value2"}]
@@ -848,3 +962,33 @@ class TestBadMappingFileError:
             os.path.join("fake_data", "mapping_file.toml") in str(e.value),
             "something bad" in str(e.value),
         ]), f"expected both file name and error message, got: {e.value}"
+
+
+class TestGetMarcRetrievalError:
+    def test_str_with_mmsid(self):
+        assert "spam_mmsid" in str(
+            merge_data.GetMarcRetrievalError(mmsid="spam_mmsid")
+        )
+
+    def test_str_with_no_details(self):
+        assert "GetMarcRetrievalError" in str(
+            merge_data.GetMarcRetrievalError()
+        )
+
+
+class TestNonFatalMergingRowError:
+    def test_str_with_no_details(self):
+        assert "NonFatalMergingRowError" in str(
+            merge_data.NonFatalMergingRowError()
+        )
+
+    def test_str_with_message(self):
+        assert "spam" in str(
+            merge_data.NonFatalMergingRowError(message="spam")
+        )
+
+    def test_recovered_data(self):
+        data = {"some": "data"}
+        with pytest.raises(merge_data.NonFatalMergingRowError) as e:
+            raise merge_data.NonFatalMergingRowError(recovered_data=data)
+        assert e.value.recovered_data == data
