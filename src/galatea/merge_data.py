@@ -541,6 +541,15 @@ def serialize_with_jinja_template(
             f"Unable to render Jinja template due to an issue related to types "
             f"used in the template. {error}"
         ) from error
+    except jinja2.exceptions.UndefinedError as error:
+        raise SerialzationError(
+            "Unable to render Unable to render Jinja template due to an issue "
+            f"related some value in the templated not defined error. {error}"
+        ) from error
+    except jinja2.exceptions.TemplateError as error:
+        raise SerialzationError(
+            f"Unable to render Unable to render Jinja template. {error}"
+        ) from error
 
 
 class MergeRowData:
