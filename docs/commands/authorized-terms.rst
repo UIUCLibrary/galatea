@@ -3,6 +3,13 @@ authorized-terms
 
 This contains functionality to verify, and resolve Library of Congress Authority authorized terms.
 
+.. parsed-literal::
+    :ref:`galatea <galatea_command>`
+        └── :ref:`authorized-terms <authorized-terms>`
+            ├── :ref:`check <authorized-terms_authorized-terms-check>`
+            ├── :ref:`new-transformation-file <authorized-terms_new-transformation-file>`
+            └── :ref:`resolve <authorized-terms_resolve>`
+
 .. code-block:: shell-session
 
     user@WORKMACHINE123 % galatea authorized-terms --help
