@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Getmarc Merge Mapper Toml File &#8212; Galatea  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=3960cf5f" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=212205fc" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API Documentation" href="../api.html" />
+    <link rel="prev" title="Reference" href="reference.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/full_mark_horz_bw.gif" alt="Logo of Galatea"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">Galatea</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">Using the Command Line</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflow.html">Workflows</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="reference.html">Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Getmarc Merge Mapper Toml File</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#mapping-fields">Mapping Fields</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#experimental-features">Experimental Features</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../develop.html">Set up development environment on Mac and Linux</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="reference.html">Reference</a><ul>
+      <li>Previous: <a href="reference.html" title="previous chapter">Reference</a></li>
+      <li>Next: <a href="../api.html" title="next chapter">API Documentation</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="getmarc-merge-mapper-toml-file">
+<h1>Getmarc Merge Mapper Toml File<a class="headerlink" href="#getmarc-merge-mapper-toml-file" title="Link to this heading">¶</a></h1>
+<section id="mapping-fields">
+<h2>Mapping Fields<a class="headerlink" href="#mapping-fields" title="Link to this heading">¶</a></h2>
+<section id="key">
+<h3>key<a class="headerlink" href="#key" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><p><strong>Description:</strong> Column name in tsv file</p>
+<dl>
+<dt><strong>Example:</strong></dt><dd><div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Uniform Title&quot;</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="serialize-method">
+<h3>serialize_method<a class="headerlink" href="#serialize-method" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><p><strong>Description:</strong> This tells the strategy how to serialize the data from marc record. By default, it will use “verbatim”.</p>
+<dl class="simple">
+<dt><strong>Valid Values:</strong></dt><dd><ul class="simple">
+<li><p><strong>“verbatim”</strong>: Make no changes to the data from getmarc record.</p></li>
+</ul>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="matching-marc-fields">
+<h3>matching_marc_fields<a class="headerlink" href="#matching-marc-fields" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><p><strong>Description:</strong> marc fields to use from getmarc record</p>
+<dl>
+<dt><strong>Example:</strong></dt><dd><div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">matching_marc_fields</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;240$a&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="delimiter">
+<h3>delimiter<a class="headerlink" href="#delimiter" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><p><strong>Description:</strong> delimiter characters to use from getmarc record</p>
+<dl>
+<dt><strong>Example:</strong></dt><dd><div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">delimiter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;||&quot;</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="existing-data">
+<h3>existing_data<a class="headerlink" href="#existing-data" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><p><strong>Description:</strong> What to do if the column in tsv file already has a value.</p>
+<p><strong>Valid Values:</strong></p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><th class="stub"><p>keep</p></th>
+<td><p>Keep existing value. Ignore value found in marc record.</p></td>
+</tr>
+<tr class="row-even"><th class="stub"><p>replace</p></th>
+<td><p>Replace existing value with the new value from marc record</p></td>
+</tr>
+<tr class="row-odd"><th class="stub"><p>append</p></th>
+<td><p>Add the new value from marc record to the existing value in tsv file, separated by the delimiter.</p></td>
+</tr>
+</tbody>
+</table>
+<dl>
+<dt><strong>Example:</strong></dt><dd><div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">existing_data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;keep&quot;</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+</section>
+<section id="experimental-features">
+<h2>Experimental Features<a class="headerlink" href="#experimental-features" title="Link to this heading">¶</a></h2>
+<p>This section is for features that are not yet fully implemented, but are available for testing and feedback.</p>
+<p><strong>In order to use these features, you must enable them!</strong> To enable to use the <cite>–enable-experimental-features</cite> flag
+when running the <cite>galatea merge-data from-getmarc merge</cite> command. If you do not enable this flag, these features will
+not be available and will produce and error if you try to use them.</p>
+<p>These features may change or be removed in future releases.</p>
+<section id="using-jinja2-template">
+<h3>Using jinja2 template<a class="headerlink" href="#using-jinja2-template" title="Link to this heading">¶</a></h3>
+<p>Added in version 0.4.1.</p>
+<p>This allows you to use <a class="reference external" href="https://jinja.palletsprojects.com/en/stable/templates/">jinja2 templates</a> to serialize the data from getmarc record.</p>
+<p>The variable <cite>fields</cite> will contain a dictionary of all the marc fields in the record, where the keys are the field tags</p>
+<p><strong>Example</strong></p>
+<blockquote>
+<div><p>In the following example, for every 700 field in the marc record, it will combine the ‘a’, ‘q’ (if there is one), and
+‘d’ subfields into a single string, separated by spaces, and use ‘||’ as the delimiter between each 700 field.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">serialize_method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;jinja2template&quot;</span>
+<span class="n">jinja_template</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{% for field in fields[&#39;700&#39;] %}{{ field[&#39;a&#39;] }}{% if field[&#39;q&#39;] %} {{field[&#39;q&#39;]}}{%endif%} {{ field[&#39;d&#39;] }}{% if not loop.last %}||{% endif %}{% endfor %}&quot;</span>
+</pre></div>
+</div>
+<p>This will take a marc xml record like this:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;record&gt;</span>
+<span class="w">    </span><span class="nt">&lt;datafield</span><span class="w"> </span><span class="na">tag=</span><span class="s">&quot;700&quot;</span><span class="w"> </span><span class="na">ind1=</span><span class="s">&quot; &quot;</span><span class="w"> </span><span class="na">ind2=</span><span class="s">&quot; &quot;</span><span class="nt">&gt;</span>
+<span class="w">        </span><span class="nt">&lt;subfield</span><span class="w"> </span><span class="na">code=</span><span class="s">&quot;a&quot;</span><span class="nt">&gt;</span>Smith,<span class="w"> </span>John<span class="nt">&lt;/subfield&gt;</span>
+<span class="w">        </span><span class="nt">&lt;subfield</span><span class="w"> </span><span class="na">code=</span><span class="s">&quot;q&quot;</span><span class="nt">&gt;</span>Jr.<span class="nt">&lt;/subfield&gt;</span>
+<span class="w">        </span><span class="nt">&lt;subfield</span><span class="w"> </span><span class="na">code=</span><span class="s">&quot;d&quot;</span><span class="nt">&gt;</span>1980-<span class="nt">&lt;/subfield&gt;</span>
+<span class="w">    </span><span class="nt">&lt;/datafield&gt;</span>
+<span class="w">    </span><span class="nt">&lt;datafield</span><span class="w"> </span><span class="na">tag=</span><span class="s">&quot;700&quot;</span><span class="w"> </span><span class="na">ind1=</span><span class="s">&quot; &quot;</span><span class="w"> </span><span class="na">ind2=</span><span class="s">&quot; &quot;</span><span class="nt">&gt;</span>
+<span class="w">        </span><span class="nt">&lt;subfield</span><span class="w"> </span><span class="na">code=</span><span class="s">&quot;a&quot;</span><span class="nt">&gt;</span>Doe,<span class="w"> </span>Jane<span class="nt">&lt;/subfield&gt;</span>
+<span class="w">        </span><span class="nt">&lt;subfield</span><span class="w"> </span><span class="na">code=</span><span class="s">&quot;d&quot;</span><span class="nt">&gt;</span>1990-<span class="nt">&lt;/subfield&gt;</span>
+<span class="w">    </span><span class="nt">&lt;/datafield&gt;</span>
+<span class="nt">&lt;/record&gt;</span>
+</pre></div>
+</div>
+<p>and produce the following output in the tsv file: “<strong>Smith, John Jr. 1980-||Doe, Jane 1990-</strong>”</p>
+</div></blockquote>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Galatea.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/reference/getmarc_merge_mapper.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

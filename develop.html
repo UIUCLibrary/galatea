@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Set up development environment on Mac and Linux &#8212; Galatea  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=3960cf5f" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=212205fc" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="galatea.validate_authorized_terms" href="galatea/validate_authorized_terms.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/full_mark_horz_bw.gif" alt="Logo of Galatea"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">Galatea</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">Using the Command Line</a></li>
+<li class="toctree-l1"><a class="reference internal" href="workflow.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/reference.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Documentation:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Set up development environment on Mac and Linux</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="galatea/validate_authorized_terms.html" title="previous chapter">galatea.validate_authorized_terms</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="set-up-development-environment-on-mac-and-linux">
+<h1>Set up development environment on Mac and Linux<a class="headerlink" href="#set-up-development-environment-on-mac-and-linux" title="Link to this heading">¶</a></h1>
+<section id="development-environment">
+<h2>Development environment<a class="headerlink" href="#development-environment" title="Link to this heading">¶</a></h2>
+<p>Set up development environment on Mac and Linux</p>
+<p>This project uses <a class="reference external" href="https://docs.astral.sh/uv/">uv</a> for project development. This is not a runtime requirements but it
+is the primary development configuration so you will need to have
+<a class="reference external" href="https://docs.astral.sh/uv/getting-started/installation/">uv installed</a> to get the
+<a class="reference external" href="https://docs.astral.sh/uv/concepts/projects/sync/">dependency locks</a>.</p>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@DEVMACHINE123 % </span>uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </span>dev
+<span class="gp">user@DEVMACHINE123 % </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+<span class="gp gp-VirtualEnv">(venv)</span> <span class="gp">user@DEVMACHINE123 % </span>pre-commit<span class="w"> </span>install
+</pre></div>
+</div>
+</section>
+<section id="running-tests">
+<h2>Running tests<a class="headerlink" href="#running-tests" title="Link to this heading">¶</a></h2>
+<p>To run test, you need to have pytest installed. If you are using the development environment, it should already be
+installed. Tests are run by executing the pytest command.</p>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(venv)</span> <span class="gp">user@DEVMACHINE123 galatea % </span>pytest
+<span class="go">========================= test session starts ==========================</span>
+<span class="go">platform darwin -- Python 3.11.10, pytest-8.4.1, pluggy-1.6.0</span>
+<span class="go">rootdir: /Users/user/PycharmProjects/UIUCLibrary/galatea</span>
+<span class="go">configfile: pyproject.toml</span>
+<span class="go">plugins: pyfakefs-5.9.2</span>
+<span class="go">collected 150 items</span>
+
+<span class="go">tests/test_clean_tsv.py .............                            [  8%]</span>
+<span class="go">tests/test_cli.py ...........                                    [ 16%]</span>
+<span class="go">tests/test_config.py .........                                   [ 22%]</span>
+<span class="go">tests/test_merge_data.py ....................................... [ 48%]</span>
+<span class="go">..........                                                       [ 54%]</span>
+<span class="go">tests/test_modifiers.py ........................                 [ 70%]</span>
+<span class="go">tests/test_resolve_authorized_terms.py .................         [ 82%]</span>
+<span class="go">tests/test_tsv.py ............                                   [ 90%]</span>
+<span class="go">tests/test_validate_authorized_terms.py ...............          [100%]</span>
+
+<span class="go">========================= 150 passed in 0.32s =========================</span>
+</pre></div>
+</div>
+</section>
+<section id="build-documentation">
+<h2>Build Documentation<a class="headerlink" href="#build-documentation" title="Link to this heading">¶</a></h2>
+<p>The documentation for galatea contains both user and developer documentation. It is written in
+<a class="reference external" href="https://en.wikipedia.org/wiki/ReStructuredText">restructuredText format</a> and built with
+the <a class="reference external" href="https://www.sphinx-doc.org/en/master/">Sphinx</a> tool.</p>
+<ol class="arabic">
+<li><p>Make sure that either the virtual environment is configure with the “dev” or “docs” dependency group</p>
+<blockquote>
+<div><p>Either run uv sync with the full development dependencies group:</p>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@DEVMACHINE123 % </span>uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </span>dev
+<span class="go">Using CPython 3.11.10</span>
+<span class="go">Creating virtual environment at: .venv</span>
+<span class="go">Resolved 82 packages in 12ms</span>
+<span class="go">Prepared 53 packages in 3.97s</span>
+<span class="go">Installed 53 packages in 260ms</span>
+<span class="go"> + alabaster==1.0.0</span>
+<span class="go"> + argcomplete==3.6.2</span>
+<span class="go"> + babel==2.17.0</span>
+<span class="go"> + cachetools==6.2.0</span>
+<span class="go"> + certifi==2025.8.3</span>
+<span class="go"> + cfgv==3.4.0</span>
+<span class="go"> + chardet==5.2.0</span>
+<span class="go"> + charset-normalizer==3.4.3</span>
+<span class="go">...</span>
+</pre></div>
+</div>
+<p>or run uv sync with only the dependencies needed to build the documentation:</p>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@DEVMACHINE123 % </span>uv<span class="w"> </span>sync<span class="w"> </span>--no-dev<span class="w"> </span>--group<span class="w"> </span>docs
+<span class="go">Using CPython 3.11.10</span>
+<span class="go">Creating virtual environment at: .venv</span>
+<span class="go">Resolved 82 packages in 13ms</span>
+<span class="go">Prepared 27 packages in 4.35s</span>
+<span class="go">Installed 27 packages in 348ms</span>
+<span class="go"> + alabaster==1.0.0</span>
+<span class="go"> + argcomplete==3.6.2</span>
+<span class="go"> + babel==2.17.0</span>
+<span class="go"> + certifi==2025.8.3</span>
+<span class="go"> + charset-normalizer==3.4.3</span>
+<span class="go"> + docutils==0.21.2</span>
+<span class="go"> + idna==3.10</span>
+<span class="go"> + imagesize==1.4.1</span>
+<span class="go"> + jinja2==3.1.6</span>
+<span class="go">...</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>With your virtual environment active, run sphinx-build with the first argument being “docs” and the second argument
+being the location where to build to.</p>
+<blockquote>
+<div><div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(.venv)</span> <span class="gp">user@DEVMACHINE123 % </span>sphinx-build<span class="w"> </span>docs<span class="w"> </span>build/docs
+<span class="go">Running Sphinx v8.2.3</span>
+<span class="go">loading translations [en]... done</span>
+<span class="go">loading pickled environment... done</span>
+<span class="go">building [mo]: targets for 0 po files that are out of date</span>
+<span class="go">writing output...</span>
+<span class="go">building [html]: targets for 3 source files that are out of date</span>
+<span class="go">updating environment: [new config] 3 added, 0 changed, 0 removed</span>
+<span class="go">reading sources... [100%] development</span>
+<span class="go">looking for now-outdated files... none found</span>
+<span class="go">pickling environment... done</span>
+<span class="go">checking consistency... done</span>
+<span class="go">preparing documents... done</span>
+<span class="go">copying assets...</span>
+<span class="go">copying static files...</span>
+<span class="go">Writing evaluated template result to /Users/user/PythonProjects/UIUCLibrary/galatea/build/docs/_static/basic.css</span>
+<span class="go">Writing evaluated template result to /Users/user/PythonProjects/UIUCLibrary/galatea/build/docs/_static/language_data.js</span>
+<span class="go">Writing evaluated template result to /Users/user/PythonProjects/UIUCLibrary/galatea/build/docs/_static/documentation_options.js</span>
+<span class="go">Writing evaluated template result to /Users/user/PythonProjects/UIUCLibrary/galatea/build/docs/_static/alabaster.css</span>
+<span class="go">copying static files: done</span>
+<span class="go">copying extra files...</span>
+<span class="go">copying extra files: done</span>
+<span class="go">copying assets: done</span>
+<span class="go">writing output... [100%] index</span>
+<span class="go">generating indices... genindex done</span>
+<span class="go">writing additional pages... search done</span>
+<span class="go">dumping search index in English (code: en)... done</span>
+<span class="go">dumping object inventory... done</span>
+<span class="go">build succeeded.</span>
+
+<span class="go">The HTML pages are in build/docs.</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ol>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Galatea.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/develop.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

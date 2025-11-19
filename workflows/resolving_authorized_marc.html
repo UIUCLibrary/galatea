@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Locating and Resolving Unauthorized Terms Used in Marc Records &#8212; Galatea  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=3960cf5f" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=212205fc" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Merge Data from getmarc server" href="merge_data_workflow.html" />
+    <link rel="prev" title="Workflows" href="../workflow.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/full_mark_horz_bw.gif" alt="Logo of Galatea"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">Galatea</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">Using the Command Line</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../workflow.html">Workflows</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Locating and Resolving Unauthorized Terms Used in Marc Records</a></li>
+<li class="toctree-l2"><a class="reference internal" href="merge_data_workflow.html">Merge Data from getmarc server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="create_new_merge_profile.html">Create New Merge Data Profile</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/reference.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../develop.html">Set up development environment on Mac and Linux</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../workflow.html">Workflows</a><ul>
+      <li>Previous: <a href="../workflow.html" title="previous chapter">Workflows</a></li>
+      <li>Next: <a href="merge_data_workflow.html" title="next chapter">Merge Data from getmarc server</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="locating-and-resolving-unauthorized-terms-used-in-marc-records">
+<h1>Locating and Resolving Unauthorized Terms Used in Marc Records<a class="headerlink" href="#locating-and-resolving-unauthorized-terms-used-in-marc-records" title="Link to this heading">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This will work best if the tsv has been cleaned up first using the <a class="reference internal" href="../commands/clean-tsv.html#clean-tsv"><span class="std std-ref">galatea clean-tsv</span></a> command</p>
+</div>
+<p>This workflow is used to locate and resolve unauthorized terms in MARC record data found in a tsv file.
+The workflow consists of the following steps:</p>
+<ol class="arabic">
+<li><dl>
+<dt>Check for unauthorized terms in the tsv file.</dt><dd><p>Use the <a class="reference internal" href="../commands/authorized-terms.html#authorized-terms-authorized-terms-check"><span class="std std-ref">authorized-terms check command</span></a> to find unauthorized terms in the tsv file.</p>
+<p><code class="docutils literal notranslate"><span class="pre">galatea</span> <span class="pre">authorized-terms</span> <span class="pre">check</span> <span class="pre">&lt;source_tsv&gt;</span></code></p>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt>Create a new transformation file with the unauthorized terms.</dt><dd><p>if you don’t already have a transformation file with the unauthorized terms, use the
+<a class="reference internal" href="../commands/authorized-terms.html#authorized-terms-new-transformation-file"><span class="std std-ref">authorized-terms new-transformation-file command</span></a>
+to create a new one.</p>
+<p><code class="docutils literal notranslate"><span class="pre">galatea</span> <span class="pre">authorized-terms</span> <span class="pre">new-transformation-file</span></code></p>
+</dd>
+</dl>
+</li>
+<li><p>Fill in the transformation file with how you want specific unauthorized terms to resolve.</p>
+<blockquote>
+<div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Don’t have to start from scratch every time. If you have a transformation file that you have used before that
+has all the transformation defined, you can use that. In fact, you should be constantly improving a single one.</p>
+</div>
+<p>The transformation file is the tsv file generated by the
+<a class="reference internal" href="../commands/authorized-terms.html#authorized-terms-new-transformation-file"><span class="std std-ref">authorized-terms new-transformation-file command</span></a>
+and will contain a list of two columns. By default, the name generated for the file by this command is
+“authorized_terms_transformation.tsv”, but you can name it whatever you want.</p>
+<p>Open this file in whatever table editor you prefer, as Microsoft Excel. As long as the the application can open and
+save tsv files, it can be used for this step.</p>
+<p>The format of this file has the first column for unauthorized terms, and the second column is for the matching
+authorized term that should replace the unauthorized term.</p>
+<p>For example:</p>
+<p>You want the unauthorized term “Chicago, Ill.” to change to “Chicago (Ill.)”, and the unauthorized term “Washington, D.C.” to change
+to “Washington (D.C.)”, the tsv file should look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">unauthorized</span> <span class="n">term</span>	<span class="n">resolving</span> <span class="n">authorized</span> <span class="n">term</span>
+<span class="n">Chicago</span><span class="p">,</span> <span class="n">Ill</span><span class="o">.</span>	<span class="n">Chicago</span> <span class="p">(</span><span class="n">Ill</span><span class="o">.</span><span class="p">)</span>
+<span class="n">Washington</span><span class="p">,</span> <span class="n">D</span><span class="o">.</span><span class="n">C</span><span class="o">.</span>	<span class="n">Washington</span> <span class="p">(</span><span class="n">D</span><span class="o">.</span><span class="n">C</span><span class="o">.</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The first line of the tsv file is a header line, and should not be changed.</p>
+<p>After the header line, you can add as many lines as you want, but the first column should always be an
+unauthorized term, and the second column should be an authorized term.</p>
+</div>
+</div></blockquote>
+</li>
+</ol>
+<ol class="arabic simple" start="3">
+<li><dl class="simple">
+<dt>Resolve the unauthorized terms to authorized terms in the tsv file.</dt><dd><p>Using the transformation file you created in the previous step, use the
+<a class="reference internal" href="../commands/authorized-terms.html#authorized-terms-resolve"><span class="std std-ref">authorized-terms resolve command</span></a> to resolve the unauthorized terms in the tsv file.</p>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Galatea.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/workflows/resolving_authorized_marc.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

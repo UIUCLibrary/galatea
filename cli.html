@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Using the Command Line &#8212; Galatea  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=3960cf5f" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=212205fc" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="authorized-terms" href="commands/authorized-terms.html" />
+    <link rel="prev" title="Galatea’s documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/full_mark_horz_bw.gif" alt="Logo of Galatea"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">Galatea</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Using the Command Line</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#commands">Commands</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="commands/authorized-terms.html">authorized-terms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="commands/clean-tsv.html">clean-tsv</a></li>
+<li class="toctree-l3"><a class="reference internal" href="commands/merge-data.html">merge-data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="commands/config.html">config</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#getting-help">Getting Help</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="workflow.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/reference.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="develop.html">Set up development environment on Mac and Linux</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Galatea’s documentation</a></li>
+      <li>Next: <a href="commands/authorized-terms.html" title="next chapter">authorized-terms</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="using-the-command-line">
+<h1>Using the Command Line<a class="headerlink" href="#using-the-command-line" title="Link to this heading">¶</a></h1>
+<section id="commands">
+<span id="galatea-command"></span><h2>Commands<a class="headerlink" href="#commands" title="Link to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+</div>
+<p>Below is the hierarchy of commands that are available in Galatea.</p>
+<pre class="literal-block"><a class="reference internal" href="#galatea-command"><span class="std std-ref">galatea</span></a>
+    ├── <a class="reference internal" href="commands/authorized-terms.html#authorized-terms"><span class="std std-ref">authorized-terms</span></a>
+    │   ├── <a class="reference internal" href="commands/authorized-terms.html#authorized-terms-authorized-terms-check"><span class="std std-ref">check</span></a>
+    │   ├── <a class="reference internal" href="commands/authorized-terms.html#authorized-terms-new-transformation-file"><span class="std std-ref">new-transformation-file</span></a>
+    │   └── <a class="reference internal" href="commands/authorized-terms.html#authorized-terms-resolve"><span class="std std-ref">resolve</span></a>
+    │
+    ├── <a class="reference internal" href="commands/clean-tsv.html#clean-tsv"><span class="std std-ref">clean-tsv</span></a>
+    ├── <a class="reference internal" href="commands/merge-data.html#merge-data"><span class="std std-ref">merge-data</span></a>
+    │   └── <a class="reference internal" href="commands/merge-data.html#from-getmarc"><span class="std std-ref">from-getmarc</span></a>
+    │       ├── <a class="reference internal" href="commands/merge-data.html#merge-data-from-getmarc-init-mapper"><span class="std std-ref">init-mapper</span></a>
+    │       └── <a class="reference internal" href="commands/merge-data.html#merge-data-from-getmarc-merge"><span class="std std-ref">merge</span></a>
+    │
+    └── <a class="reference internal" href="commands/config.html#config-command"><span class="std std-ref">config</span></a>
+        ├── <a class="reference internal" href="commands/config.html#config-command"><span class="std std-ref">set</span></a>
+        └── <a class="reference internal" href="commands/config.html#config-command"><span class="std std-ref">show</span></a></pre>
+</section>
+<section id="getting-help">
+<h2>Getting Help<a class="headerlink" href="#getting-help" title="Link to this heading">¶</a></h2>
+<p>To get help at any point you can use the <cite>–help</cite> flag</p>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@WORKMACHINE123 galatea % </span>galatea<span class="w"> </span>--help
+<span class="go">usage: galatea [-h] [--version] {clean-tsv,authority-check,authorized-terms} ...</span>
+
+<span class="go">Galatea is a tool for manipulating tsv data.</span>
+
+<span class="go">options:</span>
+<span class="go">  -h, --help            show this help message and exit</span>
+<span class="go">  --version             show program&#39;s version number and exit</span>
+
+<span class="go">commands:</span>
+<span class="go">  valid commands</span>
+
+<span class="go">{clean-tsv,authority-check,authorized-terms,merge-data,config}</span>
+<span class="go">  clean-tsv           clean TSV files</span>
+<span class="go">  authority-check     validate-authorized-names</span>
+<span class="go">  authorized-terms    manipulate authorized terms used</span>
+<span class="go">  merge-data          merge data from another source to tsv file</span>
+<span class="go">  config              configure galatea</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Galatea.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/cli.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

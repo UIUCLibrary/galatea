@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>merge-data &#8212; Galatea  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=3960cf5f" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=212205fc" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="config" href="config.html" />
+    <link rel="prev" title="clean-tsv" href="clean-tsv.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/full_mark_horz_bw.gif" alt="Logo of Galatea"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">Galatea</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../cli.html">Using the Command Line</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../cli.html#commands">Commands</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="authorized-terms.html">authorized-terms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="clean-tsv.html">clean-tsv</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">merge-data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="config.html">config</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cli.html#getting-help">Getting Help</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../workflow.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/reference.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../develop.html">Set up development environment on Mac and Linux</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../cli.html">Using the Command Line</a><ul>
+      <li>Previous: <a href="clean-tsv.html" title="previous chapter">clean-tsv</a></li>
+      <li>Next: <a href="config.html" title="next chapter">config</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="merge-data">
+<h1>merge-data<a class="headerlink" href="#merge-data" title="Link to this heading">¶</a></h1>
+<p>Merge data from another source</p>
+<pre class="literal-block"><a class="reference internal" href="../cli.html#galatea-command"><span class="std std-ref">galatea</span></a>
+    └── <a class="reference internal" href="#merge-data"><span class="std std-ref">merge-data</span></a>
+        └── <a class="reference internal" href="#from-getmarc"><span class="std std-ref">from-getmarc</span></a>
+            ├── <a class="reference internal" href="#merge-data-from-getmarc-init-mapper"><span class="std std-ref">init-mapper</span></a>
+            └── <a class="reference internal" href="#merge-data-from-getmarc-merge"><span class="std std-ref">merge</span></a></pre>
+<p>Usage: <code class="docutils literal notranslate"><span class="pre">galatea</span> <span class="pre">merge-data</span> <span class="pre">&lt;source_strategy&gt;</span></code></p>
+<p>Currently, the only option is <a class="reference internal" href="#from-getmarc"><span class="std std-ref">from-getmarc</span></a></p>
+<section id="from-getmarc">
+<h2>from-getmarc<a class="headerlink" href="#from-getmarc" title="Link to this heading">¶</a></h2>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@WORKMACHINE123 % </span>galatea<span class="w"> </span>merge-data<span class="w"> </span>from-getmarc<span class="w"> </span>--help
+<span class="go">usage: galatea merge-data from-getmarc [-h] {init-mapper,merge} ...</span>
+
+<span class="go">positional arguments:</span>
+<span class="go">  {init-mapper,merge}</span>
+<span class="go">    init-mapper        create initial mapping file</span>
+<span class="go">    merge              merge data from get-marc server and map to tsv file</span>
+
+<span class="go">options:</span>
+<span class="go">  -h, --help           show this help message and exit</span>
+</pre></div>
+</div>
+<section id="init-mapper">
+<span id="merge-data-from-getmarc-init-mapper"></span><h3>init-mapper<a class="headerlink" href="#init-mapper" title="Link to this heading">¶</a></h3>
+<p>Generate the mapping file need to merge data from getmarc server.</p>
+<p>Usage: <code class="docutils literal notranslate"><span class="pre">galatea</span> <span class="pre">merge-data</span> <span class="pre">from-getmarc</span> <span class="pre">init-mapper</span> <span class="pre">&lt;source_tsv_file&gt;</span></code></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<dl>
+<dt>Optional arguments are:</dt><dd><dl class="option-list">
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>show this help message and exit</p>
+</dd>
+<dt><kbd><span class="option">--output_file <var>OUTPUT_FILE</var></span></kbd></dt>
+<dd><p>Write to file other than the default.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div>
+<section id="example-of-init-mapper-usages">
+<h4>Example of <cite>init-mapper</cite> usages:<a class="headerlink" href="#example-of-init-mapper-usages" title="Link to this heading">¶</a></h4>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@WORKMACHINE123 % </span>galatea<span class="w"> </span>merge-data<span class="w"> </span>from-getmarc<span class="w"> </span>init-mapper<span class="w"> </span>myfile.tsv
+<span class="go">Wrote mapping file to /Users/user/mapping.toml</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="merge">
+<span id="merge-data-from-getmarc-merge"></span><h3>merge<a class="headerlink" href="#merge" title="Link to this heading">¶</a></h3>
+<p>Merge data from tsv file with data from getmarc server.</p>
+<p>Usage: <code class="docutils literal notranslate"><span class="pre">galatea</span> <span class="pre">merge-data</span> <span class="pre">from-getmarc</span> <span class="pre">merge</span> <span class="pre">&lt;metadata_tsv_file&gt;</span> <span class="pre">&lt;mapping_file&gt;</span></code></p>
+<p>The argument, <cite>&lt;metadata_tsv_file&gt;</cite>, is the tsv file with metadata and <cite>&lt;mapping_file&gt;</cite> is the toml mapping file.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<dl>
+<dt>Optional arguments are:</dt><dd><dl class="option-list">
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>show this help message and exit</p>
+</dd>
+<dt><kbd><span class="option">--output-tsv-file <var>OUTPUT_TSV_FILE</var></span></kbd></dt>
+<dd><p>write changes to another file instead of inplace</p>
+</dd>
+<dt><kbd><span class="option">--getmarc-server <var>GETMARC_SERVER</var></span></kbd></dt>
+<dd><p>get-marc server url.</p>
+</dd>
+<dt><kbd><span class="option">--enable-experimental-features</span></kbd></dt>
+<dd><p>enable experimental features</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div>
+<section id="example-of-merge-usage">
+<h4>Example of <cite>merge</cite> usage:<a class="headerlink" href="#example-of-merge-usage" title="Link to this heading">¶</a></h4>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@WORKMACHINE123 % </span>galatea<span class="w"> </span>merge-data<span class="w"> </span>from-getmarc<span class="w"> </span>merge<span class="w"> </span>myfile.tsv<span class="w"> </span>/Users/user/mapping.toml
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Galatea.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/commands/merge-data.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

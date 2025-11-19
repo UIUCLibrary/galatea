@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>galatea.merge_data &#8212; Galatea  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=3960cf5f" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=212205fc" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="galatea.resolve_authorized_terms" href="resolve_authorized_terms.html" />
+    <link rel="prev" title="galatea.clean_tsv" href="clean_tsv.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/full_mark_horz_bw.gif" alt="Logo of Galatea"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">Galatea</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">Using the Command Line</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflow.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/reference.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Documentation:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../develop.html">Set up development environment on Mac and Linux</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../api.html">API Documentation</a><ul>
+      <li>Previous: <a href="clean_tsv.html" title="previous chapter">galatea.clean_tsv</a></li>
+      <li>Next: <a href="resolve_authorized_terms.html" title="next chapter">galatea.resolve_authorized_terms</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="galatea-merge-data">
+<h1>galatea.merge_data<a class="headerlink" href="#galatea-merge-data" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="galatea.merge_data.generate_mapping_file_for_tsv">
+<span class="sig-name descname"><span class="pre">generate_mapping_file_for_tsv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tsv_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">headers_reading_strategy=&lt;function</span> <span class="pre">get_keys_from_tsv&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">writing_strategy=&lt;function</span> <span class="pre">generate_mapping_toml_file_for_tsv_fp&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#galatea.merge_data.generate_mapping_file_for_tsv" title="Link to this definition">¶</a></dt>
+<dd><p>Generate a mapping file for a TSV file.</p>
+<p>The mapping file will contain the field names and what index they are
+mapped from</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tsv_file</strong> (<em>pathlib.Path</em>)</p></li>
+<li><p><strong>output_file</strong> (<em>pathlib.Path</em>)</p></li>
+<li><p><strong>headers_reading_strategy</strong> (<em>Callable</em><em>[</em><em>[</em><em>pathlib.Path</em><em>]</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em>)</p></li>
+<li><p><strong>writing_strategy</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>, </em><em>TextIO</em><em>]</em><em>, </em><em>None</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="galatea.merge_data.merge_from_getmarc">
+<span class="sig-name descname"><span class="pre">merge_from_getmarc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_metadata_tsv_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_metadata_tsv_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapping_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_marc_server</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_merge_data_strategy=&lt;function</span> <span class="pre">merge_data_from_getmarc&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_to_file_strategy=&lt;function</span> <span class="pre">write_new_rows_to_file&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_experimental_features=False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#galatea.merge_data.merge_from_getmarc" title="Link to this definition">¶</a></dt>
+<dd><p>Merge data from GetMARC server into a TSV file using a mapping file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_metadata_tsv_file</strong> (<em>pathlib.Path</em>) – Source TSV file to be merged with.</p></li>
+<li><p><strong>output_metadata_tsv_file</strong> (<em>pathlib.Path</em>) – Output TSV file to be created or overwritten.</p></li>
+<li><p><strong>mapping_file</strong> (<em>pathlib.Path</em>) – Mapping file to be used for merging.</p></li>
+<li><p><strong>get_marc_server</strong> (<em>str</em>) – url of the GetMARC server.</p></li>
+<li><p><strong>row_merge_data_strategy</strong> (<em>Callable</em><em>[</em><em>[</em><em>BinaryIO</em><em>, </em><em>TextIO</em><em>, </em><em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>xml.etree.ElementTree.Element</em><em>]</em><em>, </em><em>Type</em><em>[</em><em>csv.Dialect</em><em>] </em><em>| </em><em>csv.Dialect</em><em>, </em><em>bool</em><em>]</em><em>, </em><em>List</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em><em>]</em><em>]</em>) – strategy to create new rows from GetMARC
+server and input tsv file.</p></li>
+<li><p><strong>write_to_file_strategy</strong> (<em>Callable</em><em>[</em><em>[</em><em>List</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em><em>]</em><em>, </em><em>Type</em><em>[</em><em>csv.Dialect</em><em>] </em><em>| </em><em>csv.Dialect</em><em>, </em><em>TextIO</em><em>]</em><em>, </em><em>None</em><em>]</em>) – strategy to write new rows to the output file.</p></li>
+<li><p><strong>enable_experimental_features</strong> (<em>bool</em>) – enable experimental features that are not</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="galatea.merge_data.get_keys_from_tsv">
+<span class="sig-name descname"><span class="pre">get_keys_from_tsv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tsv_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strategy=&lt;function</span> <span class="pre">get_keys_from_tsv_fp&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#galatea.merge_data.get_keys_from_tsv" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tsv_file</strong> (<em>pathlib.Path</em>)</p></li>
+<li><p><strong>strategy</strong> (<em>Callable</em><em>[</em><em>[</em><em>TextIO</em><em>]</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>List</em>[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="galatea.merge_data.get_keys_from_tsv_fp">
+<span class="sig-name descname"><span class="pre">get_keys_from_tsv_fp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#galatea.merge_data.get_keys_from_tsv_fp" title="Link to this definition">¶</a></dt>
+<dd><p>Get the keys from a TSV file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>fp</strong> (<em>TextIO</em>) – file pointer to the TSV file.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>List</em>[str]</p>
+</dd>
+</dl>
+<p>Returns: list of keys (headings) in the TSV file.</p>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Galatea.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/galatea/merge_data.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

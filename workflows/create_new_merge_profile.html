@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Create New Merge Data Profile &#8212; Galatea  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=3960cf5f" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=212205fc" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Reference" href="../reference/reference.html" />
+    <link rel="prev" title="Merge Data from getmarc server" href="merge_data_workflow.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/full_mark_horz_bw.gif" alt="Logo of Galatea"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">Galatea</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">Using the Command Line</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../workflow.html">Workflows</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="resolving_authorized_marc.html">Locating and Resolving Unauthorized Terms Used in Marc Records</a></li>
+<li class="toctree-l2"><a class="reference internal" href="merge_data_workflow.html">Merge Data from getmarc server</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Create New Merge Data Profile</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/reference.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../develop.html">Set up development environment on Mac and Linux</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="../workflow.html">Workflows</a><ul>
+      <li>Previous: <a href="merge_data_workflow.html" title="previous chapter">Merge Data from getmarc server</a></li>
+      <li>Next: <a href="../reference/reference.html" title="next chapter">Reference</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="create-new-merge-data-profile">
+<h1>Create New Merge Data Profile<a class="headerlink" href="#create-new-merge-data-profile" title="Link to this heading">¶</a></h1>
+<p>This is for creating a new merge data profile for use with the <cite>galatea merge-data</cite> command.</p>
+<ol class="arabic">
+<li><p>Generate a new initialized mapping toml one with <a class="reference internal" href="../commands/merge-data.html#merge-data-from-getmarc-init-mapper"><span class="std std-ref">merge-data from-getmarc init-mapper
+command</span></a>.</p>
+<blockquote>
+<div><div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">user@WORKMACHINE123 % </span>galatea<span class="w"> </span>merge-data<span class="w"> </span>from-getmarc<span class="w"> </span>init-mapper<span class="w"> </span>myfile.tsv
+<span class="go">Wrote mapping file to /Users/user/mapping.toml</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>Edit the content of the created mapping toml file in a text editor.</p>
+<blockquote>
+<div><ul>
+<li><p>Make sure the identifier_key is set to column containing the mmsid in the tsv file.</p>
+<blockquote>
+<div><div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[mappings]</span>
+<span class="n">identifier_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Bibliographic Identifier&quot;</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>For each column expected to have data added to, edit each [[mapping]] section.</p>
+<p><a class="reference internal" href="../reference/getmarc_merge_mapper.html#mapping-fields"><span class="std std-ref">See Mapping Fields section for more details</span></a></p>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ol>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2025, Galatea.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/workflows/create_new_merge_profile.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
