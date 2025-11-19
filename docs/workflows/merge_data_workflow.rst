@@ -10,44 +10,29 @@ server.
 Prerequisites
 =============
 
-In order to perform this workflow, the `get_marc_server_url` configuration
-in galatea needs to be set.
+* Setup a getmarc server.
 
-To verify that this has been configured, use the :ref:`config command <config_command>`.
+    In order to perform this workflow, the `get_marc_server_url` configuration
+    in galatea needs to be set.
 
-If `get_marc_server_url` is set, a value will show. If `get_marc_server_url` is not set, it can be set with ``config set`` command.
+    To verify that this has been configured, use the :ref:`config command <config_command>`.
 
-For example, ``galatea config set get_marc_server_url https://example.com/`` will configure galatea to use a getmarc
-server at https://example.com/
+    If `get_marc_server_url` is set, a value will show. If `get_marc_server_url` is not set, it can be set with ``config set`` command.
+
+    For example, ``galatea config set get_marc_server_url https://example.com/`` will configure galatea to use a getmarc
+    server at `https://example.com/`.
+
+* Have a profile toml file that maps the columns in the tsv file to the MARC fields.
+
+    See :ref:`Create New Merge Data Profile<Create New Merge Data Profile>` for more information on how to create
+    this file.
 
 Workflow
 ========
 
-#. If not using an existing mapping toml file, generate a new one with :ref:`merge-data from-getmarc init-mapper
-   command <merge-data_from-getmarc_init-mapper>`.
-
-    .. code-block:: shell-session
-
-        user@WORKMACHINE123 % galatea merge-data from-getmarc init-mapper myfile.tsv
-        Wrote mapping file to /Users/user/mapping.toml
 
 
-#. Edit the content of the created mapping toml file in a text editor.
-
-    * Make sure the identifier_key is set to column containing the mmsid in the tsv file.
-
-        .. code-block:: toml
-
-            [mappings]
-            identifier_key = "Bibliographic Identifier"
-
-    * For each column expected to have data added to, edit each [[mapping]] section.
-
-      :ref:`See Mapping Fields section for more details<Mapping Fields>`
-
-
-
-#. Merge the data with the :ref:`merge command<merge-data_from-getmarc_merge>`
+Merge the data with the :ref:`merge command<merge-data_from-getmarc_merge>`
 
     .. code-block:: shell-session
 

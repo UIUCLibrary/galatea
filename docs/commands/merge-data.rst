@@ -4,6 +4,14 @@ merge-data
 
 Merge data from another source
 
+.. parsed-literal::
+    :ref:`galatea <galatea_command>`
+        └── :ref:`merge-data <merge-data>`
+            └── :ref:`from-getmarc <from-getmarc>`
+                ├── :ref:`init-mapper <merge-data_from-getmarc_init-mapper>`
+                └── :ref:`merge <merge-data_from-getmarc_merge>`
+
+
 Usage: ``galatea merge-data <source_strategy>``
 
 Currently, the only option is :ref:`from-getmarc<from-getmarc>`

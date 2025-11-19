@@ -59,7 +59,11 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = 'alabaster'
 html_static_path = ['_static']
 html_logo = '_static/full_mark_horz_bw.gif'
-
+html_theme_options = {
+    'body_max_width' : '90%',
+    'page_width': '70%',
+    'fixed_sidebar': True,
+}
 linkcheck_ignore = [
     "https://example.com/"
 ]

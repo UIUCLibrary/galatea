@@ -2,6 +2,38 @@
 Using the Command Line
 ======================
 
+.. _galatea_command:
+
+Commands
+========
+.. toctree::
+   :maxdepth: 3
+   :hidden:
+
+   commands/authorized-terms
+   commands/clean-tsv
+   commands/merge-data
+   commands/config
+
+Below is the hierarchy of commands that are available in Galatea.
+
+.. parsed-literal::
+    :ref:`galatea <galatea_command>`
+        ├── :ref:`authorized-terms <authorized-terms>`
+        │   ├── :ref:`check <authorized-terms_authorized-terms-check>`
+        │   ├── :ref:`new-transformation-file <authorized-terms_new-transformation-file>`
+        │   └── :ref:`resolve <authorized-terms_resolve>`
+        │
+        ├── :ref:`clean-tsv <clean-tsv>`
+        ├── :ref:`merge-data <merge-data>`
+        │   └── :ref:`from-getmarc <from-getmarc>`
+        │       ├── :ref:`init-mapper <merge-data_from-getmarc_init-mapper>`
+        │       └── :ref:`merge <merge-data_from-getmarc_merge>`
+        │
+        └── :ref:`config <config_command>`
+            ├── :ref:`set <config_command>`
+            └── :ref:`show <config_command>`
+
 Getting Help
 ============
 
@@ -27,62 +59,4 @@ To get help at any point you can use the `--help` flag
       authorized-terms    manipulate authorized terms used
       merge-data          merge data from another source to tsv file
       config              configure galatea
-
-Commands
-========
-
-
-.. toctree::
-   :maxdepth: 2
-
-   commands/authorized-terms
-
-.. toctree::
-   :maxdepth: 3
-
-   commands/merge-data
-
-
-clean-tsv
----------
-
-To clean TSV files use the `clean-tsv` command
-
-.. code-block:: shell-session
-
-    user@WORKMACHINE123 % galatea clean-tsv /Users/user/Documents/River\ Maps\ -\ River\ Maps.tsv
-    Modified tsv wrote to "/Users/user/Documents/River Maps - River Maps.tsv"
-    Done.
-
-
-.. _config_command:
-
-config
-------
-
-Configure galatea settings.
-
-.. code-block:: shell-session
-
-    user@WORKMACHINE123 % galatea config --help
-
-    usage: galatea config [-h] {set,show} ...
-
-    positional arguments:
-      {set,show}
-        set       set config
-        show      show current configuration
-
-    options:
-      -h, --help  show this help message and exit
-
-
-Example of using the `config` command:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To set ``get_marc_server_url`` settings to the value ``https://www.example.com``
-
-.. code-block:: shell-session
-
-    user@WORKMACHINE123 % galatea config set get_marc_server_url https://www.example.com
 
