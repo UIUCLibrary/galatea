@@ -207,9 +207,9 @@ def call(){
                         }
                         agent {
                             docker{
-                                image 'python'
+                                image 'ghcr.io/astral-sh/uv:debian'
                                 label 'docker && linux && x86_64'
-                                args '--mount source=python-tmp-galatea,target=/tmp'
+                                args '--mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'
                             }
                         }
                         stages{
@@ -217,21 +217,14 @@ def call(){
                                 steps{
                                     sh(
                                         label: 'Create virtual environment',
-                                        script: '''python3 -m venv --clear bootstrap_uv
-                                                   trap "rm -rf bootstrap_uv" EXIT
-                                                   bootstrap_uv/bin/pip install --disable-pip-version-check uv
-                                                   bootstrap_uv/bin/uv venv  --python-preference=only-system  venv
-                                                   . ./venv/bin/activate
-                                                   bootstrap_uv/bin/uv sync --frozen --group ci --active
-                                                   bootstrap_uv/bin/uv pip install uv --python venv
-                                                   '''
-                                               )
+                                        script: 'uv sync --frozen --group ci'
+                                    )
                                 }
                             }
                             stage('Build Documentation'){
                                 steps{
                                     catchError(buildResult: 'UNSTABLE', message: 'Sphinx has warnings', stageResult: 'UNSTABLE') {
-                                        sh './venv/bin/uv run -m sphinx --builder=html -W --keep-going -w logs/build_sphinx_html.log -d build/docs/.doctrees docs dist/docs/html'
+                                        sh 'uv run -m sphinx --builder=html -W --keep-going -w logs/build_sphinx_html.log -d build/docs/.doctrees docs dist/docs/html'
                                    }
                                 }
                                 post{
@@ -263,7 +256,7 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'Sphinx docs linkcheck', stageResult: 'UNSTABLE') {
                                                         sh(
                                                             label: 'Running Sphinx docs linkcheck',
-                                                            script: './venv/bin/uv run -m sphinx -b doctest docs/ build/docs -d build/docs/doctrees --no-color --builder=linkcheck --fail-on-warning'
+                                                            script: 'uv run -m sphinx -b doctest docs/ build/docs -d build/docs/doctrees --no-color --builder=linkcheck --fail-on-warning'
                                                             )
                                                     }
                                                 }
@@ -272,7 +265,7 @@ def call(){
                                                 steps {
                                                     sh(
                                                         label: 'Running Doctest Tests',
-                                                        script: './venv/bin/uv run coverage run --parallel-mode --source=src -m sphinx -b doctest docs/ dist/docs/html -d build/docs/doctrees --no-color -w logs/doctest.txt'
+                                                        script: 'uv run coverage run --parallel-mode --source=src -m sphinx -b doctest docs/ dist/docs/html -d build/docs/doctrees --no-color -w logs/doctest.txt'
                                                         )
                                                 }
                                                 post{
@@ -285,7 +278,7 @@ def call(){
                                                 steps{
                                                     sh(
                                                         label: 'Run Pytest',
-                                                        script: './venv/bin/uv run coverage run --parallel-mode --source=src -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml'
+                                                        script: 'uv run coverage run --parallel-mode --source=src -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml'
                                                     )
                                                 }
                                                 post{
@@ -299,7 +292,7 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'MyPy found issues', stageResult: 'UNSTABLE') {
                                                         tee('logs/mypy.log'){
                                                             sh(label: 'Running MyPy',
-                                                               script: './venv/bin/uv run mypy -p galatea --html-report reports/mypy/html'
+                                                               script: 'uv run mypy -p galatea --html-report reports/mypy/html'
                                                             )
                                                         }
                                                     }
@@ -316,8 +309,8 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
                                                         sh(
                                                          label: 'Running Ruff',
-                                                         script: '''./venv/bin/uv run ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
-                                                                    ./venv/bin/uv run ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
+                                                         script: '''uv run ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
+                                                                    uv run ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
                                                                 '''
                                                          )
                                                     }
@@ -331,7 +324,7 @@ def call(){
                                             stage('Audit Lockfile Dependencies'){
                                                 steps{
                                                     catchError(buildResult: 'SUCCESS', message: 'uv-secure found issues', stageResult: 'UNSTABLE') {
-                                                        sh './venv/bin/uv run --only-group=audit-dependencies --frozen --isolated uv-secure --disable-cache uv.lock'
+                                                        sh 'uv run --only-group=audit-dependencies --frozen --isolated uv-secure --disable-cache uv.lock'
                                                     }
                                                 }
                                             }
@@ -340,9 +333,9 @@ def call(){
                                             always{
                                                 sh(
                                                     label: 'Combining coverage data and generating report',
-                                                    script: '''./venv/bin/uv run coverage combine
-                                                               ./venv/bin/uv run coverage xml -o reports/coverage.xml
-                                                               ./venv/bin/uv run coverage html -d reports/coverage
+                                                    script: '''uv run coverage combine
+                                                               uv run coverage xml -o reports/coverage.xml
+                                                               uv run coverage html -d reports/coverage
                                                             '''
                                                 )
                                                 recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
@@ -378,7 +371,7 @@ def call(){
                                                 withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'token')]) {
                                                     sh(
                                                         label: 'Running Sonar Scanner',
-                                                        script: "./venv/bin/pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
+                                                        script: "uv run pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/tests/pytest/pytest-junit.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml -Dsonar.python.ruff.reportPaths=./reports/ruffoutput.json -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
                                                     )
                                                 }
                                             }
@@ -426,12 +419,10 @@ def call(){
                                             try{
                                                 checkout scm
                                                 withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                    docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
-                                                        sh(script: 'python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv'
-                                                        )
+                                                    docker.image('ghcr.io/astral-sh/uv:debian').inside('--mount source=python-tmp-galatea,target=/tmp --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'){
                                                         envs = sh(
                                                             label: 'Get tox environments',
-                                                            script: './venv/bin/uv run --quiet --frozen --only-group=tox --with tox-uv tox list -d --no-desc',
+                                                            script: 'uv run --quiet --frozen --only-group=tox --with tox-uv tox list -d --no-desc --workdir /tmp_data/.tox',
                                                             returnStdout: true,
                                                         ).trim().split('\n')
                                                     }
@@ -449,23 +440,15 @@ def call(){
                                                         node('docker && linux'){
                                                             try{
                                                                 checkout scm
-                                                                docker.image('python').inside('--mount source=python-tmp-galatea,target=/tmp'){
-                                                                    try{
-                                                                        retry(3){
-                                                                            withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                                                sh( label: 'Running Tox',
-                                                                                    script: """python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
-                                                                                               ./venv/bin/uv python install cpython-${version}
-                                                                                               ./venv/bin/uv run --only-group=tox --with=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner
-                                                                                            """
-                                                                                    )
-                                                                            }
+                                                                docker.image('ghcr.io/astral-sh/uv:debian').inside('--mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'){
+                                                                    retry(3){
+                                                                        withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
+                                                                            sh( label: 'Running Tox',
+                                                                                script: """uv python install cpython-${version}
+                                                                                           uv run --only-group=tox --with=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tmp_data/.tox
+                                                                                        """
+                                                                                )
                                                                         }
-                                                                    } catch(e) {
-                                                                        if (fileExists('./venv/bin/uv')) {
-                                                                            sh(script: './venv/bin/uv python list')
-                                                                        }
-                                                                        throw e
                                                                     }
                                                                 }
                                                             } finally{
@@ -571,7 +554,7 @@ def call(){
                                 }
                                 agent {
                                     docker {
-                                        image 'python'
+                                        image 'ghcr.io/astral-sh/uv:debian'
                                         label 'docker && linux'
                                         args '--mount source=python-tmp-galatea,target=/tmp'
                                     }
@@ -580,9 +563,7 @@ def call(){
                                     withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
                                         sh(
                                             label: 'Package',
-                                            script: '''python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv
-                                                       ./venv/bin/uv build
-                                                    '''
+                                            script: 'uv build'
                                         )
                                     }
                                     archiveArtifacts artifacts: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', fingerprint: true
@@ -642,10 +623,10 @@ def call(){
                                                             checkout scm
                                                             unstash 'PYTHON_PACKAGES'
                                                             if(['linux', 'windows'].contains(entry.OS) && params.containsKey("INCLUDE_${entry.OS}-${entry.ARCHITECTURE}".toUpperCase()) && params["INCLUDE_${entry.OS}-${entry.ARCHITECTURE}".toUpperCase()]){
-                                                                docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: 'python')
+                                                                docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: ( isUnix() ? 'ghcr.io/astral-sh/uv:debian' :'python'))
                                                                     .inside(
                                                                         isUnix() ?
-                                                                        '--mount source=python-tmp-galatea,target=/tmp' :
+                                                                        '--mount source=python-tmp-galatea,target=/tmp --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --mount type=tmpfs,dst=/.local' :
                                                                         '--mount type=volume,source=uv_python_install_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython \
                                                                          --mount type=volume,source=pipcache,target=C:\\Users\\ContainerUser\\Documents\\cache\\pipcache \
                                                                          --mount type=volume,source=uv_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvcache'
@@ -660,10 +641,8 @@ def call(){
                                                                         ]){
                                                                              sh(
                                                                                 label: 'Testing with tox',
-                                                                                script: """python3 -m venv venv
-                                                                                           ./venv/bin/pip install --disable-pip-version-check uv
-                                                                                           ./venv/bin/uv python install cpython-${entry.PYTHON_VERSION}
-                                                                                           ./venv/bin/uv run --only-group=tox --with=tox-uv --frozen tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
+                                                                                script: """uv python install cpython-${entry.PYTHON_VERSION}
+                                                                                           uv run --only-group=tox --with=tox-uv --frozen tox --workdir /tmp_data/.tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
                                                                                         """
                                                                             )
                                                                         }
@@ -1004,9 +983,9 @@ def call(){
                         }
                         agent {
                             docker{
-                                image 'python'
+                                image 'ghcr.io/astral-sh/uv:debian'
                                 label 'docker && linux'
-                                args '--mount source=python-tmp-galatea,target=/tmp'
+                                args '--mount source=python-tmp-galatea,target=/tmp --tmpfs /.cache/uv:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'
                             }
                         }
                         when{
@@ -1044,11 +1023,7 @@ def call(){
                                 ){
                                     sh(
                                         label: 'Uploading to pypi',
-                                        script: '''python3 -m venv venv
-                                                   trap "rm -rf venv" EXIT
-                                                   ./venv/bin/pip install --disable-pip-version-check uv
-                                                   ./venv/bin/uv run --only-group=release --isolated twine upload --disable-progress-bar --non-interactive dist/*
-                                                '''
+                                        script: 'uv run --only-group=release twine upload --disable-progress-bar --non-interactive dist/*'
                                     )
                                 }
                             }
