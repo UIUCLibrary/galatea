@@ -577,7 +577,7 @@ ci = [
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "pyfakefs" },
-    { name = "pysonar", specifier = ">=1.3.0.4086" },
+    { name = "pysonar" },
     { name = "pytest" },
     { name = "ruff" },
     { name = "sphinx" },

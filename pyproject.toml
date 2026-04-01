@@ -56,7 +56,7 @@ dev = [
 ]
 release = ["twine"]
 ci = [
-    "pysonar>=1.3.0.4086",
+    "pysonar",
     {include-group = "dev"},
     {include-group = "release"},
 ]
