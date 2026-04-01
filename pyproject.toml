@@ -30,7 +30,6 @@ galatea = "galatea.cli:main"
 
 [dependency-groups]
 test = [
-    "coverage",
     "pytest",
     "pyfakefs",
 ]
@@ -42,8 +41,13 @@ docs = [
 
 audit-dependencies = ["uv-secure"]
 tox = ["tox"]
+tox-uv = [
+    {include-group = "tox"},
+    "tox-uv-bare"
+]
 dev = [
     'build',
+    "coverage",
     'lxml',
     'mypy',
     'pre-commit',
