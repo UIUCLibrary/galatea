@@ -39,7 +39,6 @@ docs = [
     'tomli;python_version<"3.11"',
 ]
 
-audit-dependencies = ["uv-secure"]
 tox = ["tox"]
 tox-uv = [
     {include-group = "tox"},
@@ -54,7 +53,6 @@ dev = [
     'ruff',
     'types-requests',
     {include-group = "tox"},
-    {include-group = "audit-dependencies"},
     {include-group = "docs"},
     {include-group = "test"},
 ]
@@ -79,6 +77,7 @@ package-dir = {"" = "src"}
     "relator_terms.txt",
     "py.typed"
 ]
+"*" = ["pylock.toml"]
 
 [tool.commitizen]
 name = "cz_conventional_commits"
