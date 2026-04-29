@@ -209,7 +209,7 @@ def call(){
                             docker{
                                 image 'ghcr.io/astral-sh/uv:debian'
                                 label 'docker && linux && x86_64'
-                                args '--mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'
+                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
                             }
                         }
                         stages{
@@ -419,7 +419,7 @@ def call(){
                                             try{
                                                 checkout scm
                                                 withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                    docker.image('ghcr.io/astral-sh/uv:debian').inside('--mount source=python-tmp-galatea,target=/tmp --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'){
+                                                    docker.image('ghcr.io/astral-sh/uv:debian').inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"){
                                                         envs = sh(
                                                             label: 'Get tox environments',
                                                             script: 'uv run --quiet --frozen --only-group=tox tox list -d --no-desc --workdir /tmp_data/.tox',
@@ -440,7 +440,7 @@ def call(){
                                                         node('docker && linux'){
                                                             try{
                                                                 checkout scm
-                                                                docker.image('ghcr.io/astral-sh/uv:debian').inside('--mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'){
+                                                                docker.image('ghcr.io/astral-sh/uv:debian').inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"){
                                                                     retry(3){
                                                                         withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
                                                                             sh( label: 'Running Tox',
@@ -507,6 +507,7 @@ def call(){
                                                             try{
                                                                 docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: 'python')
                                                                     .inside("\
+                                                                        --label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\"
                                                                         --mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR} \
                                                                         --mount type=volume,source=pipcache,target=${env.PIP_CACHE_DIR} \
                                                                         --mount type=volume,source=uv_cache_dir,target=${env.UV_CACHE_DIR} \
@@ -556,7 +557,7 @@ def call(){
                                     docker {
                                         image 'ghcr.io/astral-sh/uv:debian'
                                         label 'docker && linux'
-                                        args '--mount source=python-tmp-galatea,target=/tmp'
+                                        args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp"
                                     }
                                 }
                                 steps{
@@ -624,12 +625,15 @@ def call(){
                                                             unstash 'PYTHON_PACKAGES'
                                                             if(['linux', 'windows'].contains(entry.OS) && params.containsKey("INCLUDE_${entry.OS}-${entry.ARCHITECTURE}".toUpperCase()) && params["INCLUDE_${entry.OS}-${entry.ARCHITECTURE}".toUpperCase()]){
                                                                 docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: ( isUnix() ? 'ghcr.io/astral-sh/uv:debian' :'python'))
-                                                                    .inside(
+                                                                    .inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" " + (
                                                                         isUnix() ?
-                                                                        '--mount source=python-tmp-galatea,target=/tmp --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --mount type=tmpfs,dst=/.local' :
-                                                                        '--mount type=volume,source=uv_python_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython \
-                                                                         --mount type=volume,source=pipcache,target=C:\\Users\\ContainerUser\\Documents\\cache\\pipcache \
-                                                                         --mount type=volume,source=uv_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvcache'
+                                                                            '--mount source=python-tmp-galatea,target=/tmp ' +
+                                                                            '--tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --mount type=tmpfs,dst=/.local'
+                                                                        :
+                                                                            '--mount type=volume,source=uv_python_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython ' +
+                                                                            '--mount type=volume,source=pipcache,target=C:\\Users\\ContainerUser\\Documents\\cache\\pipcache ' +
+                                                                            '--mount type=volume,source=uv_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvcache'
+                                                                         )
                                                                     ){
                                                                      if(isUnix()){
                                                                         withEnv([
@@ -844,6 +848,7 @@ def call(){
                                             docker{
                                                 image 'python'
                                                 label 'windows && docker && x86_64'
+                                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\""
                                             }
                                         }
                                         steps{
@@ -887,6 +892,7 @@ def call(){
                                             docker {
                                                 image 'mcr.microsoft.com/windows/servercore:ltsc2025'
                                                 label 'windows && docker && x86_64'
+                                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\""
                                             }
                                         }
                                         options {
@@ -992,7 +998,7 @@ def call(){
                             docker{
                                 image 'ghcr.io/astral-sh/uv:debian'
                                 label 'docker && linux'
-                                args '--mount source=python-tmp-galatea,target=/tmp --tmpfs /.cache/uv:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'
+                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.cache/uv:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
                             }
                         }
                         when{
