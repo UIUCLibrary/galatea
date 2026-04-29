@@ -513,18 +513,18 @@ def call(){
                                                                         --mount type=volume,source=uv_cache_dir,target=${env.UV_CACHE_DIR} \
                                                                         "
                                                                     ){
-                                                                    bat(label: 'Install uv',
-                                                                        script: 'python -m pip install --disable-pip-version-check uv && uv python update-shell'
-                                                                    )
-                                                                    retry(3){
-                                                                        withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
+                                                                    withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
+                                                                        bat(label: 'Install uv',
+                                                                            script: '''python -m pip install --disable-pip-version-check uv
+                                                                                       uv python update-shell
+                                                                                    '''
+                                                                        )
+                                                                        bat "uv python install cpython-${version}"
+                                                                        retry(3){
                                                                             bat(label: 'Running Tox',
-                                                                                script: """uv python install cpython-${version}
-                                                                                           uv run --only-group=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner
-                                                                                        """
+                                                                                script: "uv run --only-group=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner"
                                                                             )
                                                                         }
-                                                                    }
                                                                 }
                                                             } finally{
                                                                 bat "${tool(name: 'Default', type: 'git')} clean -dfx"
