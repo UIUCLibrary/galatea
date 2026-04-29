@@ -79,6 +79,7 @@ package-dir = {"" = "src"}
     "relator_terms.txt",
     "py.typed"
 ]
+"*" = ["pylock.toml"]
 
 [tool.commitizen]
 name = "cz_conventional_commits"
