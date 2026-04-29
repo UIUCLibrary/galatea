@@ -322,7 +322,7 @@ def call(){
                             docker{
                                 image 'ghcr.io/astral-sh/uv:debian'
                                 label 'docker && linux && x86_64'
-                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /.cache:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
+                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /.cache:exec --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
                             }
                         }
                         stages{
