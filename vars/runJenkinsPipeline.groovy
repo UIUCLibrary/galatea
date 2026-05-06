@@ -68,7 +68,7 @@ def testPackage(entry, params){
                         withEnv([
                             'PIP_CACHE_DIR=/tmp/pipcache',
                             'UV_TOOL_DIR=/tmp/uvtools',
-                            'UV_PYTHON_INSTALL_DIR=/tmp/uvpython',
+                            'UV_PYTHON_CACHE_DIR=/tmp/uvpython',
                             'UV_CACHE_DIR=/tmp/uvcache',
                             "UV_CONFIG_FILE=${createUnixUvConfig()}"
                         ]){
@@ -214,7 +214,7 @@ def deploySingleStandalone(file, url, authentication) {
 
 def getToxEnvs(){
     node('docker && windows'){
-        docker.image('python').inside("--mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR}"){
+        docker.image('python').inside("--mount type=volume,source=uv_python_cache_dir,target=${env.UV_PYTHON_CACHE_DIR}"){
             try{
                 checkout scm
                 bat(script: 'python -m venv venv && venv\\Scripts\\pip install --disable-pip-version-check uv')
@@ -314,7 +314,7 @@ def call(){
                         environment{
                             PIP_CACHE_DIR='/tmp/pipcache'
                             UV_TOOL_DIR='/tmp/uvtools'
-                            UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                            UV_PYTHON_CACHE_DIR='/tmp/uvpython'
                             UV_CACHE_DIR='/tmp/uvcache'
                             UV_CONFIG_FILE=createUnixUvConfig()
                         }
@@ -522,7 +522,7 @@ def call(){
                                 environment{
                                     PIP_CACHE_DIR='/tmp/pipcache'
                                     UV_TOOL_DIR='/tmp/uvtools'
-                                    UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                                    UV_PYTHON_CACHE_DIR='/tmp/uvpython'
                                     UV_CACHE_DIR='/tmp/uvcache'
                                 }
                                 steps{
@@ -582,7 +582,7 @@ def call(){
                                 environment{
                                     PIP_CACHE_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\pipcache'
                                     UV_TOOL_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvtools'
-                                    UV_PYTHON_INSTALL_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvpython'
+                                    UV_PYTHON_CACHE_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvpython'
                                     UV_CACHE_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvcache'
                                 }
                                 steps{
@@ -592,7 +592,7 @@ def call(){
                                             try{
                                                 checkout scm
                                                 docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: 'python')
-                                                    .inside("--mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR}"
+                                                    .inside("--mount type=volume,source=uv_python_cache_dir,target=${env.UV_PYTHON_CACHE_DIR}"
                                                          + " --mount type=volume,source=pipcache,target=${env.PIP_CACHE_DIR}"
                                                          + " --mount type=volume,source=uv_cache_dir,target=${env.UV_CACHE_DIR}"
                                                     ){
@@ -621,7 +621,7 @@ def call(){
                                                                 docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: 'python')
                                                                     .inside("\
                                                                         --label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" \
-                                                                        --mount type=volume,source=uv_python_install_dir,target=${env.UV_PYTHON_INSTALL_DIR} \
+                                                                        --mount type=volume,source=uv_python_cache_dir,target=${env.UV_PYTHON_CACHE_DIR} \
                                                                         --mount type=volume,source=pipcache,target=${env.PIP_CACHE_DIR} \
                                                                         --mount type=volume,source=uv_cache_dir,target=${env.UV_CACHE_DIR} \
                                                                         "
@@ -1017,7 +1017,7 @@ def call(){
                         environment{
                             PIP_CACHE_DIR='/tmp/pipcache'
                             UV_TOOL_DIR='/tmp/uvtools'
-                            UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                            UV_PYTHON_CACHE_DIR='/tmp/uvpython'
                             UV_CACHE_DIR='/tmp/uvcache'
                         }
                         agent {
