@@ -57,7 +57,7 @@ def testPackage(entry, params){
                 docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: ( isUnix() ? 'ghcr.io/astral-sh/uv:debian' :'python'))
                     .inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" " + (
                         isUnix() ?
-                            '--mount source=python-tmp-galatea,target=/tmp --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --mount type=tmpfs,dst=/.local'
+                            '--mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --mount type=tmpfs,dst=/.local'
                         :
                             '--mount type=volume,source=uv_python_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython ' +
                             '--mount type=volume,source=pipcache,target=C:\\Users\\ContainerUser\\Documents\\cache\\pipcache ' +
