@@ -57,7 +57,7 @@ def testPackage(entry, params){
                 docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: ( isUnix() ? 'ghcr.io/astral-sh/uv:debian' :'python'))
                     .inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" " + (
                         isUnix() ?
-                            '--mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --mount type=tmpfs,dst=/.local'
+                            '--mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --tmpfs /tmp_data:exec --mount type=tmpfs,dst=/.local'
                         :
                             '--mount type=volume,source=uv_python_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython ' +
                             '--mount type=volume,source=pipcache,target=C:\\Users\\ContainerUser\\Documents\\cache\\pipcache ' +
@@ -72,18 +72,20 @@ def testPackage(entry, params){
                             'UV_CACHE_DIR=/tmp/uvcache',
                             "UV_CONFIG_FILE=${createUnixUvConfig()}"
                         ]){
-                             sh "uv python install cpython-${entry.PYTHON_VERSION}"
-                             def attempt = 0
-                             retry(2){
-                                 attempt += 1
-                                    withEnv([(attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0']){
-                                         sh(
-                                            label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
-                                            script: "uv run --only-group=tox-uv --frozen tox --workdir /tmp_data/.tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}"
-                                        )
+                             cache(caches: [arbitraryFileCache(cacheName: "linux python venv group=tox-uv ${sh(returnStdout: true, script: 'uv self version', label: 'Determining which cache to use').trim()}", cacheValidityDecidingFile: 'uv.lock', path: '.venv')], maxCacheSize: 400) {
+                                 sh "uv python install cpython-${entry.PYTHON_VERSION}"
+                                 def attempt = 0
+                                     retry(2){
+                                         attempt += 1
+                                            withEnv([(attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0']){
+                                                 sh(
+                                                    label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
+                                                    script: "uv run --no-managed-python --only-group=tox-uv --frozen tox --workdir /tmp_data/.tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}"
+                                                )
+                                            }
+                                        }
                                     }
                                 }
-                            }
                      } else {
                         withEnv([
                             'PIP_CACHE_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\pipcache',
@@ -91,20 +93,27 @@ def testPackage(entry, params){
                             'UV_PYTHON_CACHE_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython',
                             'UV_CACHE_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvcache',
                             "UV_CONFIG_FILE=${createWindowUVConfig()}",
-                            "TOX_UV_PATH=${WORKSPACE}\\venv\\Scripts\\uv.exe"
+                            "TOX_UV_PATH=${WORKSPACE}\\tools\\uv\\Scripts\\uv.exe"
                         ]){
-                            bat """python -m venv venv
-                                   .\\venv\\Scripts\\pip install --disable-pip-version-check uv
-                                   .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
-                                """
-                            def attempt = 0
-                            retry(2){
-                                attempt += 1
-                                withEnv([(attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0']){
-                                    bat(
-                                        label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
-                                        script: ".\\venv\\Scripts\\uv run --only-group=tox-uv --frozen tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}"
-                                    )
+                            cache(caches: [arbitraryFileCache(cacheName: 'windows uv', cacheValidityDecidingFile: 'uv.lock', path: 'tools/uv')], maxCacheSize: 100) {
+                                if (!fileExists('tools/uv/Scripts/uv.exe')){
+                                    bat '''python -m venv tools/uv
+                                           .\\tools\\uv\\Scripts\\pip install --disable-pip-version-check uv
+                                           .\\tools\\uv\\Scripts\\uv python update-shell
+                                        '''
+                               }
+                            }
+                            bat ".\\tools\\uv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}"
+                            cache(caches: [arbitraryFileCache(cacheName: "windows python venv group=tox-uv ${bat(returnStdout: true, script: 'tools\\uv\\Scripts\\uv.exe self version', label: 'Determining which cache to use').trim()}", cacheValidityDecidingFile: 'uv.lock', path: '.venv')], maxCacheSize: 400) {
+                                def attempt = 0
+                                retry(2){
+                                    attempt += 1
+                                    withEnv([(attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0']){
+                                        bat(
+                                            label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
+                                            script: ".\\tools\\uv\\Scripts\\uv run --only-group=tox-uv --frozen tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}"
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -112,21 +121,28 @@ def testPackage(entry, params){
                 }
             } else {
                 if(isUnix()){
-                    def attempt = 0
-                    retry(2){
-                        attempt += 1
-                        withEnv([
-                            (attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0',
-                            "UV_CONFIG_FILE=${createUnixUvConfig()}",
-                            "TOX_UV_PATH=${WORKSPACE}/venv/bin/uv"
-                        ]){
-                            sh(
-                                label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
-                                script: """python3 -m venv venv
-                                           ./venv/bin/pip install --disable-pip-version-check uv
-                                           ./venv/bin/uv run --only-group=tox-uv --frozen tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
-                                        """
-                            )
+                    def hostType = sh(label: 'Determining the host machine', script: 'python3 -c \'import platform; print(f"{platform.system()}-{platform.machine()}")\'', returnStdout: true).trim()
+                    cache(caches: [arbitraryFileCache(cacheName: "${hostType} uv", cacheValidityDecidingFile: 'uv.lock', path: 'tools/uv')], maxCacheSize: 100) {
+                        if (!fileExists('tools/uv/bin/uv')){
+                            sh '''python3 -m venv tools/uv
+                                  ./tools/uv/bin/pip install --disable-pip-version-check uv
+                               '''
+                        }
+                    }
+                    cache(caches: [arbitraryFileCache(cacheName: "linux python venv group=tox-uv ${sh(returnStdout: true, script: 'uv self version', label: 'Determining which cache to use').trim()}", cacheValidityDecidingFile: 'uv.lock', path: '.venv')], maxCacheSize: 400) {
+                        def attempt = 0
+                        retry(2){
+                            attempt += 1
+                            withEnv([
+                                (attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0',
+                                "UV_CONFIG_FILE=${createUnixUvConfig()}",
+                                "TOX_UV_PATH=${WORKSPACE}/tools/uv/bin/uv"
+                            ]){
+                                sh(
+                                    label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
+                                    script: "./tools/uv/bin/uv run --only-group=tox-uv --frozen tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}"
+                                )
+                            }
                         }
                     }
                 } else {
@@ -322,16 +338,18 @@ def call(){
                             docker{
                                 image 'ghcr.io/astral-sh/uv:debian'
                                 label 'docker && linux && x86_64'
-                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /.cache:exec --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
+                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /.cache:exec --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec"
                             }
                         }
                         stages{
                             stage('Setup ci Environment'){
                                 steps{
-                                    sh(
-                                        label: 'Create virtual environment',
-                                        script: 'uv sync --frozen --group ci'
-                                    )
+                                    cache(caches: [arbitraryFileCache(cacheName: "linux python venv group=ci ${sh(returnStdout: true, script: 'uv self version', label: 'Determining which cache to use').trim()}", cacheValidityDecidingFile: 'uv.lock', path: '.venv')], maxCacheSize: 400) {
+                                        sh(
+                                            label: 'Create virtual environment',
+                                            script: 'uv sync --no-managed-python --frozen --group ci'
+                                        )
+                                    }
                                 }
                             }
                             stage('Build Documentation'){
@@ -505,6 +523,7 @@ def call(){
                             cleanup{
                                 cleanWs(patterns: [
                                         [pattern: 'uv/', type: 'INCLUDE'],
+                                        [pattern: '.venv/', type: 'INCLUDE'],
                                         [pattern: 'venv/', type: 'INCLUDE'],
                                         [pattern: 'logs/', type: 'INCLUDE'],
                                         [pattern: 'reports/', type: 'INCLUDE'],
@@ -532,12 +551,14 @@ def call(){
                                             try{
                                                 checkout scm
                                                 withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                    docker.image('ghcr.io/astral-sh/uv:debian').inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"){
-                                                        envs = sh(
-                                                            label: 'Get tox environments',
-                                                            script: 'uv run --quiet --frozen --only-group=tox tox list -d --no-desc --workdir /tmp_data/.tox',
-                                                            returnStdout: true,
-                                                        ).trim().split('\n')
+                                                    docker.image('ghcr.io/astral-sh/uv:debian').inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /tmp_data:exec"){
+                                                        cache(caches: [arbitraryFileCache(cacheName: "linux python venv group=tox ${sh(returnStdout: true, script: 'uv self version', label: 'Determining which cache to use').trim()}", cacheValidityDecidingFile: 'uv.lock', path: '.venv')], maxCacheSize: 400) {
+                                                            envs = sh(
+                                                                label: 'Get tox environments',
+                                                                script: 'uv run --quiet --frozen --only-group=tox tox list -d --no-desc --workdir /tmp_data/.tox',
+                                                                returnStdout: true,
+                                                            ).trim().split('\n')
+                                                        }
                                                     }
                                                 }
                                             } finally{
@@ -553,13 +574,15 @@ def call(){
                                                         node('docker && linux'){
                                                             try{
                                                                 checkout scm
-                                                                docker.image('ghcr.io/astral-sh/uv:debian').inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"){
-                                                                    retry(3){
-                                                                        withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                                            sh "uv python install cpython-${version}"
-                                                                            sh( label: 'Running Tox',
-                                                                                script: "uv run --managed-python --only-group=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tmp_data/.tox"
-                                                                                )
+                                                                docker.image('ghcr.io/astral-sh/uv:debian').inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec"){
+                                                                    cache(caches: [arbitraryFileCache(cacheName: "linux python venv group=tox-uv ${sh(returnStdout: true, script: 'uv self version', label: 'Determining which cache to use').trim()}", cacheValidityDecidingFile: 'uv.lock', path: '.venv')], maxCacheSize: 400) {
+                                                                        retry(3){
+                                                                            withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
+                                                                                sh "uv python install cpython-${version}"
+                                                                                sh( label: 'Running Tox',
+                                                                                    script: "uv run --no-managed-python --only-group=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tmp_data/.tox --recreate"
+                                                                                    )
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
@@ -596,12 +619,21 @@ def call(){
                                                          + " --mount type=volume,source=uv_cache_dir,target=${env.UV_CACHE_DIR}"
                                                     ){
                                                     withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}",]){
-                                                        bat(script: 'python -m pip install --disable-pip-version-check uv && uv python update-shell')
-                                                        envs = bat(
-                                                            label: 'Get tox environments',
-                                                            script: '@uv run --quiet --only-group=tox tox list -d --no-desc',
-                                                            returnStdout: true,
-                                                        ).trim().split('\r\n')
+                                                        cache(caches: [arbitraryFileCache(cacheName: 'windows uv', cacheValidityDecidingFile: 'uv.lock', path: 'tools/uv')], maxCacheSize: 100) {
+                                                            if (!fileExists('tools/uv/Scripts/uv.exe')){
+                                                                bat(script: '''python -m venv tools\\uv
+                                                                               tools\\uv\\Scripts\\python -m pip install --disable-pip-version-check uv
+                                                                            '''
+                                                               )
+                                                           }
+                                                       }
+                                                        cache(caches: [arbitraryFileCache(cacheName: "windows python venv group=tox ${bat(returnStdout: true, script: 'tools\\uv\\Scripts\\uv self version', label: 'Determining which cache to use').trim()}", cacheValidityDecidingFile: 'uv.lock', path: '.venv')], maxCacheSize: 400) {
+                                                            envs = bat(
+                                                                label: 'Get tox environments',
+                                                                script: '@tools\\uv\\Scripts\\uv run --quiet --only-group=tox tox list -d --no-desc',
+                                                                returnStdout: true,
+                                                            ).trim().split('\r\n')
+                                                        }
                                                     }
                                                 }
                                             } finally{
@@ -626,16 +658,23 @@ def call(){
                                                                         "
                                                                     ){
                                                                     withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
-                                                                        bat(label: 'Install uv',
-                                                                            script: '''python -m pip install --disable-pip-version-check uv
-                                                                                       uv python update-shell
-                                                                                    '''
-                                                                        )
-                                                                        bat "uv python install cpython-${version}"
-                                                                        retry(3){
-                                                                            bat(label: 'Running Tox',
-                                                                                script: "uv run --only-group=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner"
-                                                                            )
+                                                                        cache(caches: [arbitraryFileCache(cacheName: 'windows uv', cacheValidityDecidingFile: 'uv.lock', path: 'tools/uv')], maxCacheSize: 100) {
+                                                                            if (!fileExists('tools/uv/Scripts/uv.exe')){
+                                                                                bat(label: 'Install uv',
+                                                                                    script: 'python -m pip install --disable-pip-version-check uv'
+                                                                                )
+                                                                            }
+                                                                        }
+                                                                        cache(caches: [arbitraryFileCache(cacheName: "windows python venv group=tox-uv ${bat(returnStdout: true, script: 'tools\\uv\\Scripts\\uv.exe self version', label: 'Determining which cache to use').trim()}", cacheValidityDecidingFile: 'uv.lock', path: '.venv')], maxCacheSize: 400) {
+                                                                            bat 'tools\\uv\\Scripts\\uv.exe python update-shell'
+                                                                            bat "tools\\uv\\Scripts\\uv.exe python install cpython-${version}"
+                                                                            retry(3){
+                                                                                withEnv(["TOX_UV_PATH=${WORKSPACE}/tools/uv/Scripts/uv.exe"]){
+                                                                                    bat(label: 'Running Tox',
+                                                                                        script: "tools\\uv\\Scripts\\uv.exe run --no-managed-python --only-group=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner --recreate"
+                                                                                    )
+                                                                                }
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
