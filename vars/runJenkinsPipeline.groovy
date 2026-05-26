@@ -615,7 +615,9 @@ def call(){
                                                     "Tox Environment: ${toxEnv}",
                                                     {
                                                         node('docker && windows'){
-                                                            checkout scm
+                                                            retry(3){
+                                                                checkout scm
+                                                            }
                                                             try{
                                                                 docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: 'python')
                                                                     .inside("\
