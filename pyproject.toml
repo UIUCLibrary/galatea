@@ -22,7 +22,8 @@ dependencies = [
     "requests",
     "argcomplete>=3.6",
     "jinja2",
-    "tomli >= 1.1.0 ; python_version < '3.11'"
+    "tomli >= 1.1.0 ; python_version < '3.11'",
+    "tomlkit>=0.15.0",
 ]
 
 [project.scripts]
@@ -33,7 +34,7 @@ test = [
     "pytest",
     "pyfakefs",
 ]
-
+freeze = ["pyinstaller"]
 docs = [
     "sphinx",
     'tomli;python_version<"3.11"',

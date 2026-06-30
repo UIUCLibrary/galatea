@@ -660,7 +660,12 @@ def call(){
                 stages{
                     stage('Python Packages'){
                         when{
-                            equals expected: true, actual: params.BUILD_PACKAGES
+                            anyOf{
+                                equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
+                                equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
+                                equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
+                                equals expected: true, actual: params.BUILD_PACKAGES
+                            }
                         }
                         stages{
                             stage('Create Python Packages'){
@@ -760,11 +765,15 @@ def call(){
                                 stages{
                                     stage('Package'){
                                         agent{
-                                            label 'mac && python3.11 && x86_64'
+                                            label 'mac && python3 && x86_64'
+                                        }
+                                        environment{
+                                            UV_MANAGED_PYTHON=1
                                         }
                                         steps{
+                                            unstash "PYTHON_PACKAGES"
                                             withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                sh './contrib/create_mac_distrib.sh'
+                                                sh "./contrib/create_mac_distrib.sh ${findFiles(glob: 'dist/*.whl')[0].path}"
                                             }
                                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                             stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_X86_64'
@@ -816,11 +825,15 @@ def call(){
                                 stages{
                                     stage('Package'){
                                         agent{
-                                            label 'mac && python3.11 && arm64'
+                                            label 'mac && python3 && arm64'
+                                        }
+                                        environment{
+                                            UV_MANAGED_PYTHON=1
                                         }
                                         steps{
+                                            unstash "PYTHON_PACKAGES"
                                             withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                sh './contrib/create_mac_distrib.sh'
+                                                sh "./contrib/create_mac_distrib.sh ${findFiles(glob: 'dist/*.whl')[0].path}"
                                             }
                                             archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                             stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_ARM64'
@@ -879,9 +892,10 @@ def call(){
                                             }
                                         }
                                         steps{
+                                            unstash "PYTHON_PACKAGES"
                                             withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
                                                 tee('reports/windows_cpack.log'){
-                                                    bat(script: 'contrib/create_windows_distrib.bat')
+                                                    bat "powershell contrib/create_windows_distrib.ps1 ${findFiles(glob: 'dist/*.whl')[0].path}"
                                                 }
                                             }
                                             archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true

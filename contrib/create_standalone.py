@@ -7,27 +7,33 @@ on the user's machine.
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#   'PyInstaller', 'cmake'
+#   'cmake', 'pip>=26.1', 'tomlkit', 'packaging'
 #   ]
 # ///
 
 import abc
 import argparse
 import functools
+import hashlib
+import importlib.util
 import logging
 import os.path
 import platform
 import sys
+import tempfile
+import venv
 import zipfile
+from typing import Callable
 
-import packaging.version
 import pathlib
 import shutil
 import subprocess
 import tomllib
 import typing
-import PyInstaller.__main__
+
 import cmake
+import tomlkit
+import packaging.version
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -81,21 +87,49 @@ coll = COLLECT(
 logger = logging.getLogger(__name__)
 
 
-def create_standalone(specs_file: str, dist: str, work_path: str) -> None:
+def create_standalone(
+    pyinstaller_exec,
+    specs_file: str,
+    dist: str,
+    work_path: str
+) -> None:
     """Generate standalone executable application."""
-    PyInstaller.__main__.run(
-        [
-            "--noconfirm",
-            specs_file,
-            "--distpath",
-            dist,
-            "--workpath",
-            work_path,
-            "--clean",
-            "--log-level",
-            "WARN",
-        ]
-    )
+    cmd = [
+                pyinstaller_exec,
+                "--noconfirm",
+                specs_file,
+                "--distpath",
+                dist,
+                "--workpath",
+                work_path,
+                "--clean",
+                "--log-level",
+                "WARN",
+            ]
+    subprocess.check_call(cmd)
+
+
+class ValidatePackage(argparse.Action):
+    """Validate package arguments."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values,
+        option_string: typing.Optional[str] = None
+    ):
+        """Validate package arguments."""
+        if values is None:
+            raise ValueError("missing package")
+        values = typing.cast(pathlib.Path, values)
+        if not values.exists():
+            parser.error(f"'{values}' does not exist.")
+        if not values.is_file():
+            parser.error(f"'{values}' is not a file.")
+        if not values.name.endswith(".whl"):
+            parser.error(f"'{values}' is not a wheel")
+        setattr(namespace, self.dest, values)
 
 
 def generate_spec_file(
@@ -114,7 +148,7 @@ def generate_spec_file(
     dist_path = specs_files.parent
     if not dist_path.exists():
         dist_path.mkdir(parents=True, exist_ok=True)
-    specs_files.write_text(SPECS_TEMPLATE % specs)
+    specs_files.write_text(SPECS_TEMPLATE % specs, encoding="utf-8")
 
 
 def get_arg_parser() -> argparse.ArgumentParser:
@@ -130,6 +164,25 @@ def get_arg_parser() -> argparse.ArgumentParser:
     arg_parser.add_argument("--include-tab-completions", action="store_true")
     arg_parser.add_argument(
         "--build", default="./build/standalone_distribution", dest="build_path"
+    )
+    package_manager_choices = ['pip']
+    if shutil.which("uv"):
+        package_manager_choices.append('uv')
+
+    arg_parser.add_argument(
+        "--package-manager", default="pip", dest="package_manager", choices=package_manager_choices
+    )
+    arg_parser.add_argument(
+        "-r", "--requirements",
+        help='-r --requirements <file>    '
+             'Install from the given requirements file. '
+             'This option can be used multiple times.'
+    )
+    arg_parser.add_argument(
+        "python_package_file",
+        type=pathlib.Path,
+        action=ValidatePackage,
+        help="wheel or source distribution package"
     )
     arg_parser.add_argument("command_name")
     arg_parser.add_argument("entry_point")
@@ -176,7 +229,7 @@ class GenerateCPackConfig(abc.ABC):
         package_description = self.metadata.get(
             "CPACK_PACKAGE_DESCRIPTION", ""
         )
-        if package_description == "":
+        if not package_description:
             logger.warning("No description provided")
 
         lines = [
@@ -247,7 +300,7 @@ def package_with_cpack(
 ) -> None:
     """Package application using cpack utility, part of CMake."""
     cpack_file = os.path.join(build_path, "CPackConfig.cmake")
-    with open(cpack_file, "w") as f:
+    with open(cpack_file, "w", encoding="utf-8") as f:
         cpack_file_generator = GenerateCPackConfig(
             package_name,
             package_root,
@@ -272,36 +325,9 @@ def package_with_cpack(
         os.scandir(package_metadata["output_path"]),
     ):
         output_file = os.path.normpath(os.path.join(dist, file.name))
-        logger.info(f"Copying {file.name} to {output_file}")
+        logger.info("Copying %s to %s", file.name, output_file)
         shutil.copy(file.path, output_file)
 
-
-def package_with_system_zip(
-    package_name: str,
-    build_path: str,
-    package_root: str,
-    dist: str,
-    package_metadata: typing.Dict[str, str],
-):
-    """Package application with the OS's zip file command."""
-    zip_file_path = os.path.join(
-        "dist",
-        f"{package_name}-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.zip",
-    )
-    cwd = "dist"
-    zip = shutil.which("zip")
-    if not zip:
-        raise RuntimeError("Could not find zip command on path")
-    zip_command = [
-        zip,
-        "--symlinks",
-        "-r",
-        os.path.relpath(zip_file_path, cwd),
-        os.path.relpath(dist, cwd),
-    ]
-
-    subprocess.check_call(zip_command, cwd=cwd)
-    logger.info(f"Created {zip_file_path}")
 
 
 def package_with_system_tar(
@@ -346,13 +372,13 @@ def package_with_builtin_zip(
         f"{package_name}-{package_metadata['version']}-{package_metadata['os_name']}-{package_metadata['architecture']}.zip",
     )
     with zipfile.ZipFile(zip_file_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk(package_root):
+        for root, _, files in os.walk(package_root):
             for file in files:
                 file_path = os.path.join(root, file)
                 arcname = os.path.relpath(file_path, build_path)
                 zipf.write(file_path, arcname)
 
-    logger.info(f"Created {zip_file_path}")
+    logger.info("Created %s", zip_file_path)
 
 
 def package_distribution(
@@ -372,9 +398,13 @@ def package_distribution(
     )
 
 
-def create_completions(entry_point: str, dest: str) -> None:
+def create_completions(
+    entry_point: str,
+    dest: str,
+    register_exec="register-python-argcomplete"
+) -> None:
     """Create cli tab completion files for shells."""
-    command = ["register-python-argcomplete", entry_point]
+    command = [register_exec, entry_point]
     if sys.platform == "darwin":
         supported_shells = {
             "bash": {"file_name": f"{entry_point}.d"},
@@ -383,19 +413,21 @@ def create_completions(entry_point: str, dest: str) -> None:
         }
     elif sys.platform == "win32":
         supported_shells = {
-            "powershell": {"file_name": f"{entry_point.title()}ArgumentCompleter.psm1"}
+            "powershell": {
+                "file_name": f"{entry_point.title()}ArgumentCompleter.psm1"
+            }
         }
     else:
         supported_shells = {}
-    for shell in supported_shells:
+    for shell, shell_metadata in supported_shells.items():
         full_command = command + ["--shell", shell]
         result = subprocess.run(full_command, capture_output=True, check=True)
         output_path = os.path.join(dest, shell)
         if not os.path.exists(output_path):
             os.makedirs(output_path)
-        file_name = supported_shells[shell]["file_name"]
+        file_name = shell_metadata["file_name"]
         completion_file = os.path.join(output_path, file_name)
-        with open(completion_file, "w") as f:
+        with open(completion_file, "w", encoding="utf-8") as f:
             f.write(result.stdout.decode())
 
 
@@ -417,12 +449,235 @@ def include_extra_files(
         shutil.copy(args.include_readme, dest)
 
 
+def read_pkg_info(raw_data: str):
+    """Read package info."""
+    data: typing.Dict[str, typing.Optional[str]] = {
+        "name": None,
+        "version": None,
+        "license": None,
+        "summary": None,
+        "project_url": None
+    }
+    for line in raw_data.split("\n"):
+        match line.split():
+            case ["Name:", name]:
+                data["name"] = name
+
+            case ["Version:", version]:
+                data["version"] = version
+
+            case ["License-Expression:", license_type]:
+                data["license"] = license_type
+
+            case["Summary:", *values]:
+                data["summary"] = " ".join(values)
+
+            case["Project-URL:", "project,", url]:
+                data["project_url"] = url
+    return data
+
+
+def read_whl_metadata(wheel):
+    """Read Whl file metadata."""
+    with zipfile.ZipFile(wheel) as zip_file:
+        for compressed_file in zip_file.infolist():
+            if compressed_file.is_dir():
+                continue
+            path, filename = os.path.split(compressed_file.filename)
+            if "dist-info" not in path.split(os.path.sep)[0]:
+                continue
+            if "METADATA" != filename:
+                continue
+            return read_pkg_info(
+                zip_file.read(compressed_file).decode("utf-8")
+            )
+        raise FileNotFoundError("Unable to find whl metadata")
+
+
+def create_venv_with_venv_package(build_path) -> str:
+    """Create a virtual environment using standard venv module.
+
+    Note: there has been problems using this when using a python distribution
+     provided from uv.
+    """
+    venv.create(build_path, with_pip=False, clear=True)
+    venv_python = locate_python(build_path)
+    if not venv_python:
+        raise FileNotFoundError("Virtualenv python not found")
+    subprocess.check_call([venv_python, "--version"])
+    return venv_python
+
+
+def create_venv_with_uv_package(build_path) -> str:
+    """Create a virtual environment using uv."""
+    uv_command = shutil.which("uv")
+    if not uv_command:
+        raise FileNotFoundError("Uv not found")
+    subprocess.check_call(
+        [
+            uv_command,
+            "venv",
+            build_path,
+            "--python", sys.executable
+        ]
+    )
+    venv_python = locate_python(build_path)
+    if not venv_python:
+        raise FileNotFoundError("Virtualenv python not found")
+    subprocess.check_call([venv_python, "--version"])
+    return venv_python
+
+
+def add_wheel_to_pylock(
+    wheel: str,
+    src_lockfile: str,
+    output_lockfile: str
+) -> str:
+    """Create a new pylockfile with a reference to the whl file."""
+    with open(wheel, "rb") as f:
+        digest = hashlib.file_digest(f, "sha256")
+        package_hash = digest.hexdigest()
+
+    with open(src_lockfile, "r", encoding="utf-8") as lock_file_fp:
+        lock_file_content = tomlkit.parse(lock_file_fp.read())
+
+    wheel_metadata = read_whl_metadata(wheel)
+    new_package = {
+        "name": wheel_metadata["name"],
+        "version": wheel_metadata["version"],
+        "archive": {
+            "path": os.path.relpath(
+                wheel, start=os.path.dirname(output_lockfile)
+            ),
+            "hashes": {"sha256": package_hash},
+        },
+    }
+    lock_file_content["packages"].append(new_package)
+    with open(output_lockfile, "w", encoding="utf-8") as output_fp:
+        output_fp.write(tomlkit.dumps(lock_file_content))
+    return output_lockfile
+
+
+def create_virtualenv_from_pylock(
+    package: str,
+    build_path: str,
+    lock_file: str,
+    venv_create_strategy: Callable[[str], str] = create_venv_with_venv_package,
+) -> None:
+    """Create Python virtual environment using the package provided."""
+    venv_python = venv_create_strategy(build_path)
+
+    with tempfile.TemporaryDirectory() as tmp_dir_path:
+        generated_pylockfile = add_wheel_to_pylock(
+            package,
+            lock_file,
+            os.path.join(tmp_dir_path, "pylock.toml")
+        )
+
+        pip_exec = locate_pip(build_path)
+        if not pip_exec:
+            raise FileNotFoundError("Unable to locate pip executable.")
+
+        args = pip_exec + [
+            f"--python={venv_python}",
+            "install",
+            "--upgrade",
+            "-r", generated_pylockfile,
+        ]
+        subprocess.run(
+            args,
+            check=True
+        )
+
+
+def locate_python(package_env) -> typing.Optional[str]:
+    """Locate python executable in a venv package."""
+    possible_locations = [
+        os.path.join(package_env, "bin"),
+        os.path.join(package_env, "Scripts"),
+    ]
+    for location in possible_locations:
+        command = shutil.which("python", path=location)
+        if command:
+            return command
+    return None
+
+
+def locate_pyinstaller(package_env):
+    """Locate pyinstaller executable."""
+    possible_locations = [
+        os.path.join(package_env, "bin"),
+        os.path.join(package_env, "Scripts")
+    ]
+    for location in possible_locations:
+        pyinstaller = shutil.which("pyinstaller", path=location)
+        if pyinstaller:
+            return pyinstaller
+    return None
+
+
+def locate_pip(package_env) -> typing.Optional[typing.List[str]]:
+    """Locate pip executable."""
+    if importlib.util.find_spec("pip") is not None:
+        return [sys.executable, "-m", "pip"]
+
+    possible_locations = [
+        os.path.join(package_env, "bin"),
+        os.path.join(package_env, "Scripts"),
+    ]
+
+    for location in possible_locations:
+        command = shutil.which("pip", path=location)
+        if command:
+            return [command]
+    return None
+
+
+def locate_register_python_argcomplete(package_env):
+    """Locate register-python-argcomplete command in the current directory."""
+    possible_locations = [
+        os.path.join(package_env, "bin"),
+        os.path.join(package_env, "Scripts"),
+    ]
+
+    for location in possible_locations:
+        register_arg_complete_command =\
+            shutil.which("register-python-argcomplete", path=location)
+
+        if register_arg_complete_command:
+            return register_arg_complete_command
+    return None
+
+
+package_manager_venv_strategies: typing.Dict[str, Callable[[str], str]] = {
+    "pip": create_venv_with_venv_package,
+    "uv": create_venv_with_uv_package,
+}
+
+
 def main() -> None:
     """Start main entry point."""
     args = get_arg_parser().parse_args()
-    if os.path.exists(args.build_path):
-        logger.debug("removing existing build path")
-        shutil.rmtree(args.build_path)
+    package_env = os.path.join(args.build_path, "galatea")
+    if not os.path.exists(package_env):
+        os.makedirs(package_env)
+
+    if venv_strategy := package_manager_venv_strategies.get(
+        args.package_manager
+    ):
+        create_virtualenv_from_pylock(
+            args.python_package_file,
+            package_env,
+            args.requirements,
+            venv_create_strategy=venv_strategy
+        )
+    else:
+        raise RuntimeError(f"Unknown package manager: {args.package_manager}")
+
+    pyinstaller = locate_pyinstaller(package_env)
+    if not pyinstaller:
+        raise FileNotFoundError("Unable to locate pyinstaller")
+
     specs_file = os.path.join(args.build_path, f"{args.command_name}.spec")
     generate_spec_file(
         specs_file,
@@ -432,7 +687,8 @@ def main() -> None:
     )
     package_path = os.path.join(args.build_path, "package", args.command_name)
     create_standalone(
-        specs_file,
+        pyinstaller,
+        specs_file=specs_file,
         dist=package_path,
         work_path=os.path.join(args.build_path, "work_path"),
     )
@@ -462,11 +718,18 @@ def main() -> None:
             return metadata
 
     if args.include_tab_completions:
+        register_arg_command = locate_register_python_argcomplete(package_env)
+        if not register_arg_command:
+            raise FileNotFoundError(
+                "Unable to locate register-python-argcomplete"
+            )
+
         create_completions(
             args.command_name,
             os.path.abspath(
                 os.path.join(package_path, "extras", "cli_completion")
             ),
+            register_exec=register_arg_command
         )
     cpack_generator = "TGZ" if sys.platform == "darwin" else "ZIP"
     package_distribution(
