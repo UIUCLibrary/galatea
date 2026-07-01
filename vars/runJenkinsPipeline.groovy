@@ -307,6 +307,10 @@ def call(){
             booleanParam(name: 'DEPLOY_STANDALONE_PACKAGERS', defaultValue: false, description: 'Deploy standalone packages')
             booleanParam(name: 'DEPLOY_PYPI', defaultValue: false, description: 'Deploy to pypi. Must be used with BUILD_PACKAGES')
         }
+        options {
+            durabilityHint 'PERFORMANCE_OPTIMIZED'
+            preserveStashes()
+        }
         stages {
             stage('Testing'){
                 stages{
