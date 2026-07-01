@@ -99,6 +99,9 @@ class BadMappingFileError(GalateaException):
 class SerialzationError(GalateaException): ...
 
 
+class InvalidAPIRequestError(GalateaException): ...
+
+
 class GetMarcRetrievalError(GalateaException):
     """Unable to access record from GetMarc Server."""
 
@@ -248,6 +251,8 @@ def get_matching_marc_data(
     get_marc_server: str,
     request_strategy: Callable[[str], requests.Response] = requests.get,
 ) -> ET.Element:
+    if not mmsid.strip():
+        raise InvalidAPIRequestError("MMSId cannot be empty")
     result = request_strategy(f"{get_marc_server}/api/record?mms_id={mmsid}")
     try:
         return ET.fromstring(result.text)
@@ -687,21 +692,28 @@ def merge_data_from_getmarc(
                 logger.warning("Row #%s is empty", row.line_number)
                 new_rows.append(row.entry)
                 continue
-            logger.info("Mapping row #%s.", row.line_number)
-            try:
-                record = get_marc_server_strategy(
-                    typing.cast(str, row.entry[identifier_key])
-                )
-            except GetMarcRetrievalError as e:
-                logger.error(
-                    "Unable to access marc information from row #%s. Reason: %s",
+            mmsid = row.entry[identifier_key]
+            if not mmsid:
+                logger.warning(
+                    'Skipping row #%d because the "%s" field is empty',
                     row.line_number,
-                    e,
+                    identifier_key,
                 )
                 new_rows.append(row.entry)
-                raise NonFatalMergingRowError(
-                    f"Unable to merge data from row #{row.line_number}"
-                )
+            else:
+                logger.info("Mapping row #%s.", row.line_number)
+                try:
+                    record = get_marc_server_strategy(typing.cast(str, mmsid))
+                except GetMarcRetrievalError as e:
+                    logger.error(
+                        "Unable to access marc information from row #%s. Reason: %s",
+                        row.line_number,
+                        e,
+                    )
+                    new_rows.append(row.entry)
+                    raise NonFatalMergingRowError(
+                        f"Unable to merge data from row #{row.line_number}"
+                    )
 
             merged_row: Dict[str, str] = row.entry.copy()
             merger = MergeRowData(record)

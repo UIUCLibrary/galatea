@@ -670,6 +670,15 @@ def test_get_matching_marc_data():
     )
 
 
+def test_get_matching_marc_data_empty_mmsid_raises_exception():
+    with pytest.raises(merge_data.InvalidAPIRequestError):
+        merge_data.get_matching_marc_data(
+            mmsid="",
+            get_marc_server="https://spamserver",
+            request_strategy=Mock(),
+        )
+
+
 def test_get_matching_marc_data_parse_error_raises_GetMarcRetrevialError():
     response = MagicMock(name="Response")
     type(response).text = PropertyMock(
