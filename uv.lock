@@ -433,7 +433,7 @@ wheels = [
 
 [[package]]
 name = "galatea"
-version = "0.5.2.dev0"
+version = "0.5.2"
 source = { editable = "." }
 dependencies = [
     { name = "argcomplete" },

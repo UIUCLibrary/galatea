@@ -1,3 +1,19 @@
+## v0.5.2 (2026-07-01)
+
+### Feat
+
+- use pylock.toml when creating standalone builds
+- Merge data command will continue writing to files on non-fatal exception.
+
+### Fix
+
+- merging rows without Local Bib ID will be skipped instead of crashing
+- handle jinja2.exceptions.TemplateError in jinja templates
+
+### Refactor
+
+- updated .pre-commit-config.yaml to new standard
+
 ## v0.5.1 (2025-11-04)
 
 ### Feat
