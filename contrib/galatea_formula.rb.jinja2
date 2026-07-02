@@ -1,0 +1,43 @@
+# typed: true
+# frozen_string_literal: true
+
+class Galatea < Formula
+  include Language::Python::Virtualenv
+
+  desc "{{ desc }}"
+  homepage "{{ homepage }}"
+  url "{{ url }}"
+  sha256 "{{ sha256 }}"
+  license "{{ license }}"
+  head "{{ git_info['head'] }}", branch: "{{ git_info['branch'] }}"
+{%- if depends_on %}
+{% for depend in depends_on %}
+  depends_on "{{ depend['dependency'] }}"{% if depend['dependency_type'] == DependencyType.BUILD %} => :build{% elif depend['dependency_type'] == DependencyType.TEST %}=> :test{% endif -%}
+{%- endfor -%}
+{% endif %}
+  conflicts_with "uiuclibrary/uiucprescon/galatea-beta",
+                 because: "galatea beta and galatea formula share same command line application"
+{%- if resources %}
+{% for resource in resources %}
+  resource "{{ resource.name }}" do
+    url "{{ resource.url }}"
+    sha256 "{{ resource.sha256 }}"
+  end
+{% endfor -%}
+{% else %}
+{% endif %}
+  def install
+    virtualenv_install_with_resources
+
+    generate_completions_from_executable(
+      libexec/"bin/register-python-argcomplete", "galatea",
+      base_name:              "galatea",
+      shell_parameter_format: :arg
+    )
+  end
+
+  test do
+    system bin/"galatea", "--help"
+    system bin/"galatea", "--version"
+  end
+end

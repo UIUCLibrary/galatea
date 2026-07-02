@@ -196,6 +196,18 @@ def createGithubRelease(releaseName, githubCredentialsId, repo_username, reposit
            }
        }
     }
+    try{
+        return httpRequest(
+           url: "${releaseData.url}",
+           httpMode: 'GET',
+           customHeaders: [[name: 'Authorization', value: "token ${GITHUB_TOKEN}"]],
+           wrapAsMultipart: false,
+           validResponseCodes: '200'
+       )
+    } catch(Exception e){
+        echo "GitHub Release was made but unable to get metadata about this release"
+        return
+    }
 }
 
 def deploySingleStandalone(file, url, authentication) {
@@ -982,7 +994,6 @@ def call(){
                 }
                 parallel{
                     stage('GitHub Release'){
-                        agent any
                         when{
                             beforeInput true
                             beforeAgent true
@@ -1010,25 +1021,71 @@ def call(){
                        }
                        steps{
                            script {
-                                unstash 'PYTHON_PACKAGES'
-                                createGithubRelease(
-                                    "Version ${readTOML( file: 'pyproject.toml')['project'].version}",
-                                    GITHUB_CREDENTIALS_ID,
-                                    'UIUCLibrary',
-                                    'galatea',
-                                    'dist/*'
-                                    )
-                           }
-                       }
-                       post{
-                           cleanup{
-                               script{
-                                   if(isUnix()){
-                                       sh "${tool(name: 'Default', type: 'git')} clean -dfx"
-                                   } else {
-                                       bat "${tool(name: 'Default', type: 'git')} clean -dfx"
-                                   }
-                               }
+                                def release_url
+                                def sdistFile
+                                stage('Generate new GitHub Release'){
+                                    node{
+                                        try{
+                                            unstash 'PYTHON_PACKAGES'
+                                            def releaseData = createGithubRelease(
+                                                "Version ${readTOML( file: 'pyproject.toml')['project'].version}",
+                                                GITHUB_CREDENTIALS_ID,
+                                                'UIUCLibrary',
+                                                'galatea',
+                                                'dist/*'
+                                                )
+                                            if(!releaseData){
+                                                echo 'Unable to generate a homebrew formula'
+                                                return
+                                            }
+                                            // determine what is the sdist package file name,
+                                            def releaseFiles = findFiles(glob: 'dist/galatea-*.tar.gz')
+                                            if(releaseFiles.size() != 1){
+                                                echo "Unable to determine sdist. Located ${releaseFiles.size()} with current glob"
+                                                return
+                                            }
+                                            sdistFile = releaseFiles[0]
+                                            // Match assets to the sdist one
+                                            def sdistAssetMetadata
+                                            for (asset in releaseData.assets) {
+                                                if(asset.name == sdistFile.name){
+                                                    sdistAssetMetadata = asset
+                                                    break
+                                                }
+                                            }
+                                            if (!sdistAssetMetadata){
+                                                echo "Unable to find ${sdistFile.name} in assets"
+                                                return
+                                            }
+                                            // The url to the path in the assets is under the key browser_download_url
+                                            release_url = sdistAssetMetadata['browser_download_url']
+                                        } finally{
+                                            if(isUnix()){
+                                               sh "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                           } else {
+                                               bat "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                           }
+                                        }
+                                    }
+                                }
+                                stage('Generate Homebrew Formula'){
+                                    node('linux && docker'){
+                                        try{
+                                            checkout scm
+                                            unstash 'PYTHON_PACKAGES'
+                                            docker.image('ghcr.io/astral-sh/uv:debian').inside{
+                                                sh(label: 'Generate homebrew Formula',
+                                                   script: """mkdir -p dist/homebrew
+                                                              uv run contrib/create_homebrew_formula.py ${sdistFile} pylock.toml ${release_url} | tee dist/homebrew/galatea.rb
+                                                           """
+                                                )
+                                            }
+                                            archiveArtifacts artifacts: 'dist/galatea.rb'
+                                        } finally{
+                                            sh "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                        }
+                                    }
+                                }
                            }
                        }
                     }
