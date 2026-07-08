@@ -32,6 +32,13 @@ def createChocolateyConfigFile(configJsonFile, installerPackage, url){
     writeJSON( json: deployJsonMetadata, file: configJsonFile, pretty: 2)
 }
 
+def getVersion(){
+    node(){
+        checkout scm
+        return readTOML( file: 'pyproject.toml')['project'].version
+    }
+}
+
 def deployStandalone(glob, url) {
     script{
         findFiles(glob: glob).each{
@@ -346,7 +353,7 @@ def call(){
                                 steps{
                                     sh(
                                         label: 'Create virtual environment',
-                                        script: 'uv sync --frozen --group ci'
+                                        script: 'uv sync --frozen --group ci --extra gui'
                                     )
                                 }
                             }
@@ -772,6 +779,9 @@ def call(){
                                 equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
                             }
                         }
+                        environment{
+                            VERSION=getVersion()
+                        }
                         parallel{
                             stage('Mac Application x86_64'){
                                 when{
@@ -782,6 +792,9 @@ def call(){
                                     stage('Package'){
                                         agent{
                                             label 'mac && python3 && x86_64'
+                                        }
+                                        tools {
+                                            git 'Default'
                                         }
                                         environment{
                                             UV_MANAGED_PYTHON=1
@@ -801,10 +814,7 @@ def call(){
                                         }
                                         post{
                                             cleanup{
-                                                cleanWs(patterns: [
-                                                    [pattern: 'dist/', type: 'INCLUDE'],
-                                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                                                ])
+                                                sh(label: 'Clean up', script: 'git clean -dfx')
                                             }
                                         }
                                     }
@@ -817,8 +827,7 @@ def call(){
                                         }
                                         steps{
                                             unstash 'APPLE_APPLICATION_X86_64'
-                                            untar(file: "${findFiles(glob: 'dist/*.tar.gz')[0]}", dir: 'dist/out')
-                                            sh "${findFiles(glob: 'dist/out/**/galatea')[0].path} --version"
+                                            sh "contrib/test-apple-package.sh ${findFiles(glob: 'dist/*.tar.gz')[0]}"
                                         }
                                         post{
                                             cleanup{
@@ -846,6 +855,9 @@ def call(){
                                         environment{
                                             UV_MANAGED_PYTHON=1
                                         }
+                                        tools {
+                                            git 'Default'
+                                        }
                                         steps{
                                             unstash "PYTHON_PACKAGES"
                                             withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
@@ -861,10 +873,7 @@ def call(){
                                         }
                                         post{
                                             cleanup{
-                                                cleanWs(patterns: [
-                                                    [pattern: 'dist/', type: 'INCLUDE'],
-                                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                                                ])
+                                                sh(label: 'Clean up', script: 'git clean -dfx')
                                             }
                                         }
                                     }
@@ -877,8 +886,7 @@ def call(){
                                         }
                                         steps{
                                             unstash 'APPLE_APPLICATION_ARM64'
-                                            untar(file: "${findFiles(glob: 'dist/*.tar.gz')[0]}", dir: 'dist/out')
-                                            sh "${findFiles(glob: 'dist/out/**/galatea')[0].path} --version"
+                                            sh "contrib/test-apple-package.sh ${findFiles(glob: 'dist/*.tar.gz')[0]}"
                                         }
                                         post{
                                             cleanup{
@@ -911,7 +919,12 @@ def call(){
                                             unstash "PYTHON_PACKAGES"
                                             withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
                                                 tee('reports/windows_cpack.log'){
-                                                    bat "powershell contrib/create_windows_distrib.ps1 ${findFiles(glob: 'dist/*.whl')[0].path}"
+                                                    powershell(
+                                                        label: 'Create Windows Standalone',
+                                                        script: """New-ItemProperty -Path "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+                                                                   contrib/create_windows_distrib.ps1 ${findFiles(glob: 'dist/*.whl')[0].path}
+                                                                """
+                                                    )
                                                 }
                                             }
                                             archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
@@ -957,8 +970,9 @@ def call(){
                                         }
                                         steps{
                                             unstash 'WINDOWS_APPLICATION_X86_64'
-                                            unzip(zipFile: "${findFiles(glob: 'dist/*.zip')[0]}", dir: 'dist/galatea')
-                                            bat "${findFiles(glob: 'dist/galatea/**/galatea.exe')[0]} --version"
+                                            timeout(10){
+                                               bat "powershell contrib\\test-windows-package.ps1 ${findFiles(glob: 'dist/*.zip')[0]}  -ExpectedVersion \$Env:VERSION"
+                                            }
                                         }
                                         post{
                                             cleanup{
@@ -1145,7 +1159,7 @@ def call(){
                         }
                         post{
                             cleanup{
-                                sh 'git clean -dfx'
+                                sh(label: 'Clean up', script: 'git clean -dfx')
                             }
                         }
                     }

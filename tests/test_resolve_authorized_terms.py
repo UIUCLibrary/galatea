@@ -82,12 +82,18 @@ def test_resolve_authorized_terms_calls_resolve_strategy():
         spec_set=pathlib.Path, exists=lambda *_: True
     )
     output_file = MagicMock(spec_set=pathlib.Path, exists=lambda *_: False)
-    resolve_strategy = Mock(return_value=[
-        (
-            galatea.tsv.TableRow(line_number=1, entry={"element1": "value1"}),
-            galatea.tsv.TableRow(line_number=1, entry={"element1": "value2"}),
-         )
-    ])
+    resolve_strategy = Mock(
+        return_value=[
+            (
+                galatea.tsv.TableRow(
+                    line_number=1, entry={"element1": "value1"}
+                ),
+                galatea.tsv.TableRow(
+                    line_number=1, entry={"element1": "value2"}
+                ),
+            )
+        ]
+    )
     resolve_authorized_terms.resolve_authorized_terms(
         sample_input_tsv,
         transformation_file=sample_transformation_tsv,
@@ -96,7 +102,7 @@ def test_resolve_authorized_terms_calls_resolve_strategy():
         resolve_strategy=resolve_strategy,
     )
     resolve_strategy.assert_called_once()
-    output_file.open.assert_called_once_with("w", encoding='utf-8')
+    output_file.open.assert_called_once_with("w", encoding="utf-8")
 
 
 @pytest.mark.parametrize(

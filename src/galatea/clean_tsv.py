@@ -77,8 +77,9 @@ def default_row_modifier() -> RowTransformer:
     )
 
     transformer.add_transformation(
-        condition=lambda k, v: k
-        in ["260$a", "260$b", "260$c", "264$a", "264$b", "264$c"],
+        condition=lambda k, v: (
+            k in ["260$a", "260$b", "260$c", "264$a", "264$b", "264$c"]
+        ),
         transformation=lambda entry: modifiers.split_and_modify(
             entry,
             funcs=[
@@ -132,8 +133,10 @@ def default_row_modifier() -> RowTransformer:
     )
 
     transformer.add_transformation(
-        condition=lambda k, _: k
-        in ["650", "651", "655", "600", "610", "611", "700", "710", "711"],
+        condition=lambda k, _: (
+            k
+            in ["650", "651", "655", "600", "610", "611", "700", "710", "711"]
+        ),
         transformation=functools.partial(
             modifiers.remove_trailing_punctuation, punctuation=["."]
         ),

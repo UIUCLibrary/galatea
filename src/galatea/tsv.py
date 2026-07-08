@@ -65,8 +65,7 @@ def iter_tsv_fp(
         reader = csv.DictReader(fp, dialect=dialect)
         for row in reader:
             yield TableRow(
-                line_number=reader.line_num,
-                entry=typing.cast(T, row)
+                line_number=reader.line_num, entry=typing.cast(T, row)
             )
 
 

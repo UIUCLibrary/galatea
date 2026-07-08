@@ -43,13 +43,13 @@ function Build-Standalone{
     if (-not (Test-Path -Path $fullPath -PathType Container)) {
         New-Item -ItemType Directory -Path $fullPath -Force  | Out-Null
     }
-    & "$Uv" export --python="$PythonVersion" --frozen --no-dev --no-emit-project --no-annotate --no-header --group freeze --format pylock.toml --output-file "${fullPath}\pylock.toml"  | Out-Null
+    & "$Uv" export --python="$PythonVersion" --frozen --no-dev --no-emit-project --no-annotate --no-header --group freeze --format pylock.toml --extra gui --output-file "${fullPath}\pylock.toml"  | Out-Null
     &{
         # Prepend the PATH variable with location of the uv executable so that --package-manager=uv is accessible.
         # The reason for this is that the "uv" option for --package-manager in create_standalone.py is only valid if uv
         # in on the PATH environment variable.
         $env:PATH = "$((Get-ChildItem -Path (Resolve-Path "$Uv").Path).DirectoryName);$env:PATH"
-        $local:process = Start-Process -FilePath "$Uv" -ArgumentList "run", "--python=$PythonVersion","contrib\create_standalone.py","--package-manager=uv","--include-tab-completions","--requirements", "`"${fullPath}\pylock.toml`"", "`"${Wheel}`"", "galatea", "./contrib/bootstrap_standalone.py","--build","`"$fullPath`"" -Wait -NoNewWindow -PassThru
+        $local:process = Start-Process -FilePath "$Uv" -ArgumentList "run", "--python=$PythonVersion","contrib\create_standalone.py","--package-manager=uv","--include-tab-completions","--requirements", "`"${fullPath}\pylock.toml`"", "`"${Wheel}`"", "galatea", "--cli-entrypoint=./contrib/bootstrap_standalone_cli.py",  "--gui-entrypoint=./contrib/bootstrap_standalone_gui.py", "--build","`"$fullPath`"" -Wait -NoNewWindow -PassThru
         if ($process.ExitCode -ne 0) {
             Write-Host "Failed to build standalone"
             exit $process.ExitCode

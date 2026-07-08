@@ -122,10 +122,10 @@ def regex_transform(
 @functools.cache
 def _get_relator_term_regex():
     terms = (
-        files("galatea").joinpath('relator_terms.txt').read_text().split("\n")
+        files("galatea").joinpath("relator_terms.txt").read_text().split("\n")
     )
     relator_terms_in_regex = "|".join(terms)
-    return fr"({relator_terms_in_regex})\.?"
+    return rf"({relator_terms_in_regex})\.?"
 
 
 def remove_relator_terms(entry: MarcEntryDataTypes):

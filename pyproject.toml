@@ -26,8 +26,17 @@ dependencies = [
     "tomlkit>=0.15.0",
 ]
 
+[project.optional-dependencies]
+gui = ["speedwagon[qt] >= 0.4.0b23"]
+
 [project.scripts]
 galatea = "galatea.cli:main"
+
+[project.gui-scripts]
+galatea-gui = "galatea.gui.main:main"
+
+[project.entry-points.'speedwagon.plugins']
+galatea_workflows = 'galatea.gui.speedwagon_plugin'
 
 [dependency-groups]
 test = [
@@ -69,7 +78,11 @@ requires = ["setuptools>=77.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["galatea"]
+packages = [
+    "galatea",
+    "galatea.gui",
+    "galatea.gui.workflows"
+]
 zip-safe = true
 package-dir = {"" = "src"}
 
@@ -110,3 +123,18 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
 "docs/conf.py" = ["D"]
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
+[[tool.uv.index]]
+name = "uiuc_prescon_python"
+url = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/simple"
+explicit = true
+
+[tool.uv.sources]
+speedwagon = {index = "uiuc_prescon_python"}
+
+[tool.ty.src]
+exclude = ["tests"]

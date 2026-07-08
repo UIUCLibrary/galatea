@@ -19,8 +19,8 @@ create_standalone(){
     python_version=$3
 
     tmp_path=$(mktemp -d)
-    $uv_path export --python="$python_version" --frozen --no-dev --no-emit-project --no-annotate --group freeze --format pylock.toml --output-file "${tmp_path}/pylock.toml" > /dev/null
-    $uv_path run --python="$python_version" "$FREEZE_SCRIPT" --package-manager=uv --include-tab-completions --requirements "${tmp_path}/pylock.toml" "${wheel}" galatea ./contrib/bootstrap_standalone.py
+    $uv_path export --python="$python_version" --frozen --no-dev --no-emit-project --no-annotate --group freeze --extra gui --format pylock.toml --output-file "${tmp_path}/pylock.toml" > /dev/null
+    $uv_path run --python="$python_version" "$FREEZE_SCRIPT" --package-manager=uv --include-tab-completions --requirements "${tmp_path}/pylock.toml" --cli-entrypoint=./contrib/bootstrap_standalone_cli.py --gui-entrypoint=./contrib/bootstrap_standalone_gui.py "${wheel}" galatea
 }
 
 

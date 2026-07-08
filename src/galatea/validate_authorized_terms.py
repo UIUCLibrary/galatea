@@ -93,7 +93,7 @@ def optional_rate_limited_iterator(
     iterable: Iterable[T],
     bypass_sleep_func: Callable[[T], bool] = lambda *_: False,
     max_time: float = API_REQUEST_RATE_LIMIT_IN_SECONDS,
-    sleep_func: Callable[[float],None] = time.sleep
+    sleep_func: Callable[[float], None] = time.sleep,
 ) -> Iterator[T]:
     """Iterate over a generator and time limit the rate of yield.
 
@@ -110,11 +110,11 @@ def optional_rate_limited_iterator(
     """
     start_time = time.time()
     for i, results in enumerate(iterable):
-        if i> 0 and not bypass_sleep_func(results):
-                elapsed_time = time.time() - start_time
-                if elapsed_time < max_time:
-                    sleep_func(max_time - elapsed_time)
-                    start_time = time.time()
+        if i > 0 and not bypass_sleep_func(results):
+            elapsed_time = time.time() - start_time
+            if elapsed_time < max_time:
+                sleep_func(max_time - elapsed_time)
+                start_time = time.time()
         yield results
 
 
