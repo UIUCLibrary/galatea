@@ -37,75 +37,28 @@ import packaging.version
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+SPECS_TEMPLATE_HEADER = "# -*- mode: python ; coding: utf-8 -*-"
 
-SPECS_TEMPLATE = """# -*- mode: python ; coding: utf-8 -*-
-
-
-a = Analysis(
-    %(entry_points)s,
-    pathex=%(pathex)s,
-    binaries=[],
-    datas=[],
-    hiddenimports=[],
-    hookspath=[%(hooks_path)r],
-    hooksconfig={},
-    runtime_hooks=[],
-    excludes=[],
-    noarchive=False,
-    optimize=0,
-)
-pyz = PYZ(a.pure)
-
-exe = EXE(
-    pyz,
-    a.scripts,
-    [],
-    exclude_binaries=True,
-    name='%(name)s',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    console=True,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-)
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='%(name)s',
-)
-    """
 
 logger = logging.getLogger(__name__)
 
 
 def create_standalone(
-    pyinstaller_exec,
-    specs_file: str,
-    dist: str,
-    work_path: str
+    pyinstaller_exec, specs_file: str, dist: str, work_path: str
 ) -> None:
     """Generate standalone executable application."""
     cmd = [
-                pyinstaller_exec,
-                "--noconfirm",
-                specs_file,
-                "--distpath",
-                dist,
-                "--workpath",
-                work_path,
-                "--clean",
-                "--log-level",
-                "WARN",
-            ]
+        pyinstaller_exec,
+        "--noconfirm",
+        specs_file,
+        "--distpath",
+        dist,
+        "--workpath",
+        work_path,
+        "--clean",
+        "--log-level",
+        "WARN",
+    ]
     subprocess.check_call(cmd)
 
 
@@ -117,7 +70,7 @@ class ValidatePackage(argparse.Action):
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
         values,
-        option_string: typing.Optional[str] = None
+        option_string: typing.Optional[str] = None,
     ):
         """Validate package arguments."""
         if values is None:
@@ -132,23 +85,208 @@ class ValidatePackage(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
-def generate_spec_file(
-    output_file: str, script_name: str, entry_point: str, path: str = ""
+SPECS_TEMPLATE_CLI = """
+%(analysis_var)s = Analysis(
+    %(cli_entry_points)s,
+    pathex=%(pathex)s,
+    binaries=[],
+    datas=[],
+    hiddenimports=[],
+    hookspath=[%(hooks_path)r],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    noarchive=False,
+    optimize=0,
+)
+%(pyz_var)s = PYZ(%(analysis_var)s.pure)
+
+%(exe_var)s = EXE(
+    %(pyz_var)s,
+    %(analysis_var)s.scripts,
+    [],
+    exclude_binaries=True,
+    name='%(name)s',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+"""
+
+
+def generate_cli_spec_section(
+    path, script_name, entry_points: typing.List[str], var_suffix
 ):
-    """Generate pyinstaller specs file."""
-    specs = {
-        "entry_points": [entry_point],
-        "name": script_name,
+    """Generate pyinstaller cli target section of specs file."""
+    pyz_variable_name = f"pyz_cli_{var_suffix}"
+    exe_variable_name = f"exe_cli_{var_suffix}"
+    analysis_variable_name = f"analysis_cli_{var_suffix}"
+    cli_specs = {
         "hooks_path": os.path.abspath(
-            f"{pathlib.Path(__file__).parent / 'hooks'}"
+            f"{pathlib.Path(__file__).parent / 'hooks'}",
         ),
         "pathex": [path],
+        "name": script_name,
+        "cli_entry_points": entry_points,
+        "analysis_var": analysis_variable_name,
+        "pyz_var": pyz_variable_name,
+        "exe_var": exe_variable_name,
     }
+    return {
+        "analysis_var": analysis_variable_name,
+        "pyz_var": pyz_variable_name,
+        "exe_var": exe_variable_name,
+        "data": SPECS_TEMPLATE_CLI % cli_specs,
+    }
+
+
+SPECS_TEMPLATE_GUI = """
+%(analysis_var)s = Analysis(
+    %(gui_entry_points)s,
+    pathex=%(pathex)s,
+    binaries=[],
+    datas=[],
+    hiddenimports=[],
+    hookspath=[%(hooks_path)r],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    noarchive=False,
+    optimize=0,
+)
+%(pyz_var)s = PYZ(%(analysis_var)s.pure)
+
+%(exe_var)s = EXE(
+    %(pyz_var)s,
+    %(analysis_var)s.scripts,
+    [],
+    exclude_binaries=True,
+    name='%(name)s',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+"""
+
+
+def generate_gui_spec_section(
+    path, script_name, entry_points: typing.List[str], var_suffix
+):
+    """Generate pyinstaller gui target section of specs file."""
+    pyz_variable_name = f"pyz_gui_{var_suffix}"
+    exe_variable_name = f"exe_gui_{var_suffix}"
+    analysis_variable_name = f"analysis_gui_{var_suffix}"
+    cli_specs = {
+        "hooks_path": os.path.abspath(
+            f"{pathlib.Path(__file__).parent / 'hooks'}",
+        ),
+        "pathex": [path],
+        "name": script_name,
+        "gui_entry_points": entry_points,
+        "analysis_var": analysis_variable_name,
+        "pyz_var": pyz_variable_name,
+        "exe_var": exe_variable_name,
+    }
+    return {
+        "analysis_var": analysis_variable_name,
+        "pyz_var": pyz_variable_name,
+        "exe_var": exe_variable_name,
+        "data": SPECS_TEMPLATE_GUI % cli_specs,
+    }
+
+
+SPECS_TEMPLATE = """
+col_values = [%(col_values)s]
+coll = COLLECT(
+    *col_values,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='%(name)s',
+)
+"""
+
+
+def generate_collection_spec_section(
+    script_name, items: typing.List[typing.Tuple[str, str]]
+):
+    """Generate pyinstaller collect section of specs file."""
+    collection_values = []
+    for exec, analaysis in items:
+        collection_values += [
+            exec,
+            f"{analaysis}.binaries",
+            f"{analaysis}.datas",
+        ]
+    main_specs = {
+        "col_values": ", ".join(collection_values),
+        "name": script_name,
+    }
+    return {"data": SPECS_TEMPLATE % main_specs}
+
+
+def generate_spec_file(
+    output_file: str,
+    script_name: str,
+    entry_points: typing.Dict[str, str],
+    path: str = "",
+):
+    """Generate pyinstaller specs file."""
+    sections = []
     specs_files = pathlib.Path(output_file)
     dist_path = specs_files.parent
     if not dist_path.exists():
         dist_path.mkdir(parents=True, exist_ok=True)
-    specs_files.write_text(SPECS_TEMPLATE % specs, encoding="utf-8")
+
+    sections.append(SPECS_TEMPLATE_HEADER)
+
+    collect_items = []
+    if cli_entry_point := entry_points.get("cli"):
+        cli_results = generate_cli_spec_section(
+            path,
+            script_name,
+            [cli_entry_point],
+            "1",
+        )
+        sections.append(cli_results["data"])
+        collect_items.append((
+            cli_results["exe_var"],
+            cli_results["analysis_var"],
+        ))
+    if gui_entry_point := entry_points.get("gui"):
+        gui_results = generate_gui_spec_section(
+            path,
+            f"{script_name}-gui",
+            [gui_entry_point],
+            "1",
+        )
+        sections.append(gui_results["data"])
+        collect_items.append((
+            gui_results["exe_var"],
+            gui_results["analysis_var"],
+        ))
+    sections.append(
+        generate_collection_spec_section(
+            script_name=script_name,
+            items=collect_items,
+        )["data"]
+    )
+    specs_files.write_text("\n".join(sections), encoding="utf-8", newline="\n")
+    # specs_files.write_text(SPECS_TEMPLATE % main_specs, encoding="utf-8", newline="\n")
 
 
 def get_arg_parser() -> argparse.ArgumentParser:
@@ -165,27 +303,32 @@ def get_arg_parser() -> argparse.ArgumentParser:
     arg_parser.add_argument(
         "--build", default="./build/standalone_distribution", dest="build_path"
     )
-    package_manager_choices = ['pip']
+    package_manager_choices = ["pip"]
     if shutil.which("uv"):
-        package_manager_choices.append('uv')
+        package_manager_choices.append("uv")
 
     arg_parser.add_argument(
-        "--package-manager", default="pip", dest="package_manager", choices=package_manager_choices
+        "--package-manager",
+        default="pip",
+        dest="package_manager",
+        choices=package_manager_choices,
     )
     arg_parser.add_argument(
-        "-r", "--requirements",
-        help='-r --requirements <file>    '
-             'Install from the given requirements file. '
-             'This option can be used multiple times.'
+        "-r",
+        "--requirements",
+        help="-r --requirements <file>    "
+        "Install from the given requirements file. "
+        "This option can be used multiple times.",
     )
     arg_parser.add_argument(
         "python_package_file",
         type=pathlib.Path,
         action=ValidatePackage,
-        help="wheel or source distribution package"
+        help="wheel or source distribution package",
     )
+    arg_parser.add_argument("--cli-entrypoint")
+    arg_parser.add_argument("--gui-entrypoint")
     arg_parser.add_argument("command_name")
-    arg_parser.add_argument("entry_point")
 
     return arg_parser
 
@@ -256,16 +399,14 @@ class GenerateCPackConfig(abc.ABC):
         def sanitize_path(path: str) -> str:
             return os.path.abspath(path).replace("\\", "\\\\")
 
-        cpack_installed_dirs = " ".join(
-            [
-                f'"{sanitize_path(source_dir)}" "{package_dir}"'
-                for source_dir, package_dir in (
-                    {(app_root_dir, self.install_path_name)}.union(
-                        self._additional_directories
-                    )
+        cpack_installed_dirs = " ".join([
+            f'"{sanitize_path(source_dir)}" "{package_dir}"'
+            for source_dir, package_dir in (
+                {(app_root_dir, self.install_path_name)}.union(
+                    self._additional_directories
                 )
-            ]
-        )
+            )
+        ])
         lines.append(
             f"set(CPACK_INSTALLED_DIRECTORIES {cpack_installed_dirs})"
         )
@@ -317,9 +458,13 @@ def package_with_cpack(
     cpack_cmd = shutil.which("cpack", path=cmake.CMAKE_BIN_DIR)
     if not cpack_cmd:
         raise RuntimeError("unable to locate cpack command")
-    subprocess.check_call(
-        [cpack_cmd, "--config", cpack_file, "-G", cpack_generator]
-    )
+    subprocess.check_call([
+        cpack_cmd,
+        "--config",
+        cpack_file,
+        "-G",
+        cpack_generator,
+    ])
     for file in filter(
         lambda item: item.is_file(),
         os.scandir(package_metadata["output_path"]),
@@ -327,7 +472,6 @@ def package_with_cpack(
         output_file = os.path.normpath(os.path.join(dist, file.name))
         logger.info("Copying %s to %s", file.name, output_file)
         shutil.copy(file.path, output_file)
-
 
 
 def package_with_system_tar(
@@ -399,9 +543,7 @@ def package_distribution(
 
 
 def create_completions(
-    entry_point: str,
-    dest: str,
-    register_exec="register-python-argcomplete"
+    entry_point: str, dest: str, register_exec="register-python-argcomplete"
 ) -> None:
     """Create cli tab completion files for shells."""
     command = [register_exec, entry_point]
@@ -456,7 +598,7 @@ def read_pkg_info(raw_data: str):
         "version": None,
         "license": None,
         "summary": None,
-        "project_url": None
+        "project_url": None,
     }
     for line in raw_data.split("\n"):
         match line.split():
@@ -469,10 +611,10 @@ def read_pkg_info(raw_data: str):
             case ["License-Expression:", license_type]:
                 data["license"] = license_type
 
-            case["Summary:", *values]:
+            case ["Summary:", *values]:
                 data["summary"] = " ".join(values)
 
-            case["Project-URL:", "project,", url]:
+            case ["Project-URL:", "project,", url]:
                 data["project_url"] = url
     return data
 
@@ -513,14 +655,13 @@ def create_venv_with_uv_package(build_path) -> str:
     uv_command = shutil.which("uv")
     if not uv_command:
         raise FileNotFoundError("Uv not found")
-    subprocess.check_call(
-        [
-            uv_command,
-            "venv",
-            build_path,
-            "--python", sys.executable
-        ]
-    )
+    subprocess.check_call([
+        uv_command,
+        "venv",
+        build_path,
+        "--python",
+        sys.executable,
+    ])
     venv_python = locate_python(build_path)
     if not venv_python:
         raise FileNotFoundError("Virtualenv python not found")
@@ -529,9 +670,7 @@ def create_venv_with_uv_package(build_path) -> str:
 
 
 def add_wheel_to_pylock(
-    wheel: str,
-    src_lockfile: str,
-    output_lockfile: str
+    wheel: str, src_lockfile: str, output_lockfile: str
 ) -> str:
     """Create a new pylockfile with a reference to the whl file."""
     with open(wheel, "rb") as f:
@@ -569,9 +708,7 @@ def create_virtualenv_from_pylock(
 
     with tempfile.TemporaryDirectory() as tmp_dir_path:
         generated_pylockfile = add_wheel_to_pylock(
-            package,
-            lock_file,
-            os.path.join(tmp_dir_path, "pylock.toml")
+            package, lock_file, os.path.join(tmp_dir_path, "pylock.toml")
         )
 
         pip_exec = locate_pip(build_path)
@@ -582,12 +719,10 @@ def create_virtualenv_from_pylock(
             f"--python={venv_python}",
             "install",
             "--upgrade",
-            "-r", generated_pylockfile,
+            "-r",
+            generated_pylockfile,
         ]
-        subprocess.run(
-            args,
-            check=True
-        )
+        subprocess.run(args, check=True)
 
 
 def locate_python(package_env) -> typing.Optional[str]:
@@ -607,7 +742,7 @@ def locate_pyinstaller(package_env):
     """Locate pyinstaller executable."""
     possible_locations = [
         os.path.join(package_env, "bin"),
-        os.path.join(package_env, "Scripts")
+        os.path.join(package_env, "Scripts"),
     ]
     for location in possible_locations:
         pyinstaller = shutil.which("pyinstaller", path=location)
@@ -641,8 +776,9 @@ def locate_register_python_argcomplete(package_env):
     ]
 
     for location in possible_locations:
-        register_arg_complete_command =\
-            shutil.which("register-python-argcomplete", path=location)
+        register_arg_complete_command = shutil.which(
+            "register-python-argcomplete", path=location
+        )
 
         if register_arg_complete_command:
             return register_arg_complete_command
@@ -655,9 +791,19 @@ package_manager_venv_strategies: typing.Dict[str, Callable[[str], str]] = {
 }
 
 
+def validate_args(args, parser):
+    """Validate cli arguments."""
+    if not (args.cli_entrypoint or args.gui_entrypoint):
+        parser.error(
+            "Either --cli-entrypoint or --gui-entrypoint is required."
+        )
+
+
 def main() -> None:
     """Start main entry point."""
-    args = get_arg_parser().parse_args()
+    parser = get_arg_parser()
+    args = parser.parse_args()
+    validate_args(args, parser)
     package_env = os.path.join(args.build_path, "galatea")
     if not os.path.exists(package_env):
         os.makedirs(package_env)
@@ -669,7 +815,7 @@ def main() -> None:
             args.python_package_file,
             package_env,
             args.requirements,
-            venv_create_strategy=venv_strategy
+            venv_create_strategy=venv_strategy,
         )
     else:
         raise RuntimeError(f"Unknown package manager: {args.package_manager}")
@@ -679,10 +825,19 @@ def main() -> None:
         raise FileNotFoundError("Unable to locate pyinstaller")
 
     specs_file = os.path.join(args.build_path, f"{args.command_name}.spec")
+
+    entry_points = {}
+
+    if args.cli_entrypoint:
+        entry_points["cli"] = os.path.abspath(args.cli_entrypoint)
+
+    if args.gui_entrypoint:
+        entry_points["gui"] = os.path.abspath(args.gui_entrypoint)
+
     generate_spec_file(
         specs_file,
         script_name=args.command_name,
-        entry_point=os.path.abspath(args.entry_point),
+        entry_points=entry_points,
         path=os.path.abspath("src"),
     )
     package_path = os.path.join(args.build_path, "package", args.command_name)
@@ -729,7 +884,7 @@ def main() -> None:
             os.path.abspath(
                 os.path.join(package_path, "extras", "cli_completion")
             ),
-            register_exec=register_arg_command
+            register_exec=register_arg_command,
         )
     cpack_generator = "TGZ" if sys.platform == "darwin" else "ZIP"
     package_distribution(

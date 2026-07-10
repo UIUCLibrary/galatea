@@ -6,49 +6,27 @@ import contextlib
 import dataclasses
 import pathlib
 import sys
-from importlib import metadata
 import logging
 from typing import Optional, List, Callable
 import typing
 
 import galatea
 import galatea.config
+from galatea import command_descriptions
 
 from galatea import clean_tsv
 from galatea import validate_authorized_terms
 from galatea import resolve_authorized_terms
 from galatea import merge_data
-from galatea.utils import CommandFinishedWithException
+from galatea.utils import CommandFinishedWithException, get_version
 
 import argcomplete
 
 __doc__ = "Galatea is a tool for manipulating tsv data."
 __all__ = ["main"]
 
+
 logger = logging.getLogger(__name__)
-
-
-def get_versions_from_package() -> Optional[str]:
-    """Get version information from the package metadata."""
-    if not __package__:
-        return None
-
-    try:
-        return metadata.version(__package__)
-    except metadata.PackageNotFoundError:
-        return None
-
-
-DEFAULT_VERSION_STRATEGIES = [get_versions_from_package]
-
-
-def get_version() -> str:
-    """Get the version of current application."""
-    for strategy in DEFAULT_VERSION_STRATEGIES:
-        version = strategy()
-        if version:
-            return version
-    return "unknown version"
 
 
 class ValidateFilePath(argparse.Action):
@@ -89,7 +67,10 @@ def get_arg_parser() -> argparse.ArgumentParser:
     # --------------------------------------------------------------------------
     #  Clean tsv command
     # --------------------------------------------------------------------------
-    clean_tsv_cmd = subparsers.add_parser("clean-tsv", help="clean TSV files")
+    clean_tsv_cmd = subparsers.add_parser(
+        "clean-tsv", help=command_descriptions.CLEAN_TSV_DESC
+    )
+
     clean_tsv_cmd.add_argument(
         "-v",
         "--verbose",
@@ -145,7 +126,7 @@ def get_arg_parser() -> argparse.ArgumentParser:
     # --------------------------------------------------------------------------
 
     authorized_terms_check_cmd = authorized_terms_parser.add_parser(
-        "check", help="Check authorized terms are used in tsv file"
+        "check", help=command_descriptions.AUTHORIZED_TERMS_CHECK_DESCRIPTION
     )
 
     authorized_terms_check_cmd.add_argument(
@@ -165,11 +146,9 @@ def get_arg_parser() -> argparse.ArgumentParser:
     # authorized-terms new-transformation-file command
     # --------------------------------------------------------------------------
 
-    authorized_terms_new_transform_file_cmd = (
-        authorized_terms_parser.add_parser(
-            "new-transformation-file",
-            help="create a new transformation tsv file",
-        )
+    authorized_terms_new_transform_file_cmd = authorized_terms_parser.add_parser(
+        "new-transformation-file",
+        help=command_descriptions.AUTHORIZED_TERMS_NEW_TRANSFORMATION_FILE_DESCRIPTION,
     )
     authorized_terms_new_transform_file_cmd.add_argument(
         "--output",
@@ -194,8 +173,7 @@ def get_arg_parser() -> argparse.ArgumentParser:
     # --------------------------------------------------------------------------
     resolve_authorized_terms_cmd = authorized_terms_parser.add_parser(
         "resolve",
-        help="resolve unauthorized terms to authorized terms in found tsv "
-        "file",
+        help=command_descriptions.AUTHORIZED_TERMS_RESOLVE_DESCRIPTION,
     )
     resolve_authorized_terms_cmd.add_argument(
         "transformation_tsv_file",
@@ -247,7 +225,8 @@ def get_arg_parser() -> argparse.ArgumentParser:
     #  merge-data.from-get-marc.init_mapping command
     # --------------------------------------------------------------------------
     init_mapping = merge_get_marc_data_parser.add_parser(
-        "init-mapper", help="create initial mapping file"
+        "init-mapper",
+        help=command_descriptions.MERGE_DATA_FROM_GETMARC_INIT_MAPPER_DESC,
     )
     init_mapping.add_argument(
         "source_tsv_file",
@@ -265,9 +244,10 @@ def get_arg_parser() -> argparse.ArgumentParser:
 
     merge_merge_from_get_marc_cmd = merge_get_marc_data_parser.add_parser(
         "merge",
-        help="merge data from get-marc server and map to tsv file",
+        help=command_descriptions.MERGE_DATA_FROM_GETMARC_MERGE_DESC,
         allow_abbrev=False,
     )
+
     merge_merge_from_get_marc_cmd.add_argument(
         "metadata_tsv_file", type=pathlib.Path, help="tsv file with metadata"
     )

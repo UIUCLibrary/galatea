@@ -8,6 +8,7 @@
     `galatea.validate_authorized_terms` added.
 
 """
+
 # noqa: D104
 import logging as _logging
 from . import tsv

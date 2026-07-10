@@ -1,3 +1,5 @@
+"""Script for creating a homebrew formula file for Galatea."""
+
 # /// script
 # dependencies = [
 #   "Jinja2",
@@ -15,21 +17,29 @@ from typing import TypedDict, List
 
 import jinja2
 
-TEMPLATE_FILE = os.path.join(os.path.dirname(__file__), "galatea_formula.rb.jinja2")
+__all__ = []
+
+TEMPLATE_FILE = os.path.join(
+    os.path.dirname(__file__), "galatea_formula.rb.jinja2"
+)
+
 
 class GitInfo(TypedDict):
     head: str
     branch: str
 
+
 class DependencyType(enum.Enum):
-    BUILD = 'build'
-    INSTALL = 'install'
-    TEST = 'test'
+    BUILD = "build"
+    INSTALL = "install"
+    TEST = "test"
+
 
 @dataclass
 class Dependency:
     dependency: str
     dependency_type: DependencyType = DependencyType.INSTALL
+
 
 @dataclass
 class Resource:
@@ -37,16 +47,17 @@ class Resource:
     url: str
     sha256: str
 
+
 @dataclass
 class FormulaInfo:
     name: str
-    desc : str
-    homepage : str
-    url : str
-    sha256 : str
-    license : str
-    git_info : GitInfo
-    resources : List[Resource] = field(default_factory=list)
+    desc: str
+    homepage: str
+    url: str
+    sha256: str
+    license: str
+    git_info: GitInfo
+    resources: List[Resource] = field(default_factory=list)
     depends_on: List[Dependency] = field(default_factory=list)
 
 
@@ -56,7 +67,7 @@ def read_pkg_info_fp(file_pointer):
         "version": None,
         "license": None,
         "summary": None,
-        "project_url": None
+        "project_url": None,
     }
     for line in file_pointer.read().decode("utf-8").split("\n"):
         match line.split():
@@ -69,20 +80,19 @@ def read_pkg_info_fp(file_pointer):
             case ["License-Expression:", license_type]:
                 data["license"] = license_type
 
-            case["Summary:", *values]:
+            case ["Summary:", *values]:
                 data["summary"] = " ".join(values)
 
-            case["Project-URL:", "project,", url]:
+            case ["Project-URL:", "project,", url]:
                 data["project_url"] = url
     return data
 
-def get_package_info(tarball_location):
-    metadata = {
-        "sha256": None
-    }
 
-    with open(tarball_location, 'rb', buffering=0) as f:
-        metadata['sha256'] = hashlib.file_digest(f, "sha256").hexdigest()
+def get_package_info(tarball_location):
+    metadata = {"sha256": None}
+
+    with open(tarball_location, "rb", buffering=0) as f:
+        metadata["sha256"] = hashlib.file_digest(f, "sha256").hexdigest()
 
     with tarfile.open(tarball_location, "r:gz") as tar:
         for member in tar.getmembers():
@@ -100,26 +110,27 @@ def get_package_info(tarball_location):
 
         raise ValueError("no PKG-INFO found")
 
+
 def get_lock_file_packages(lockfile_path):
     packages = {}
     with open(lockfile_path, "rb") as f:
         data = tomllib.load(f)
 
-    for package in data['packages']:
-
-        if 'marker' in package:
-            if "sys_platform == 'win32'" in package['marker']:
+    for package in data["packages"]:
+        if "marker" in package:
+            if "sys_platform == 'win32'" in package["marker"]:
                 continue
-            if "sys_platform == 'linux'" in package['marker']:
+            if "sys_platform == 'linux'" in package["marker"]:
                 continue
 
         if "directory" in package:
             continue
 
-        packages[package['name']] = {
+        packages[package["name"]] = {
             k: v for k, v in package.items() if k not in ("name", "wheels")
         }
     return packages
+
 
 def render_formula(data) -> str:
     with open(TEMPLATE_FILE) as f:
@@ -129,13 +140,14 @@ def render_formula(data) -> str:
         template.globals["DependencyType"] = DependencyType
         return template.render(**asdict(data))
 
+
 def get_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
         "sdist",
         help="path to tar.gz sdist file. "
-             "For example: galatea-0.5.3.dev0.tar.gz"
+        "For example: galatea-0.5.3.dev0.tar.gz",
     )
 
     parser.add_argument(
@@ -147,16 +159,18 @@ def get_args():
 
     return parser
 
+
 def validate_args(args):
     issues = []
 
     if not os.path.isfile(args.sdist):
-        issues.append(f"sdist does not exist")
+        issues.append("sdist does not exist")
 
     if not os.path.isfile(args.lockfile):
-        issues.append(f"lockfile does not exist")
+        issues.append("lockfile does not exist")
 
     return issues
+
 
 def main():
     args = get_args().parse_args()
@@ -174,14 +188,14 @@ def main():
         render_formula(
             FormulaInfo(
                 name="Galatea",
-                desc=info['summary'],
+                desc=info["summary"],
                 homepage="https://github.com/UIUCLibrary/galatea",
                 url=args.url,
-                sha256=info['sha256'],
-                license=info['license'],
+                sha256=info["sha256"],
+                license=info["license"],
                 git_info={
                     "head": "https://github.com/UIUCLibrary/galatea.git",
-                    "branch": "main"
+                    "branch": "main",
                 },
                 depends_on=[
                     Dependency("python@3.13"),
@@ -190,15 +204,17 @@ def main():
                     [
                         Resource(
                             name=pkg_name,
-                            url=pkg_data['sdist']['url'],
-                            sha256=pkg_data['sdist']['hashes']['sha256']
-                        ) for pkg_name, pkg_data in lockfile_packages.items()
+                            url=pkg_data["sdist"]["url"],
+                            sha256=pkg_data["sdist"]["hashes"]["sha256"],
+                        )
+                        for pkg_name, pkg_data in lockfile_packages.items()
                     ],
-                    key=lambda r: r.name
-                )
+                    key=lambda r: r.name,
+                ),
             )
         )
     )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

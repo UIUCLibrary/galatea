@@ -7,6 +7,7 @@ import csv
 
 import pytest
 
+
 def test_write_tsv_fp():
     with io.StringIO() as buff:
         data = [
@@ -51,8 +52,8 @@ def test_write_tsv_fp():
         result = buff.read()
 
     assert (
-            result.strip()
-            == "1	50	100	110	111	245	246	255	260$a	264$a	260$b	264$b	260$c	264$c	300$ab	300$c	500	650$a	650$x	651$a	650$z	650$v	651$v	650$y	655	600	610	611	700	710	711"
+        result.strip()
+        == "1	50	100	110	111	245	246	255	260$a	264$a	260$b	264$b	260$c	264$c	300$ab	300$c	500	650$a	650$x	651$a	650$z	650$v	651$v	650$y	655	600	610	611	700	710	711"
     )  # noqa: E501
 
 
@@ -95,12 +96,12 @@ def sample_tsv_file_pointer():
 
 def test_iter_tsv_fp(sample_tsv_file_pointer):
     assert (
-            next(
-                galatea.tsv.iter_tsv_fp(
-                    sample_tsv_file_pointer, dialect=csv.get_dialect("excel-tab")
-                )
-            ).entry["1"]
-            == "99160807512205899"
+        next(
+            galatea.tsv.iter_tsv_fp(
+                sample_tsv_file_pointer, dialect=csv.get_dialect("excel-tab")
+            )
+        ).entry["1"]
+        == "99160807512205899"
     )
 
 
@@ -116,8 +117,11 @@ def test_iter_tsv_file_calls_strategy():
         )
     strategy.assert_called_once()
 
+
 def test_get_tsv_dialect(sample_tsv_file_pointer):
-    assert galatea.tsv.get_tsv_dialect(sample_tsv_file_pointer).delimiter == "\t"
+    assert (
+        galatea.tsv.get_tsv_dialect(sample_tsv_file_pointer).delimiter == "\t"
+    )
 
 
 def test_get_tsv_dialect_fallback_to_excel_tab():
@@ -140,10 +144,11 @@ def test_get_tsv_dialect_resets_fp(sample_tsv_file_pointer):
 
 def test_remembered_file_pointer_head(sample_tsv_file_pointer):
     sample_tsv_file_pointer.seek(10)
-    with galatea.tsv.remembered_file_pointer_head(sample_tsv_file_pointer) as fp:
+    with galatea.tsv.remembered_file_pointer_head(
+        sample_tsv_file_pointer
+    ) as fp:
         galatea.tsv.get_tsv_dialect(fp)
     assert sample_tsv_file_pointer.tell() == 10
-
 
 
 def test_get_field_names_calls_fp_strategy():
