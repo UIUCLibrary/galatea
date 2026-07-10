@@ -1,4 +1,8 @@
-## v0.5.3.dev0 (2026-07-01)
+## v0.6.0 (2026-07-10)
+
+### Feat
+
+- add speedwagon gui interface
 
 ## v0.5.2 (2026-07-01)
 
@@ -6,27 +10,19 @@
 
 - use pylock.toml when creating standalone builds
 - Merge data command will continue writing to files on non-fatal exception.
+- write_new_rows_to_file now verifies rows are valid
 
 ### Fix
 
 - merging rows without Local Bib ID will be skipped instead of crashing
 - handle jinja2.exceptions.TemplateError in jinja templates
+- _sniff_tsv_dialect defaults tsv file dialog with double quotes.
+- better error messages for jinja template throwing a TypeError Exception
+- extra mappings in a mapping toml only produces a warning
 
 ### Refactor
 
 - updated .pre-commit-config.yaml to new standard
-
-## v0.5.1 (2025-11-04)
-
-### Feat
-
-- write_new_rows_to_file now verifies rows are valid
-
-### Fix
-
-- _sniff_tsv_dialect defaults tsv file dialog with double quotes.
-- better error messages for jinja template throwing a TypeError Exception
-- extra mappings in a mapping toml only produces a warning
 
 ## v0.5.0 (2025-10-29)
 
@@ -38,16 +34,11 @@
 
 - all files open and write in utf-8
 - jinja template changed to allow for multiple subfields with the same code letter
+- added py.typed to package
 
 ### Refactor
 
 - use constant for marc namespace
-
-## v0.4.3 (2025-10-20)
-
-### Feat
-
-- added py.typed to package
 
 ## v0.4.2 (2025-10-14)
 
