@@ -1035,23 +1035,27 @@ def call(){
                                         }
                                     }
                                 }
-                                stage('Generate Homebrew Formula'){
-                                    node('linux && docker'){
-                                        try{
-                                            checkout scm
-                                            unstash 'PYTHON_PACKAGES'
-                                            docker.image('ghcr.io/astral-sh/uv:debian').inside{
-                                                sh(label: 'Generate homebrew Formula',
-                                                   script: """mkdir -p dist/homebrew
-                                                              uv run contrib/create_homebrew_formula.py ${sdistFile} pylock.toml ${release_url} | tee dist/homebrew/galatea.rb
-                                                           """
-                                                )
+                                if(sdistFile && release_url){
+                                    stage('Generate Homebrew Formula'){
+                                        node('linux && docker'){
+                                            try{
+                                                checkout scm
+                                                unstash 'PYTHON_PACKAGES'
+                                                docker.image('ghcr.io/astral-sh/uv:debian').inside('--tmpfs /.cache/uv:exec'){
+                                                    sh(label: 'Generate homebrew Formula',
+                                                       script: """mkdir -p dist/homebrew
+                                                                  uv run contrib/create_homebrew_formula.py ${sdistFile} pylock.toml ${release_url} | tee dist/homebrew/galatea.rb
+                                                               """
+                                                    )
+                                                }
+                                                archiveArtifacts(artifacts: 'dist/galatea.rb', allowEmptyArchive: true)
+                                            } finally{
+                                                sh "${tool(name: 'Default', type: 'git')} clean -dfx"
                                             }
-                                            archiveArtifacts artifacts: 'dist/galatea.rb'
-                                        } finally{
-                                            sh "${tool(name: 'Default', type: 'git')} clean -dfx"
                                         }
                                     }
+                                } else {
+                                    echo "Unable to Generate Homebrew Formula, check variables sdistFile && release_url"
                                 }
                            }
                        }
