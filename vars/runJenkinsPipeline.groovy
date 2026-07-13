@@ -1012,6 +1012,7 @@ def call(){
                                                 return
                                             }
                                             sdistFile = releaseFiles[0]
+                                            echo "sdistFile: ${sdistFile}"
                                             // Match assets to the sdist one
                                             def sdistAssetMetadata
                                             for (asset in releaseData.assets) {
