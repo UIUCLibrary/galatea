@@ -10,11 +10,18 @@ class Galatea < Formula
   sha256 "{{ sha256 }}"
   license "{{ license }}"
   head "{{ git_info['head'] }}", branch: "{{ git_info['branch'] }}"
+{%- if bottle_root_url %}
+
+  bottle do
+    root_url "{{ bottle_root_url }}"
+  end
+{% endif -%}
 {%- if depends_on %}
-{% for depend in depends_on %}
+{%- for depend in depends_on %}
   depends_on "{{ depend['dependency'] }}"{% if depend['dependency_type'] == DependencyType.BUILD %} => :build{% elif depend['dependency_type'] == DependencyType.TEST %}=> :test{% endif -%}
 {%- endfor -%}
 {% endif %}
+
   conflicts_with "uiuclibrary/uiucprescon/galatea-beta",
                  because: "galatea beta and galatea formula share same command line application"
 {%- if resources %}
@@ -27,7 +34,20 @@ class Galatea < Formula
 {% else %}
 {% endif %}
   def install
-    virtualenv_install_with_resources
+    venv = virtualenv_create(libexec, "python3.14")
+    site_packages = Language::Python.site_packages("python3.14")
+
+    ohai "Linking global PySide6 into virtual environment"
+    mkdir_p "#{libexec}/lib/#{site_packages}"
+    ln_s "#{HOMEBREW_PREFIX}/#{site_packages}/PySide6", "#{libexec}/lib/#{site_packages}/PySide6"
+    ln_s "#{HOMEBREW_PREFIX}/#{site_packages}/shiboken6", "#{libexec}/lib/#{site_packages}/shiboken6"
+
+    # Install remaining additional dependencies inside the virtualenv
+    resources.each do |r|
+      venv.pip_install r
+    end
+
+    venv.pip_install_and_link buildpath
 
     generate_completions_from_executable(
       libexec/"bin/register-python-argcomplete", "galatea",
@@ -39,5 +59,8 @@ class Galatea < Formula
   test do
     system bin/"galatea", "--help"
     system bin/"galatea", "--version"
+    system bin/"galatea-gui", "--help"
+    system bin/"galatea-gui", "--version"
+    system bin/"galatea-gui", "info"
   end
 end

@@ -13,9 +13,12 @@ import sys
 import tarfile
 import tomllib
 from dataclasses import dataclass, field, asdict
-from typing import TypedDict, List
+from typing import TypedDict, List, Optional
 
 import jinja2
+import logging
+
+logger = logging.getLogger(__name__)
 
 __all__ = []
 
@@ -59,6 +62,7 @@ class FormulaInfo:
     git_info: GitInfo
     resources: List[Resource] = field(default_factory=list)
     depends_on: List[Dependency] = field(default_factory=list)
+    bottle_root_url: Optional[str] = None
 
 
 def read_pkg_info_fp(file_pointer):
@@ -156,6 +160,10 @@ def get_args():
     )
 
     parser.add_argument("url", help="url to sdist package stored on internet")
+    parser.add_argument(
+        "--bottle-root-url",
+        help="url where the bottles will be stored. Even if it hasn't been uploaded yet.",
+    )
 
     return parser
 
@@ -172,13 +180,38 @@ def validate_args(args):
     return issues
 
 
+def build_resource(pkg_name, pkg_data):
+    if "sdist" not in pkg_data:
+        logger.warning(
+            'no sdist found for package "%s". To include in formular, it will have to added manually.',
+            pkg_name,
+        )
+        return None
+
+    return Resource(
+        name=pkg_name,
+        url=pkg_data["sdist"]["url"],
+        sha256=pkg_data["sdist"]["hashes"]["sha256"],
+    )
+
+
+def build_resources(lockfile_packages):
+    resources = []
+    for pkg_name, pkg_data in lockfile_packages.items():
+        logger.info("Processing package: %s", pkg_name)
+        if resource := build_resource(pkg_name, pkg_data):
+            resources.append(resource)
+
+    return sorted(resources, key=lambda r: r.name)
+
+
 def main():
     args = get_args().parse_args()
 
     if issues := validate_args(args):
         sys.stdout.flush()
         for issue in issues:
-            print(issue, file=sys.stderr)
+            logger.error(issue)
         exit(1)
 
     info = get_package_info(args.sdist)
@@ -193,24 +226,20 @@ def main():
                 url=args.url,
                 sha256=info["sha256"],
                 license=info["license"],
+                bottle_root_url=args.bottle_root_url,
                 git_info={
                     "head": "https://github.com/UIUCLibrary/galatea.git",
                     "branch": "main",
                 },
                 depends_on=[
-                    Dependency("python@3.13"),
+                    Dependency("libxml2"),
+                    Dependency("libxslt"),
+                    Dependency("libyaml"),
+                    Dependency("pyside"),
+                    Dependency("python@3.14"),
+                    Dependency("qt"),
                 ],
-                resources=sorted(
-                    [
-                        Resource(
-                            name=pkg_name,
-                            url=pkg_data["sdist"]["url"],
-                            sha256=pkg_data["sdist"]["hashes"]["sha256"],
-                        )
-                        for pkg_name, pkg_data in lockfile_packages.items()
-                    ],
-                    key=lambda r: r.name,
-                ),
+                resources=build_resources(lockfile_packages),
             )
         )
     )

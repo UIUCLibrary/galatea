@@ -1045,7 +1045,8 @@ def call(){
                                                 docker.image('ghcr.io/astral-sh/uv:debian').inside('--tmpfs /.cache/uv:exec'){
                                                     sh(label: 'Generate homebrew Formula',
                                                        script: """mkdir -p dist/homebrew
-                                                                  uv run contrib/create_homebrew_formula.py ${sdistFile} pylock.toml ${release_url} | tee dist/homebrew/galatea.rb
+                                                                  uv export --format pylock.toml --no-dev --extra gui --output-file pylock.gui.toml
+                                                                  uv run contrib/create_homebrew_formula.py ${sdistFile} pylock.gui.toml ${release_url} | tee dist/homebrew/galatea.rb
                                                                """
                                                     )
                                                 }
