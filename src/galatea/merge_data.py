@@ -700,6 +700,7 @@ def merge_data_from_getmarc(
                     identifier_key,
                 )
                 new_rows.append(row.entry)
+                continue
             else:
                 logger.info("Mapping row #%s.", row.line_number)
                 try:
