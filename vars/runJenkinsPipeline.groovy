@@ -80,7 +80,7 @@ def testPackage(entry, params){
                             'UV_CACHE_DIR=/tmp/uvcache',
                             "UV_CONFIG_FILE=${createUnixUvConfig()}"
                         ]){
-                             sh "uv python install cpython-${entry.PYTHON_VERSION}"
+                             sh(label: 'Installing required Python version if not already installed', script: "uv python find cpython-${entry.PYTHON_VERSION} --quiet 2>/dev/null || uv python install cpython-${entry.PYTHON_VERSION}")
                              def attempt = 0
                              retry(2){
                                  attempt += 1
@@ -103,7 +103,7 @@ def testPackage(entry, params){
                         ]){
                             bat """python -m venv venv
                                    .\\venv\\Scripts\\pip install --disable-pip-version-check uv
-                                   .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
+                                   .\\venv\\Scripts\\uv python find cpython-${entry.PYTHON_VERSION} --quiet 2>nul || .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
                                 """
                             def attempt = 0
                             retry(2){
@@ -140,7 +140,8 @@ def testPackage(entry, params){
                 } else {
                     bat """python -m venv venv
                            .\\venv\\Scripts\\pip install --disable-pip-version-check uv
-                           .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
+                           .\\venv\\Scripts\\uv python update-shell
+                           .\\venv\\Scripts\\uv python find cpython-${entry.PYTHON_VERSION} --quiet 2>nul || .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
                         """
                     def attempt = 0
                     retry(2){
@@ -171,7 +172,7 @@ def testPackage(entry, params){
 
 def createGithubRelease(releaseName, githubCredentialsId, repo_username, repository, glob) {
     withCredentials([string(credentialsId: githubCredentialsId, variable: 'GITHUB_TOKEN')]) {
-       def createReleaseResponse = httpRequest(
+        def createReleaseResponse = httpRequest(
            httpMode: 'POST',
            contentType: 'APPLICATION_JSON',
            url: "https://api.github.com/repos/${repo_username}/${repository}/releases",
@@ -187,34 +188,33 @@ def createGithubRelease(releaseName, githubCredentialsId, repo_username, reposit
            ]),
            validResponseCodes: '201' // Expect a 201 Created status code
            )
-
-       def releaseData = readJSON text: createReleaseResponse.content
-       findFiles(glob: glob).each{
-           def uploadResponse = httpRequest(
+        def releaseData = readJSON text: createReleaseResponse.content
+        findFiles(glob: glob).each{
+            def uploadResponse = httpRequest(
                url: "${releaseData.upload_url.replace('{?name,label}', '')}?name=${it.name}",
                httpMode: 'POST',
                uploadFile: it.path,
                customHeaders: [[name: 'Authorization', value: "token ${GITHUB_TOKEN}"]],
                wrapAsMultipart: false
-           )
-           if (uploadResponse.status >= 200 && uploadResponse.status < 300) {
-               echo "File uploaded successfully to GitHub release."
-           } else {
+            )
+            if (uploadResponse.status >= 200 && uploadResponse.status < 300) {
+                echo "File uploaded successfully to GitHub release."
+            } else {
                error "Failed to upload file: ${uploadResponse.status} - ${uploadResponse.content}"
-           }
-       }
-    }
-    try{
-        return httpRequest(
-           url: "${releaseData.url}",
-           httpMode: 'GET',
-           customHeaders: [[name: 'Authorization', value: "token ${GITHUB_TOKEN}"]],
-           wrapAsMultipart: false,
-           validResponseCodes: '200'
-       )
-    } catch(Exception e){
-        echo "GitHub Release was made but unable to get metadata about this release"
-        return
+            }
+        }
+        try{
+            return httpRequest(
+               url: "${releaseData.url}",
+               httpMode: 'GET',
+               customHeaders: [[name: 'Authorization', value: "token ${GITHUB_TOKEN}"]],
+               wrapAsMultipart: false,
+               validResponseCodes: '200'
+           )
+        } catch(Exception e){
+            echo "GitHub Release was made but unable to get metadata about this release. Reason: ${e}"
+            return
+        }
     }
 }
 
@@ -587,7 +587,7 @@ def call(){
                                                                 docker.image('ghcr.io/astral-sh/uv:debian').inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"){
                                                                     retry(3){
                                                                         withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                                            sh "uv python install cpython-${version}"
+                                                                            sh(label: 'Installing required Python version if not already installed', script: "uv python find cpython-${version} --quiet 2>/dev/null || uv python install cpython-${version} --install-dir \$UV_TOOL_BIN_DIR")
                                                                             sh( label: 'Running Tox',
                                                                                 script: "uv run --managed-python --only-group=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tmp_data/.tox"
                                                                                 )
@@ -664,7 +664,7 @@ def call(){
                                                                                        uv python update-shell
                                                                                     '''
                                                                         )
-                                                                        bat "uv python install cpython-${version}"
+                                                                        bat(label: 'Installing required Python version if not already installed', script: "uv python find cpython-${version} --quiet 2>nul || uv python install cpython-${version}")
                                                                         retry(3){
                                                                             bat(label: 'Running Tox',
                                                                                 script: "uv run --only-group=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner"
