@@ -771,7 +771,9 @@ def call(){
                                         stages: [
                                             { entry ->
                                                 stage('Test Package') {
-                                                    testPackage(entry, params)
+                                                    retry(conditions: [agent()], count: 2) {
+                                                        testPackage(entry, params)
+                                                    }
                                                 }
                                             }
                                         ]
