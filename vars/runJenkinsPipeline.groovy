@@ -688,20 +688,19 @@ def call(){
                 }
             }
             stage('Package'){
+                when{
+                    anyOf{
+                        equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
+                        equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
+                        equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
+                        equals expected: true, actual: params.BUILD_PACKAGES
+                    }
+                }
                 stages{
                     stage('Create Python Packages'){
                         environment{
                             PIP_CACHE_DIR='/tmp/pipcache'
                             UV_CACHE_DIR='/tmp/uvcache'
-                        }
-                        when{
-                            anyOf{
-                                equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_X86_64
-                                equals expected: true, actual: params.PACKAGE_MAC_OS_STANDALONE_ARM64
-                                equals expected: true, actual: params.PACKAGE_STANDALONE_WINDOWS_INSTALLER
-                                equals expected: true, actual: params.BUILD_PACKAGES
-                            }
-                            beforeAgent true
                         }
                         agent {
                             docker {
