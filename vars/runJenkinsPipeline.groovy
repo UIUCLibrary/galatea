@@ -171,7 +171,7 @@ def testPackage(entry, params){
 
 def createGithubRelease(releaseName, githubCredentialsId, repo_username, repository, glob) {
     withCredentials([string(credentialsId: githubCredentialsId, variable: 'GITHUB_TOKEN')]) {
-       def createReleaseResponse = httpRequest(
+        def createReleaseResponse = httpRequest(
            httpMode: 'POST',
            contentType: 'APPLICATION_JSON',
            url: "https://api.github.com/repos/${repo_username}/${repository}/releases",
@@ -187,34 +187,33 @@ def createGithubRelease(releaseName, githubCredentialsId, repo_username, reposit
            ]),
            validResponseCodes: '201' // Expect a 201 Created status code
            )
-
-       def releaseData = readJSON text: createReleaseResponse.content
-       findFiles(glob: glob).each{
-           def uploadResponse = httpRequest(
+        def releaseData = readJSON text: createReleaseResponse.content
+        findFiles(glob: glob).each{
+            def uploadResponse = httpRequest(
                url: "${releaseData.upload_url.replace('{?name,label}', '')}?name=${it.name}",
                httpMode: 'POST',
                uploadFile: it.path,
                customHeaders: [[name: 'Authorization', value: "token ${GITHUB_TOKEN}"]],
                wrapAsMultipart: false
-           )
-           if (uploadResponse.status >= 200 && uploadResponse.status < 300) {
-               echo "File uploaded successfully to GitHub release."
-           } else {
+            )
+            if (uploadResponse.status >= 200 && uploadResponse.status < 300) {
+                echo "File uploaded successfully to GitHub release."
+            } else {
                error "Failed to upload file: ${uploadResponse.status} - ${uploadResponse.content}"
-           }
-       }
-    }
-    try{
-        return httpRequest(
-           url: "${releaseData.url}",
-           httpMode: 'GET',
-           customHeaders: [[name: 'Authorization', value: "token ${GITHUB_TOKEN}"]],
-           wrapAsMultipart: false,
-           validResponseCodes: '200'
-       )
-    } catch(Exception e){
-        echo "GitHub Release was made but unable to get metadata about this release"
-        return
+            }
+        }
+        try{
+            return httpRequest(
+               url: "${releaseData.url}",
+               httpMode: 'GET',
+               customHeaders: [[name: 'Authorization', value: "token ${GITHUB_TOKEN}"]],
+               wrapAsMultipart: false,
+               validResponseCodes: '200'
+           )
+        } catch(Exception e){
+            echo "GitHub Release was made but unable to get metadata about this release. Reason: ${e}"
+            return
+        }
     }
 }
 
