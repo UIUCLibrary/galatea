@@ -1,4 +1,8 @@
-## v0.6.1.dev0 (2026-07-10)
+## v0.6.1 (2026-07-27)
+
+### Fix
+
+- Skipped rows no longer create a double record on output
 
 ## v0.6.0 (2026-07-10)
 
