@@ -561,7 +561,19 @@ def call(){
                                         def envs = []
                                         node('docker && linux'){
                                             try{
-                                                checkout scm
+                                                def attempt = 0
+                                                def MAX_ATTEMPTS = 2
+                                                retry(MAX_ATTEMPTS){
+                                                    attempt += 1
+                                                    try{
+                                                        checkout scm
+                                                    } catch(e){
+                                                        if (attempt < MAX_ATTEMPTS) {
+                                                            sleep 5
+                                                        }
+                                                        throw e
+                                                    }
+                                                }
                                                 withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
                                                     docker.image('ghcr.io/astral-sh/uv:debian').inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"){
                                                         envs = sh(
