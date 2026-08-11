@@ -919,7 +919,8 @@ def call(){
                                                                     }
                                                                 }
                                                             } finally{
-                                                                recordIssues(
+                                                                if(fileExists('reports/windows_cpack.log')){
+                                                                    recordIssues(
                                                                         sourceCodeRetention: 'LAST_BUILD',
                                                                         tools: [
                                                                             cmake(
@@ -928,7 +929,10 @@ def call(){
                                                                             )
                                                                         ]
                                                                     )
-                                                                bat "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                                                }
+                                                                if (fileExists('.git')){
+                                                                    bat "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                                                }
                                                             }
                                                         }
                                                     } else {
