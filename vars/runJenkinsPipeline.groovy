@@ -448,6 +448,20 @@ def call(){
                                                     }
                                                 }
                                             }
+                                            stage('qmllint'){
+                                                steps{
+                                                    catchError(buildResult: 'SUCCESS', message: 'qmllint found issues', stageResult: 'UNSTABLE') {
+                                                        sh(label: 'Running qmllint',
+                                                           script: 'uv run pyside6-qmllint src/galatea/gui/qml/**/*.qml --json reports/qmllint-report.json'
+                                                        )
+                                                    }
+                                                }
+                                                post {
+                                                    always {
+                                                        recordIssues(tool: issues(pattern: 'reports/qmllint-report.json', name: 'qmllint'))
+                                                    }
+                                                }
+                                            }
                                             stage('Ruff') {
                                                 steps{
                                                     catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {

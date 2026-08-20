@@ -24,6 +24,7 @@ dependencies = [
     "jinja2",
     "tomli >= 1.1.0 ; python_version < '3.11'",
     "tomlkit>=0.15.0",
+    "PySide6>=6.9",
 ]
 
 [project.optional-dependencies]
@@ -91,6 +92,10 @@ package-dir = {"" = "src"}
     "relator_terms.txt",
     "py.typed"
 ]
+"galatea.gui" = [
+    "qml/Editor/*.qml",
+    "qml/Editor/*.js"
+]
 "*" = ["pylock.toml"]
 
 [tool.commitizen]
@@ -108,6 +113,9 @@ pre_bump_hooks = [
 
 [tool.mypy]
 mypy_path = "src"
+exclude = ["galatea/gui/qml"]
+
+
 
 [tool.ruff]
 line-length = 79
