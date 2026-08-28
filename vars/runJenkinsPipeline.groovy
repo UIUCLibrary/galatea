@@ -671,11 +671,14 @@ def call(){
                                                                         "
                                                                     ){
                                                                     withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
-                                                                        bat(label: 'Install uv',
-                                                                            script: '''python -m pip install --disable-pip-version-check uv
-                                                                                       uv python update-shell
-                                                                                    '''
-                                                                        )
+                                                                        retry(3){
+                                                                            bat(label: 'Install uv',
+                                                                                script: '''python -m pip install --disable-pip-version-check uv
+                                                                                           uv python update-shell
+                                                                                        '''
+                                                                            )
+                                                                        }
+
                                                                         bat(label: 'Installing required Python version if not already installed', script: "uv python find cpython-${version} --quiet 2>nul || uv python install cpython-${version}")
                                                                         retry(3){
                                                                             bat(label: 'Running Tox',
