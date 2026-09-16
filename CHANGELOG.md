@@ -1,4 +1,8 @@
-## v0.6.2.dev0 (2026-07-27)
+## v0.6.2 (2026-09-16)
+
+### Fix
+
+- fixed opening files in browser not working
 
 ## v0.6.1 (2026-07-27)
 
