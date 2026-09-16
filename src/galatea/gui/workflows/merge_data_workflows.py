@@ -29,8 +29,8 @@ if TYPE_CHECKING:
 
 __all__ = ["GetMarcInitMapper", "GetMarcMerge"]
 
-OPEN_FILE_PATTERN_MATCHING_TSV = "Tab-Separated Value (\\*.tsv)"
-OPEN_FILE_PATTERN_MATCHING_MAPPER_TOML = "Mapper Toml File (\\*.toml)"
+OPEN_FILE_PATTERN_MATCHING_TSV = r"Tab-Separated Value (*.tsv)"
+OPEN_FILE_PATTERN_MATCHING_MAPPER_TOML = r"Mapper Toml File (*.toml)"
 
 # =============================================================================
 # WORKFLOW: "Merge Data: Initialize GetMarc Mapper File"
