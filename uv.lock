@@ -447,6 +447,9 @@ dependencies = [
 gui = [
     { name = "speedwagon", extra = ["qt"] },
 ]
+speedwagon = [
+    { name = "speedwagon" },
+]
 
 [package.dev-dependencies]
 ci = [
@@ -512,11 +515,12 @@ requires-dist = [
     { name = "argcomplete", specifier = ">=3.6" },
     { name = "jinja2" },
     { name = "requests" },
-    { name = "speedwagon", extras = ["qt"], marker = "extra == 'gui'", specifier = ">=0.4.0b23", index = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/simple" },
+    { name = "speedwagon", marker = "extra == 'speedwagon'", specifier = ">=0.4.0b27", index = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/simple" },
+    { name = "speedwagon", extras = ["qt"], marker = "extra == 'gui'", specifier = ">=0.4.0b27", index = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/simple" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=1.1.0" },
     { name = "tomlkit", specifier = ">=0.15.0" },
 ]
-provides-extras = ["gui"]
+provides-extras = ["speedwagon", "gui"]
 
 [package.metadata.requires-dev]
 ci = [
@@ -1597,7 +1601,7 @@ wheels = [
 
 [[package]]
 name = "speedwagon"
-version = "0.4.0b23"
+version = "0.4.0b27"
 source = { registry = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/simple" }
 dependencies = [
     { name = "lxml" },
@@ -1606,9 +1610,9 @@ dependencies = [
     { name = "requests" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/packages/speedwagon/0.4.0b23/speedwagon-0.4.0b23.tar.gz", hash = "sha256:93083edb9de37524ce0591242b4f1f512edfaa7d4f55921bbbf0a3cad6db55b5" }
+sdist = { url = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/packages/speedwagon/0.4.0b27/speedwagon-0.4.0b27.tar.gz", hash = "sha256:0b19537218a09d80d1e1d88a60da4e57d55a62146dd6ccc13dbc075a3cd9a6bd" }
 wheels = [
-    { url = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/packages/speedwagon/0.4.0b23/speedwagon-0.4.0b23-py3-none-any.whl", hash = "sha256:18ef9e0cd81deee272b16c1cd7cf90bc982a3fc27edf64439200e9e07e70cbc0" },
+    { url = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/packages/speedwagon/0.4.0b27/speedwagon-0.4.0b27-py3-none-any.whl", hash = "sha256:0b415a1afae5ae9af331b4180a24b20bb7b7799c29c1477ee16081f9488543d8" },
 ]
 
 [package.optional-dependencies]

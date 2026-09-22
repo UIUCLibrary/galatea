@@ -47,11 +47,11 @@ def test_run_speedwagon_subcommand(monkeypatch, subcommand):
     )
     bootstrap_speedwagon.run_speedwagon(
         argv=["galatea", subcommand],
-        statup_tasks=[],
+        startup_tasks=[],
         app_launcher_klass=app_launcher_klass,
     )
     mocked_run_command.assert_called_once_with(
-        command_name=subcommand, args=ANY
+        command_name=subcommand, args=ANY, config_dir="galatea-speedwagon"
     )
 
 
@@ -66,7 +66,7 @@ def test_run_speedwagon(monkeypatch):
     )
     bootstrap_speedwagon.run_speedwagon(
         argv=["galatea"],
-        statup_tasks=[],
+        startup_tasks=[],
         app_launcher_klass=app_launcher_klass,
     )
     app_launcher.run.assert_called_once()

@@ -16,12 +16,12 @@ from typing import (
 )
 
 import speedwagon.workflow
-from galatea import merge_data
 from speedwagon.tasks import TaskBuilder, Result
 from speedwagon.workflow import AbsOutputOptionDataType
 
 import galatea.command_descriptions
-from . import shared_validators
+from galatea import merge_data
+from galatea.speedwagon_workflows import shared_validators
 
 if TYPE_CHECKING:
     from speedwagon.validators import AbsOutputValidation

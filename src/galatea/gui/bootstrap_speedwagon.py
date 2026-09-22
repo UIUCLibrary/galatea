@@ -90,7 +90,7 @@ DEFAULT_STARTUP_TASKS = [
 
 def run_speedwagon(
     argv=None,
-    statup_tasks=None,
+    startup_tasks=None,
     app_launcher_klass=speedwagon.startup.ApplicationLauncher,
 ) -> int:
     """Launch a speedwagon application configured to run galatea commands."""
@@ -142,7 +142,9 @@ def run_speedwagon(
         speedwagon.startup.logger.setLevel(logging.INFO)
         try:
             speedwagon.startup.run_command(
-                command_name=args.command, args=args
+                command_name=args.command,
+                args=args,
+                config_dir=DEFAULT_CONFIG_DIRECTORY_NAME,
             )
         except BrokenPipeError:
             bootstrap_logger.error("Broken pipe error here")
@@ -158,7 +160,7 @@ def run_speedwagon(
     )
 
     app_launcher.startup_tasks = (
-        statup_tasks if statup_tasks is not None else DEFAULT_STARTUP_TASKS
+        startup_tasks if startup_tasks is not None else DEFAULT_STARTUP_TASKS
     )
 
     bootstrap_logger.debug("Initializing Speedwagon")
