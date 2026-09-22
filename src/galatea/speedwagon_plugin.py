@@ -3,7 +3,7 @@
 from typing import Dict, Type, Any
 
 import speedwagon.workflow
-from galatea.gui.workflows import (
+from galatea.speedwagon_workflows import (
     authorized_terms_workflows,
     clean_tsv_workflows,
     merge_data_workflows,

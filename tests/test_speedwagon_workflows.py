@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 from speedwagon.tasks import Result
 
-sw_workflows = pytest.importorskip("galatea.gui.workflows")
+from galatea import speedwagon_workflows as sw_workflows
 
 
 @pytest.mark.parametrize(

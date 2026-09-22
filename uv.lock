@@ -447,6 +447,9 @@ dependencies = [
 gui = [
     { name = "speedwagon", extra = ["qt"] },
 ]
+speedwagon = [
+    { name = "speedwagon" },
+]
 
 [package.dev-dependencies]
 ci = [
@@ -512,11 +515,12 @@ requires-dist = [
     { name = "argcomplete", specifier = ">=3.6" },
     { name = "jinja2" },
     { name = "requests" },
+    { name = "speedwagon", marker = "extra == 'speedwagon'", specifier = ">=0.4.0b27", index = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/simple" },
     { name = "speedwagon", extras = ["qt"], marker = "extra == 'gui'", specifier = ">=0.4.0b27", index = "https://nexus.library.illinois.edu/repository/uiuc_prescon_python/simple" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=1.1.0" },
     { name = "tomlkit", specifier = ">=0.15.0" },
 ]
-provides-extras = ["gui"]
+provides-extras = ["speedwagon", "gui"]
 
 [package.metadata.requires-dev]
 ci = [

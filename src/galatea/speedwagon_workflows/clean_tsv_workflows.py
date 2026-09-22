@@ -20,7 +20,7 @@ from speedwagon.tasks import TaskBuilder, Result
 
 import galatea.command_descriptions
 from galatea.clean_tsv import clean_tsv
-from . import shared_validators
+from galatea.speedwagon_workflows import shared_validators
 
 if TYPE_CHECKING:
     from speedwagon.validators import AbsOutputValidation

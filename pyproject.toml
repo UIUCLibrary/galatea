@@ -27,6 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+speedwagon = ["speedwagon >= 0.4.0b27"]
 gui = ["speedwagon[qt] >= 0.4.0b27"]
 
 [project.scripts]
@@ -36,7 +37,7 @@ galatea = "galatea.cli:main"
 galatea-gui = "galatea.gui.main:main"
 
 [project.entry-points.'speedwagon.plugins']
-galatea_workflows = 'galatea.gui.speedwagon_plugin'
+galatea_workflows = 'galatea.speedwagon_plugin'
 
 [dependency-groups]
 test = [
@@ -81,7 +82,7 @@ build-backend = "setuptools.build_meta"
 packages = [
     "galatea",
     "galatea.gui",
-    "galatea.gui.workflows"
+    "galatea.speedwagon_workflows"
 ]
 zip-safe = true
 package-dir = {"" = "src"}

@@ -114,10 +114,8 @@ def run_speedwagon(
         # speedwagon. If we even support the "--verbose" flag in anything
         # else, please remove the following line.
         argv.remove("--verbose")
-        print("Using DEBUG")
     else:
         logging_level = logging.INFO
-        print("Using INFO")
 
     bootstrap_logger.setLevel(logging_level)
     bootstrap_log_handler = logging.StreamHandler(sys.stderr)

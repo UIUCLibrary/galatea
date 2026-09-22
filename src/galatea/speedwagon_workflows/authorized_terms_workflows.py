@@ -19,7 +19,7 @@ from typing import (
 import speedwagon
 import speedwagon.workflow
 from speedwagon.tasks import TaskBuilder, Result
-from . import shared_validators
+from galatea.speedwagon_workflows import shared_validators
 
 import galatea.command_descriptions
 from galatea import validate_authorized_terms, resolve_authorized_terms
