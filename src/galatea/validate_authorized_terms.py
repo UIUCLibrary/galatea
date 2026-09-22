@@ -5,7 +5,16 @@ import collections.abc
 import logging
 import pathlib
 import time
-from typing import Dict, Callable, Iterator, TypeVar, Generic, Iterable
+from typing import (
+    Dict,
+    Callable,
+    Iterator,
+    TypeVar,
+    Generic,
+    Iterable,
+    Tuple,
+    Union,
+)
 from urllib.parse import quote
 
 import requests
@@ -143,14 +152,9 @@ class IterTerms(collections.abc.Iterable):
                     yield row.line_number, field_name, cleaned_string
 
 
-def validate_authorized_terms(source: pathlib.Path) -> None:
-    """Validate Authorized terms.
-
-    Args:
-        source: Marc tsv file to validate
-
-    """
-    logger.info("validating authorized terms")
+def get_authorized_terms_report(
+    source: pathlib.Path,
+) -> Tuple[bool, Union[str, None]]:
     checker = NameCheck()
     terms_to_check = IterTerms(source)
     terms_to_check.field_names.add("260$a")
@@ -165,6 +169,21 @@ def validate_authorized_terms(source: pathlib.Path) -> None:
     ):
         result = check_terms(value, checker)
         if result is False:
-            logger.info(
-                f'Line: {line_number} | Field: "{field_name}" | "{value}" is not an authorized term.'
+            return (
+                False,
+                f'Line: {line_number} | Field: "{field_name}" | "{value}" is not an authorized term.',
             )
+    return True, None
+
+
+def validate_authorized_terms(source: pathlib.Path) -> None:
+    """Validate Authorized terms.
+
+    Args:
+        source: Marc tsv file to validate
+
+    """
+    logger.info("validating authorized terms")
+    valid, results = get_authorized_terms_report(source)
+    if not valid:
+        logger.info(results)

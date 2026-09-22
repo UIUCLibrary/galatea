@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import pathlib
 from typing import (
     Any,
@@ -12,6 +13,8 @@ from typing import (
     Tuple,
     Callable,
     TYPE_CHECKING,
+    Dict,
+    Union,
 )
 import speedwagon
 import speedwagon.workflow
@@ -132,17 +135,49 @@ class AuthorizedTermsCheck(speedwagon.Workflow[AuthorizedTermsCheckArgs]):
         cls, results: List[Result], user_args: AuthorizedTermsCheckArgs
     ) -> Optional[str]:
         """Generate report for this workflow."""
-        return "Authorized Terms Check: completed"
+        if len(results) == 0:
+            return ""
+
+        report = results[0].data
+        if report["success"]:
+            return "No issues found"
+        return report["report"]
 
 
 # -----------------------------------------------------------------------------
 # Task Function
 
 
-@speedwagon.tasks.workflow_task(description="Validate authorized terms")
-def validate_authorized_terms_task(source: str) -> None:
+class RedirectHandler(logging.Handler):
+    """Logging handler that redirects logging to another logger."""
+
+    def __init__(self, target_logger, level: int = 0):
+        super().__init__(level)
+        self.target_logger = target_logger
+
+    def emit(self, record):
+        self.target_logger.handle(record)
+
+
+logger = logging.getLogger(__name__)
+
+
+@speedwagon.tasks.workflow_task(
+    description="Validate authorized terms", logger=logger
+)
+def validate_authorized_terms_task(
+    source: str,
+    logging_level=logging.INFO,
+    get_authorized_terms_strategy=validate_authorized_terms.get_authorized_terms_report,
+) -> Dict[str, Union[bool, str, None]]:
     """Validate authorized terms."""
-    validate_authorized_terms.validate_authorized_terms(pathlib.Path(source))
+    handler = RedirectHandler(logger, level=logging_level)
+    try:
+        validate_authorized_terms.logger.addHandler(handler)
+        valid, report = get_authorized_terms_strategy(pathlib.Path(source))
+        return {"success": valid, "report": report}
+    finally:
+        validate_authorized_terms.logger.removeHandler(handler)
 
 
 # =============================================================================

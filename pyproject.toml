@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-gui = ["speedwagon[qt] >= 0.4.0b23"]
+gui = ["speedwagon[qt] >= 0.4.0b27"]
 
 [project.scripts]
 galatea = "galatea.cli:main"

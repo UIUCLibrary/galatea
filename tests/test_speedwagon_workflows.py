@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import Mock
 
+from speedwagon.tasks import Result
 
 sw_workflows = pytest.importorskip("galatea.gui.workflows")
 
@@ -23,7 +24,16 @@ def test_all_workflows_have_name(workflow_klass):
 @pytest.mark.parametrize(
     "workflow_klass,results, user_args",
     [
-        (sw_workflows.AuthorizedTermsCheck, [], {}),
+        (
+            sw_workflows.AuthorizedTermsCheck,
+            [
+                Result(
+                    source=None,
+                    data={"success": True, "report": "No issues found"},
+                )
+            ],
+            {},
+        ),
         (sw_workflows.CleanTsv, [], {}),
         (
             sw_workflows.GetMarcInitMapper,
@@ -205,6 +215,20 @@ class TestAuthorizedTermsCheck:
         source_tsv_option.value = value
         assert source_tsv_option.get_findings() == findings
 
+    def test_generate_report(self):
+        workflow = sw_workflows.AuthorizedTermsCheck()
+        # Test with no issues
+        result = workflow.generate_report(
+            [
+                Result(
+                    source=sw_workflows.authorized_terms_workflows.validate_authorized_terms_task,
+                    data={"success": True, "report": None},
+                )
+            ],
+            {"Source .tsv": "input.tsv"},
+        )
+        assert result == "No issues found"
+
 
 class TestNewTransformationFile:
     @pytest.mark.parametrize(
@@ -314,3 +338,16 @@ class TestCleanTsv:
         assert option.label == expected_label
         option.value = value
         assert option.get_findings() == findings
+
+
+def test_validate_authorized_terms_task():
+    source = "input.tsv"
+    get_authorized_terms_strategy = Mock(return_value=(True, None))
+    task = (
+        sw_workflows.authorized_terms_workflows.validate_authorized_terms_task(
+            source=source,
+            get_authorized_terms_strategy=get_authorized_terms_strategy,
+        )
+    )
+    task.work()
+    get_authorized_terms_strategy.assert_called_once()
