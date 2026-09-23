@@ -101,10 +101,12 @@ def testPackage(entry, params){
                             "UV_CONFIG_FILE=${createWindowUVConfig()}",
                             "TOX_UV_PATH=${WORKSPACE}\\venv\\Scripts\\uv.exe"
                         ]){
-                            bat """python -m venv venv
-                                   .\\venv\\Scripts\\pip install --disable-pip-version-check uv
-                                   .\\venv\\Scripts\\uv python find cpython-${entry.PYTHON_VERSION} --quiet 2>nul || .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
-                                """
+                            timeout(time: 10, unit: 'MINUTES'){
+                                bat """python -m venv venv
+                                       .\\venv\\Scripts\\pip install --disable-pip-version-check uv
+                                       .\\venv\\Scripts\\uv python find cpython-${entry.PYTHON_VERSION} --quiet 2>nul || .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
+                                    """
+                            }
                             def attempt = 0
                             retry(2){
                                 attempt += 1
