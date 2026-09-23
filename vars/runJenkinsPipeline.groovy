@@ -1044,11 +1044,17 @@ def call(){
                                             echo "sdistFile: ${sdistFile}"
                                             // Match assets to the sdist one
                                             def sdistAssetMetadata
-                                            for (asset in releaseData.assets) {
-                                                if(asset.name == sdistFile.name){
-                                                    sdistAssetMetadata = asset
-                                                    break
+                                            try{
+                                                for (asset in releaseData.assets) {
+                                                    if(asset.name == sdistFile.name){
+                                                        sdistAssetMetadata = asset
+                                                        break
+                                                    }
                                                 }
+                                            } catch(e) {
+                                                echo "Unable to search through release assets"
+                                                echo "${releaseData}"
+                                                return
                                             }
                                             if (!sdistAssetMetadata){
                                                 echo "Unable to find ${sdistFile.name} in assets"
