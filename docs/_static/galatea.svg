@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 1000 1000">
+  <!-- Generator: Adobe Illustrator 30.8.1, SVG Export Plug-In . SVG Version: 2.1.4 Build 1)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: url(#linear-gradient1);
+        stroke: #13294b;
+      }
+
+      .st0, .st1, .st2 {
+        stroke-miterlimit: 10;
+        stroke-width: 20px;
+      }
+
+      .st1 {
+        fill: url(#linear-gradient);
+        stroke: #ff5f05;
+      }
+
+      .st2 {
+        fill: #ff5f05;
+        stroke: #132d47;
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="29.76" y1="503.47" x2="478.76" y2="503.47" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset=".01" stop-color="#fffcfb"/>
+      <stop offset=".3" stop-color="#ffc5a4"/>
+      <stop offset=".55" stop-color="#ff9960"/>
+      <stop offset=".75" stop-color="#ff792e"/>
+      <stop offset=".91" stop-color="#ff6610"/>
+      <stop offset="1" stop-color="#ff5f05"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient1" x1="528.9" y1="503.47" x2="977.9" y2="503.47" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#132d47"/>
+      <stop offset="0" stop-color="#13294b"/>
+      <stop offset=".12" stop-color="#172c4e"/>
+      <stop offset=".25" stop-color="#243858"/>
+      <stop offset=".38" stop-color="#3a4c68"/>
+      <stop offset=".52" stop-color="#586880"/>
+      <stop offset=".66" stop-color="#7f8b9d"/>
+      <stop offset=".8" stop-color="#afb7c2"/>
+      <stop offset=".94" stop-color="#e7e9ec"/>
+      <stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+  </defs>
+  <polygon class="st2" points="601.24 132.66 977.9 489.81 597.05 870.98 528.9 804.07 833.38 500 528.9 201.04 601.24 132.66"/>
+  <polygon class="st1" points="406.42 134.3 29.76 491.46 410.61 872.63 478.76 805.72 174.28 501.65 478.76 202.69 406.42 134.3"/>
+  <polygon class="st0" points="601.24 134.3 977.9 491.46 597.05 872.63 528.9 805.72 833.38 501.65 528.9 202.69 601.24 134.3"/>
+</svg>
