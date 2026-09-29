@@ -1,0 +1,22 @@
+<RCC>
+    <qresource>
+        <file>Galatea.qmlproject</file>
+        <file>qtquickcontrols2.conf</file>
+        <file>src/galatea/gui/qml/Editor/App.js</file>
+        <file>src/galatea/gui/qml/Editor/App.qml</file>
+        <file>src/galatea/gui/qml/Editor/AppMenuBar.js</file>
+        <file>src/galatea/gui/qml/Editor/AppMenuBar.qml</file>
+        <file>src/galatea/gui/qml/Editor/CellDelegate.qml</file>
+        <file>src/galatea/gui/qml/Editor/CellDelegate.qml</file>
+        <file>src/galatea/gui/qml/Editor/HeaderDelegate.qml</file>
+        <file>src/galatea/gui/qml/Editor/MetadataEditor.js</file>
+        <file>src/galatea/gui/qml/Editor/MetadataEditor.qml</file>
+        <file>src/galatea/gui/qml/Editor/MetadataEditorContextMenu.js</file>
+        <file>src/galatea/gui/qml/Editor/MetadataEditorContextMenu.qml</file>
+        <file>src/galatea/gui/qml/Editor/MetadataEditorScreen.js</file>
+        <file>src/galatea/gui/qml/Editor/MetadataEditorScreen.qml</file>
+        <file>src/galatea/gui/qml/Editor/MetadataEditorScreenForm.ui.qml</file>
+        <file>src/galatea/gui/qml/Editor/SampleModel.qml</file>
+        <file>src/galatea/gui/qml/Editor/StatusBar.qml</file>
+    </qresource>
+</RCC>

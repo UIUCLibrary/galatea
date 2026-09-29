@@ -33,6 +33,7 @@ __all__ = [
     "get_field_names_fp",
     "write_tsv_file",
     "write_tsv_fp",
+    "IterTsvFileProtocol",
 ]
 
 T = TypeVar("T")
@@ -69,6 +70,25 @@ def iter_tsv_fp(
             )
 
 
+class IterTsvFileProtocol(Protocol):  # noqa: D101
+    def __call__(
+        self,
+        file_name: pathlib.Path,
+        dialect: Union[Type[csv.Dialect], csv.Dialect],
+        strategy: Callable[
+            [TextIO, Union[Type[csv.Dialect], csv.Dialect]],
+            Iterable[TableRow[T]],
+        ],
+    ) -> Iterable[TableRow[T]]:
+        """Iterate over entries in a given tsv file.
+
+        Args:
+            file_name: file path to tsv to use,
+            dialect: dialect of tsv file
+            strategy: function to read tsv file pointer & produce row iterator
+        """
+
+
 def iter_tsv_file(
     file_name: pathlib.Path,
     dialect: Union[Type[csv.Dialect], csv.Dialect],
@@ -89,6 +109,18 @@ def iter_tsv_file(
     """
     with open(file_name, newline="", encoding="utf8") as tsv_file:
         yield from strategy(tsv_file, dialect)
+
+
+def write_tsv_fp2(
+    fp: TextIO,
+    headings: List[str],
+    data: List[typing.Dict[str, str]],
+    dialect: Union[Type[csv.Dialect], csv.Dialect],
+) -> None:
+    writer = csv.DictWriter(fp, fieldnames=headings, dialect=dialect)
+    writer.writeheader()
+    for row in data:
+        writer.writerow(row)
 
 
 def write_tsv_fp(
@@ -113,6 +145,25 @@ def write_tsv_fp(
     writer.writeheader()
     for row in data:
         writer.writerow(row)
+
+
+def write_tsv_file2(
+    file_name: pathlib.Path,
+    headings: List[str],
+    data: List[typing.Dict[str, str]],
+    dialect: Union[Type[csv.Dialect], csv.Dialect],
+    writing_strategy: Callable[
+        [
+            TextIO,
+            List[str],
+            List[typing.Dict[str, str]],
+            Union[Type[csv.Dialect], csv.Dialect],
+        ],
+        None,
+    ] = write_tsv_fp2,
+) -> None:
+    with open(file_name, "w", newline="", encoding="utf8") as tsv_file:
+        writing_strategy(tsv_file, headings, data, dialect)
 
 
 def write_tsv_file(

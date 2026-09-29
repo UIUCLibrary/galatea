@@ -28,7 +28,10 @@ dependencies = [
 
 [project.optional-dependencies]
 speedwagon = ["speedwagon >= 0.4.0b27"]
-gui = ["speedwagon[qt] >= 0.4.0b27"]
+gui = [
+    "speedwagon[qt] >= 0.4.0b27",
+    "PySide6>=6.9",
+]
 
 [project.scripts]
 galatea = "galatea.cli:main"
@@ -43,6 +46,10 @@ galatea_workflows = 'galatea.speedwagon_plugin'
 test = [
     "pytest",
     "pyfakefs",
+]
+test-gui = [
+    {include-group = "test"},
+    "pytest-qt"
 ]
 freeze = ["pyinstaller"]
 docs = [
@@ -65,7 +72,7 @@ dev = [
     'types-requests',
     {include-group = "tox"},
     {include-group = "docs"},
-    {include-group = "test"},
+    {include-group = "test-gui"},
 ]
 release = ["twine"]
 ci = [
@@ -82,6 +89,7 @@ build-backend = "setuptools.build_meta"
 packages = [
     "galatea",
     "galatea.gui",
+    "galatea.gui.qml",
     "galatea.speedwagon_workflows"
 ]
 zip-safe = true
@@ -91,6 +99,10 @@ package-dir = {"" = "src"}
 "galatea" = [
     "relator_terms.txt",
     "py.typed"
+]
+"galatea.gui" = [
+    "qml/Editor/*.qml",
+    "qml/Editor/*.js"
 ]
 "*" = ["pylock.toml"]
 
@@ -109,6 +121,9 @@ pre_bump_hooks = [
 
 [tool.mypy]
 mypy_path = "src"
+exclude = ["galatea/gui/qml"]
+
+
 
 [tool.ruff]
 line-length = 79
