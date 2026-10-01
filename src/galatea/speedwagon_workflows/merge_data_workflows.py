@@ -334,17 +334,21 @@ class GetMarcMerge(speedwagon.Workflow[GetMarcMergeArgs]):
 
 
 @speedwagon.tasks.workflow_task(
-    description="Merging tsv metadata with data from GetMarc"
+    description="Merging tsv metadata with data from GetMarc",
+    logger=merge_data.logger,
 )
 def merge_from_getmarc_task(
-    get_marc_url: str, source_tsv: str, mapper_toml: str, output_tsv: str
+    get_marc_url: str,
+    source_tsv: str,
+    mapper_toml: str,
+    output_tsv: str,
+    merge_strategy=merge_data.merge_from_getmarc,
 ):
     if not get_marc_url:
         raise speedwagon.exceptions.InvalidConfiguration(
             "GetMarc URL is required"
         )
-
-    merge_data.merge_from_getmarc(
+    merge_strategy(
         input_metadata_tsv_file=pathlib.Path(source_tsv),
         output_metadata_tsv_file=pathlib.Path(output_tsv),
         mapping_file=pathlib.Path(mapper_toml),
