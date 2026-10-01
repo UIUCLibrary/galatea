@@ -55,120 +55,138 @@ def deployStandalone(glob, url) {
         }
     }
 }
-
-def testPackage(entry, params){
-    node("${entry.OS} && ${entry.ARCHITECTURE} ${['linux', 'windows'].contains(entry.OS) ? '&& docker': ''}"){
+def testLinuxPackage(entry, params){
+    node("linux && ${entry.ARCHITECTURE} && docker"){
         try{
             checkout scm
             unstash 'PYTHON_PACKAGES'
-            if(['linux', 'windows'].contains(entry.OS) && params.containsKey("INCLUDE_${entry.OS}-${entry.ARCHITECTURE}".toUpperCase()) && params["INCLUDE_${entry.OS}-${entry.ARCHITECTURE}".toUpperCase()]){
-                docker.image(env.DEFAULT_PYTHON_DOCKER_IMAGE ? env.DEFAULT_PYTHON_DOCKER_IMAGE: ( isUnix() ? 'ghcr.io/astral-sh/uv:debian' :'python'))
-                    .inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" " + (
-                        isUnix() ?
-                            '--mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --mount type=tmpfs,dst=/.local'
-                        :
-                            '--mount type=volume,source=uv_python_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython ' +
-                            '--mount type=volume,source=pipcache,target=C:\\Users\\ContainerUser\\Documents\\cache\\pipcache ' +
-                            '--mount type=volume,source=uv_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvcache'
-                         )
-                    ){
-                     if(isUnix()){
-                        withEnv([
-                            'PIP_CACHE_DIR=/tmp/pipcache',
-                            'UV_TOOL_DIR=/tmp/uvtools',
-                            'UV_PYTHON_CACHE_DIR=/tmp/uvpython',
-                            'UV_CACHE_DIR=/tmp/uvcache',
-                            "UV_CONFIG_FILE=${createUnixUvConfig()}"
-                        ]){
-                             sh(label: 'Installing required Python version if not already installed', script: "uv python find cpython-${entry.PYTHON_VERSION} --quiet 2>/dev/null || uv python install cpython-${entry.PYTHON_VERSION}")
-                             def attempt = 0
-                             retry(2){
-                                 attempt += 1
+            def image = docker.build(UUID.randomUUID().toString(), '-f ci/docker/python/linux/jenkins/Dockerfile .')
+            try{
+                image.inside(
+                    "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --tmpfs /myhome:exec -e HOME=/myhome"
+                ){
+                    withEnv([
+                        'PIP_CACHE_DIR=/tmp/pipcache',
+                        'UV_TOOL_DIR=/tmp/uvtools',
+                        'UV_PYTHON_CACHE_DIR=/tmp/uvpython',
+                        'UV_CACHE_DIR=/tmp/uvcache',
+                        'QT_QPA_PLATFORM=offscreen'
+                    ]){
+                        retry(3){
+                            withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}", 'QT_QPA_PLATFORM=offscreen']){
+                                sh(label: 'Installing required Python version if not already installed', script: "uv python find cpython-${entry.PYTHON_VERSION} --quiet 2>/dev/null || uv python install cpython-${entry.PYTHON_VERSION}")
+                                def attempt = 0
+                                retry(2){
+                                    attempt += 1
                                     withEnv([(attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0']){
-                                         sh(
+                                        sh(
                                             label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
                                             script: "uv run --only-group=tox-uv --frozen tox --workdir /tmp_data/.tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}"
                                         )
                                     }
                                 }
                             }
-                     } else {
-                        withEnv([
-                            'PIP_CACHE_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\pipcache',
-                            'UV_TOOL_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvtools',
-                            'UV_PYTHON_CACHE_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython',
-                            'UV_CACHE_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvcache',
-                            "UV_CONFIG_FILE=${createWindowUVConfig()}",
-                            "TOX_UV_PATH=${WORKSPACE}\\venv\\Scripts\\uv.exe"
-                        ]){
-                            timeout(time: 10, unit: 'MINUTES'){
-                                bat """python -m venv venv
-                                       .\\venv\\Scripts\\pip install --disable-pip-version-check uv
-                                       .\\venv\\Scripts\\uv python find cpython-${entry.PYTHON_VERSION} --quiet 2>nul || .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
-                                    """
-                            }
-                            def attempt = 0
-                            retry(2){
-                                attempt += 1
-                                withEnv([(attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0']){
-                                    bat(
-                                        label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
-                                        script: ".\\venv\\Scripts\\uv run --only-group=tox-uv --frozen tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}"
-                                    )
-                                }
-                            }
                         }
-                     }
+                    }
                 }
-            } else {
-                if(isUnix()){
-                    def attempt = 0
-                    retry(2){
-                        attempt += 1
-                        withEnv([
-                            (attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0',
-                            "UV_CONFIG_FILE=${createUnixUvConfig()}",
-                            "TOX_UV_PATH=${WORKSPACE}/venv/bin/uv"
-                        ]){
-                            sh(
-                                label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
-                                script: """python3 -m venv venv
-                                           ./venv/bin/pip install --disable-pip-version-check uv
-                                           ./venv/bin/uv run --only-group=tox-uv --frozen tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
-                                        """
-                            )
-                        }
-                    }
-                } else {
-                    bat """python -m venv venv
-                           .\\venv\\Scripts\\pip install --disable-pip-version-check uv
-                           .\\venv\\Scripts\\uv python update-shell
-                           .\\venv\\Scripts\\uv python find cpython-${entry.PYTHON_VERSION} --quiet 2>nul || .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
-                        """
-                    def attempt = 0
-                    retry(2){
-                        attempt += 1
-                        withEnv([
-                            (attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0',
-                            "UV_CONFIG_FILE=${createWindowUVConfig()}",
-                            "TOX_UV_PATH=${WORKSPACE}\\venv\\Scripts\\uv.exe"
-                        ]){
-                            bat(
-                                label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
-                                script: ".\\venv\\Scripts\\uv run --only-group=tox-uv --frozen tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}"
-                            )
-                        }
-                    }
+            } finally{
+                if(image){
+                    sh "docker image rm --force ${image.imageName()}"
                 }
             }
         } finally{
-            if(isUnix()){
-                sh "${tool(name: 'Default', type: 'git')} clean -dfx"
-            } else {
-                bat "${tool(name: 'Default', type: 'git')} clean -dfx"
-            }
+            sh "${tool(name: 'Default', type: 'git')} clean -dfx"
         }
     }
+}
+def testMacOSPackage(entry, params){
+    node("macos && ${entry.ARCHITECTURE}"){
+        checkout scm
+        unstash 'PYTHON_PACKAGES'
+        try{
+            def attempt = 0
+            retry(2){
+                attempt += 1
+                withEnv([
+                    (attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0',
+                    "UV_CONFIG_FILE=${createUnixUvConfig()}",
+                    "TOX_UV_PATH=${WORKSPACE}/venv/bin/uv",
+                    'QT_QPA_PLATFORM=offscreen'
+                ]){
+                    sh(
+                        label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
+                        script: """python3 -m venv venv
+                                   ./venv/bin/pip install --disable-pip-version-check uv
+                                   ./venv/bin/uv run --only-group=tox-uv --frozen tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}
+                                """
+                    )
+                }
+            }
+        } finally {
+            sh "${tool(name: 'Default', type: 'git')} clean -dfx"
+        }
+    }
+}
+
+def testWindowsPackage(entry, params){
+    node("windows && ${entry.ARCHITECTURE} && docker"){
+        checkout scm
+        unstash 'PYTHON_PACKAGES'
+        try{
+            docker.image('python')
+                .inside(
+                    "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" " +
+                    '--mount type=volume,source=uv_python_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython ' +
+                    '--mount type=volume,source=pipcache,target=C:\\Users\\ContainerUser\\Documents\\cache\\pipcache ' +
+                    '--mount type=volume,source=uv_cache_dir,target=C:\\Users\\ContainerUser\\Documents\\cache\\uvcache'
+                ){
+                    withEnv([
+                        'PIP_CACHE_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\pipcache',
+                        'UV_TOOL_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvtools',
+                        'UV_PYTHON_CACHE_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvpython',
+                        'UV_CACHE_DIR=C:\\Users\\ContainerUser\\Documents\\cache\\uvcache',
+                        "UV_CONFIG_FILE=${createWindowUVConfig()}",
+                        "TOX_UV_PATH=${WORKSPACE}\\venv\\Scripts\\uv.exe",
+                        'QT_QPA_PLATFORM=offscreen'
+                    ]){
+                        timeout(time: 10, unit: 'MINUTES'){
+                            bat """python -m venv venv
+                                   .\\venv\\Scripts\\pip install --disable-pip-version-check uv
+                                   .\\venv\\Scripts\\uv python find cpython-${entry.PYTHON_VERSION} --quiet 2>nul || .\\venv\\Scripts\\uv python install cpython-${entry.PYTHON_VERSION}
+                                """
+                        }
+                        def attempt = 0
+                        retry(2){
+                            attempt += 1
+                            withEnv([(attempt == 1) ? 'UV_OFFLINE=1' : 'UV_OFFLINE=0']){
+                                bat(
+                                    label: "Testing with tox: ${(attempt == 1) ? 'Offline' : 'Online'}",
+                                    script: ".\\venv\\Scripts\\uv run --only-group=tox-uv --frozen tox --installpkg ${findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz')[0].path} -e py${entry.PYTHON_VERSION.replace('.', '')}"
+                                )
+                            }
+                        }
+                    }
+                }
+        } finally{
+            bat "${tool(name: 'Default', type: 'git')} clean -dfx"
+        }
+    }
+}
+
+def testPackage(entry, params){
+    if(entry.OS == 'windows'){
+        testWindowsPackage(entry, params)
+        return
+    }
+    if(entry.OS == 'macos'){
+        testMacOSPackage(entry, params)
+        return
+    }
+    if(entry.OS == 'linux'){
+        testLinuxPackage(entry, params)
+        return
+    }
+    error "unknown os ${entry.OS}"
 }
 
 
@@ -230,6 +248,36 @@ def deploySingleStandalone(file, url, authentication) {
         } catch(Exception e){
             echo "${e}"
             throw e;
+        }
+    }
+}
+
+def testToxLinux(toxEnv){
+    def version = toxEnv.replaceAll(/py(\d)(\d+)/, '$1.$2')
+    node('docker && linux'){
+        try{
+            checkout scm
+            def image = docker.build(UUID.randomUUID().toString(), '-f ci/docker/python/linux/jenkins/Dockerfile .')
+            try{
+                image.inside(
+                        "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --tmpfs /myhome:exec -e HOME=/myhome"
+                    ){
+                    retry(3){
+                        withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}", 'QT_QPA_PLATFORM=offscreen']){
+                            sh(label: 'Installing required Python version if not already installed', script: "uv python find cpython-${version} --quiet 2>/dev/null || uv python install cpython-${version}")
+                            sh( label: 'Running Tox',
+                                script: "uv run --managed-python --only-group=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tmp_data/.tox"
+                                )
+                        }
+                    }
+                }
+            } finally{
+                if(image){
+                    sh "docker image rm --force ${image.imageName()}"
+                }
+            }
+        } finally{
+            sh "${tool(name: 'Default', type: 'git')} clean -dfx"
         }
     }
 }
@@ -345,10 +393,11 @@ def call(){
                             UV_CONFIG_FILE=createUnixUvConfig()
                         }
                         agent {
-                            docker{
-                                image 'ghcr.io/astral-sh/uv:debian'
-                                label 'docker && linux && x86_64'
-                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /.cache:exec --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
+                            dockerfile {
+                                filename 'ci/docker/python/linux/jenkins/Dockerfile'
+                                additionalBuildArgs '--label=purpose=ci'
+                                label 'linux && docker && x86'
+                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.config:exec --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --tmpfs /myhome -e HOME=/myhome"
                             }
                         }
                         stages{
@@ -388,6 +437,7 @@ def call(){
                                     stage('Run Tests'){
                                         environment{
                                             UV_FROZEN='1'
+                                            QT_QPA_PLATFORM='offscreen'
                                         }
                                         parallel{
                                             stage('Documentation linkcheck'){
@@ -415,10 +465,12 @@ def call(){
                                             }
                                             stage('Pytest'){
                                                 steps{
-                                                    sh(
-                                                        label: 'Run Pytest',
-                                                        script: 'uv run coverage run --parallel-mode --source=src -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml'
-                                                    )
+                                                    timeout(5){
+                                                        sh(
+                                                            label: 'Run Pytest',
+                                                            script: 'uv run coverage run --parallel-mode --source=src -m pytest --junitxml=./reports/tests/pytest/pytest-junit.xml'
+                                                        )
+                                                    }
                                                 }
                                                 post{
                                                     always{
@@ -447,6 +499,20 @@ def call(){
                                                         }
                                                         recordCoverage(name: 'MyPy Coverage', id: 'mypycoverage', tools: [[parser: 'COBERTURA', pattern: 'reports/mypy/coverage/cobertura.xml']])
                                                         publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
+                                                    }
+                                                }
+                                            }
+                                            stage('qmllint'){
+                                                steps{
+                                                    catchError(buildResult: 'SUCCESS', message: 'qmllint found issues', stageResult: 'UNSTABLE') {
+                                                        sh(label: 'Running qmllint',
+                                                           script: 'uv run pyside6-qmllint src/galatea/gui/qml/**/*.qml --json reports/qmllint-report.json'
+                                                        )
+                                                    }
+                                                }
+                                                post {
+                                                    always {
+                                                        recordIssues(tool: issues(pattern: 'reports/qmllint-report.json', name: 'qmllint'))
                                                     }
                                                 }
                                             }
@@ -591,27 +657,10 @@ def call(){
                                         }
                                         parallel(
                                             envs.collectEntries{toxEnv ->
-                                                def version = toxEnv.replaceAll(/py(\d)(\d+)/, '$1.$2')
                                                 [
                                                     "Tox Environment: ${toxEnv}",
                                                     {
-                                                        node('docker && linux'){
-                                                            try{
-                                                                checkout scm
-                                                                docker.image('ghcr.io/astral-sh/uv:debian').inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"){
-                                                                    retry(3){
-                                                                        withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                                            sh(label: 'Installing required Python version if not already installed', script: "uv python find cpython-${version} --quiet 2>/dev/null || uv python install cpython-${version}")
-                                                                            sh( label: 'Running Tox',
-                                                                                script: "uv run --managed-python --only-group=tox-uv --frozen tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tmp_data/.tox"
-                                                                                )
-                                                                        }
-                                                                    }
-                                                                }
-                                                            } finally{
-                                                                sh "${tool(name: 'Default', type: 'git')} clean -dfx"
-                                                            }
-                                                        }
+                                                        testToxLinux(toxEnv)
                                                     }
                                                 ]
                                             }
@@ -628,6 +677,7 @@ def call(){
                                     UV_TOOL_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvtools'
                                     UV_PYTHON_CACHE_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvpython'
                                     UV_CACHE_DIR='C:\\Users\\ContainerUser\\Documents\\cache\\uvcache'
+                                    QT_QPA_PLATFORM='offscreen'
                                 }
                                 steps{
                                     script{

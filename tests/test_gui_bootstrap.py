@@ -46,7 +46,7 @@ def test_run_speedwagon_subcommand(monkeypatch, subcommand):
         mocked_run_command,
     )
     bootstrap_speedwagon.run_speedwagon(
-        argv=["galatea", subcommand],
+        argv=[subcommand],
         startup_tasks=[],
         app_launcher_klass=app_launcher_klass,
     )
@@ -65,7 +65,7 @@ def test_run_speedwagon(monkeypatch):
         mocked_run_command,
     )
     bootstrap_speedwagon.run_speedwagon(
-        argv=["galatea"],
+        argv=[],
         startup_tasks=[],
         app_launcher_klass=app_launcher_klass,
     )

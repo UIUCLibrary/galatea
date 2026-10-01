@@ -8,6 +8,26 @@ import csv
 import pytest
 
 
+def test_write_tsv_fp2():
+    starting_data = [{"1": "None"}]
+    headings = ["1"]
+    dialect = csv.get_dialect("excel-tab")
+    with io.StringIO() as buff:
+        galatea.tsv.write_tsv_fp2(
+            buff, headings=headings, data=starting_data, dialect=dialect
+        )
+        buff.seek(0)
+        reread_values = list(csv.DictReader(buff, dialect=dialect))
+    assert reread_values == starting_data
+
+
+#     assert result == """
+# 1
+# None
+#     """.lstrip()
+#     assert result == "1\nNone\n"
+
+
 def test_write_tsv_fp():
     with io.StringIO() as buff:
         data = [
@@ -178,6 +198,6 @@ def test_get_field_names_fp():
 
 
 def test_get_field_names_fp_raise_if_no_field_names_found():
-    with pytest.raises(ValueError):
-        with io.StringIO() as buff:
+    with io.StringIO() as buff:
+        with pytest.raises(ValueError):
             galatea.tsv.get_field_names_fp(buff, dialect="excel-tab")

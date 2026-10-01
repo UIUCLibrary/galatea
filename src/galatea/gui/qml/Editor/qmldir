@@ -1,0 +1,4 @@
+module Editor
+App App.qml
+MetadataEditorScreen MetadataEditorScreen.qml
+MetadataEditorScreenForm MetadataEditorScreenForm.ui.qml

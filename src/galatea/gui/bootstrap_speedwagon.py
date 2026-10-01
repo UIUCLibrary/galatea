@@ -105,7 +105,7 @@ def run_speedwagon(
         "--version", action="version", version=f"%(prog)s {get_version()}"
     )
 
-    argv = argv or sys.argv
+    argv = argv if argv is not None else sys.argv
     if "--verbose" in argv:
         logging_level = logging.DEBUG
 
@@ -128,7 +128,7 @@ def run_speedwagon(
 
     bootstrap_logger.addHandler(bootstrap_log_handler)
 
-    args = parser.parse_args(argv[1:])
+    args = parser.parse_args(args=argv)
     if args.command is not None:
         stdout_handler = logging.StreamHandler(sys.stdout)
         stdout_handler.setLevel(logging.INFO)
