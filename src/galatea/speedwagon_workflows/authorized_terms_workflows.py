@@ -391,6 +391,8 @@ class ResolveAuthorizedTerms(speedwagon.Workflow[ResolveAuthorizedTermsArgs]):
         task_builder.add_subtask(
             resolve_authorized_terms_task(  # NOSONAR
                 job_args["source_file"],
+                job_args["transformer_file"],
+                job_args["output_file"],
             )
         )
 
@@ -440,10 +442,10 @@ class ResolveAuthorizedTerms(speedwagon.Workflow[ResolveAuthorizedTermsArgs]):
 
 @speedwagon.tasks.workflow_task(description="Resolving Authorized Terms")
 def resolve_authorized_terms_task(
-    source_tsv, transformation_tsv_file, output_tsv
+    source_tsv: str, transformation_tsv_file: str, output_tsv: str
 ) -> None:
     resolve_authorized_terms.resolve_authorized_terms(
-        input_tsv=source_tsv,
-        transformation_file=transformation_tsv_file,
-        output_file=output_tsv,
+        input_tsv=pathlib.Path(source_tsv),
+        transformation_file=pathlib.Path(transformation_tsv_file),
+        output_file=pathlib.Path(output_tsv),
     )

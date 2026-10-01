@@ -173,7 +173,14 @@ def test_all_workflows_discover_task_metadata(
             },
         ),
         (sw_workflows.NewTransformationFile, {"output": "mapper.toml"}),
-        (sw_workflows.ResolveAuthorizedTerms, {"source_file": "source.tsv"}),
+        (
+            sw_workflows.ResolveAuthorizedTerms,
+            {
+                "source_file": "source.tsv",
+                "transformer_file": "transform.tsv",
+                "output_file": "output.tsv",
+            },
+        ),
     ],
 )
 def test_all_workflows_create_at_lease_one_task(workflow_klass, args):
