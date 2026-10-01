@@ -1,10 +1,15 @@
-## v0.6.4.dev0 (2026-09-23)
-
-## v0.6.3 (2026-09-23)
+## v0.7.0 (2026-10-01)
 
 ### Feat
 
+- Merge Data: Merge from GetMarc displays logging info
+- tsv file editor
+- Added icon to source repository
 - improve AuthorizedTermsCheck performance
+
+### Fix
+
+- Authorized Terms: Resolve no longer crashes speedwagon frontend
 
 ### Refactor
 
