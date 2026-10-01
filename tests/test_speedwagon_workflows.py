@@ -173,7 +173,14 @@ def test_all_workflows_discover_task_metadata(
             },
         ),
         (sw_workflows.NewTransformationFile, {"output": "mapper.toml"}),
-        (sw_workflows.ResolveAuthorizedTerms, {"source_file": "source.tsv"}),
+        (
+            sw_workflows.ResolveAuthorizedTerms,
+            {
+                "source_file": "source.tsv",
+                "transformer_file": "transform.tsv",
+                "output_file": "output.tsv",
+            },
+        ),
     ],
 )
 def test_all_workflows_create_at_lease_one_task(workflow_klass, args):
@@ -351,3 +358,16 @@ def test_validate_authorized_terms_task():
     )
     task.work()
     get_authorized_terms_strategy.assert_called_once()
+
+
+def test_merge_from_getmarc_task_calls_strategy():
+    merge_strategy = Mock()
+    task = sw_workflows.merge_data_workflows.merge_from_getmarc_task(
+        get_marc_url="http://example.com",
+        source_tsv="input.tsv",
+        mapper_toml="mapper.toml",
+        output_tsv="output.tsv",
+        merge_strategy=merge_strategy,
+    )
+    task.work()
+    merge_strategy.assert_called_once()
