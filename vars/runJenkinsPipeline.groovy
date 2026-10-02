@@ -260,8 +260,8 @@ def testToxLinux(toxEnv){
             def image = docker.build(UUID.randomUUID().toString(), '-f ci/docker/python/linux/jenkins/Dockerfile .')
             try{
                 image.inside(
-                        "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --tmpfs /myhome:exec -e HOME=/myhome"
-                    ){
+                    "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.local/bin:exec --mount type=tmpfs,dst=/.local --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --tmpfs /myhome:exec -e HOME=/myhome"
+                ){
                     retry(3){
                         withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}", 'QT_QPA_PLATFORM=offscreen']){
                             sh(label: 'Installing required Python version if not already installed', script: "uv python find cpython-${version} --quiet 2>/dev/null || uv python install cpython-${version}")
@@ -271,6 +271,9 @@ def testToxLinux(toxEnv){
                         }
                     }
                 }
+            } catch (Exception e){
+                echo "Error occurred while running Tox on ${env.NODE_NAME}"
+                throw e
             } finally{
                 if(image){
                     sh "docker image rm --force ${image.imageName()}"
