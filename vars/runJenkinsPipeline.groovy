@@ -254,7 +254,7 @@ def deploySingleStandalone(file, url, authentication) {
 
 def testToxLinux(toxEnv){
     def version = toxEnv.replaceAll(/py(\d)(\d+)/, '$1.$2')
-    node('docker && linux'){
+    node('docker && linux && x86_64'){
         try{
             checkout scm
             def image = docker.build(UUID.randomUUID().toString(), '-f ci/docker/python/linux/jenkins/Dockerfile .')
