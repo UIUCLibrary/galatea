@@ -1,4 +1,8 @@
-## v0.7.5.dev0 (2026-10-12)
+## v0.7.5 (2026-10-12)
+
+### Fix
+
+- don't crash on missing Qt version metadata
 
 ## v0.7.4 (2026-10-12)
 
