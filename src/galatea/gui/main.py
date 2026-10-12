@@ -1,5 +1,6 @@
 """Main entrypoint for launching speedwagon with galatea configured."""
 
+import os
 import sys
 import argparse
 
@@ -71,7 +72,7 @@ def main(frontend_selector_strategy=get_frontend) -> int:
         app = frontend_selector_strategy(args.frontend)
         return app(remaining)
     except ImportError as e:
-        if "--verbose" in sys.argv:
+        if os.getenv("DEBUG_GALATEA"):
             print(e, file=sys.stderr)
         print("Error: This feature requires the 'gui' extra.")
         print("Please install it using: pip install 'galatea[gui]'")
