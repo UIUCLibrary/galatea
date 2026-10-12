@@ -1113,6 +1113,9 @@ def call(){
                                             def releaseFiles = findFiles(glob: 'dist/galatea-*.tar.gz')
                                             if(releaseFiles.size() != 1){
                                                 echo "Unable to determine sdist. Located ${releaseFiles.size()} with current glob"
+                                                releaseFiles.each{
+                                                    echo " - ${it.name}"
+                                                }
                                                 return
                                             }
                                             sdistFile = releaseFiles[0]
