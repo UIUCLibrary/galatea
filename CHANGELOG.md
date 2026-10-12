@@ -1,3 +1,9 @@
+## v0.7.3 (2026-10-12)
+
+### Feat
+
+- DEBUG_GALATEA environment variable for debugging galatea gui
+
 ## v0.7.2 (2026-10-12)
 
 ### Fix
