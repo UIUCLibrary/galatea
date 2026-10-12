@@ -1,4 +1,8 @@
-## v0.7.2.dev0 (2026-10-12)
+## v0.7.2 (2026-10-12)
+
+### Fix
+
+- pyside6 support restored for macos versions before 14
 
 ## v0.7.1 (2026-10-12)
 
