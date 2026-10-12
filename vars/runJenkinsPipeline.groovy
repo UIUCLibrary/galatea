@@ -1123,7 +1123,8 @@ def call(){
                                             // Match assets to the sdist one
                                             def sdistAssetMetadata
                                             try{
-                                                for (asset in releaseData.content.assets) {
+
+                                                for (asset in readJSON(text: "${releaseData.content}").assets) {
                                                     if(asset.name == sdistFile.name){
                                                         sdistAssetMetadata = asset
                                                         break
