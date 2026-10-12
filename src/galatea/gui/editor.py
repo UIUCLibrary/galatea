@@ -5,7 +5,7 @@ import functools
 import importlib.resources
 import logging
 import sys
-from importlib.metadata import version
+from importlib.metadata import version, PackageNotFoundError
 from typing import Optional, List
 
 from galatea.gui.qml import backend
@@ -61,7 +61,8 @@ def build_qml_app(
     application_builder.icon = qml_app.get_icon()
 
     entry_point = (
-        importlib.resources.files("galatea.gui.qml")
+        importlib.resources
+        .files("galatea.gui.qml")
         .joinpath("Editor")
         .joinpath("App.qml")
     )
@@ -88,7 +89,11 @@ def main(
     qt_style = qml_app.get_qt_style()
 
     QQuickStyle.setStyle(qt_style)
-    print("Compiled Qt Version:", version("pyside6"))
+    try:
+        print(f"Compiled Qt Version:{version('pyside6')}")
+    except PackageNotFoundError as e:
+        print(e)
+        print("Compiled Qt Version: Unknown")
     app = app or QtGui.QGuiApplication()
 
     build_app_strategy(app, args)
