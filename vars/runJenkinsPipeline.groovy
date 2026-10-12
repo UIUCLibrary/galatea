@@ -1132,6 +1132,7 @@ def call(){
                                             } catch(e) {
                                                 echo "Unable to search through release assets"
                                                 echo "${releaseData}"
+                                                echo "${releaseData.content}"
                                                 return
                                             }
                                             if (!sdistAssetMetadata){
