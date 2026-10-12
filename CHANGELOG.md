@@ -1,4 +1,10 @@
-## v0.7.1.dev0 (2026-10-01)
+## v0.7.1 (2026-10-12)
+
+### Feat
+
+- --verbose provides more information when trying to start galatea gui if fails
+- --verbose provides more information when trying to start galatea gui if fails
+- galatea.gui is not an executable module
 
 ## v0.7.0 (2026-10-01)
 
