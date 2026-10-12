@@ -1,12 +1,14 @@
-## v0.7.4.dev0 (2026-10-12)
+## v0.7.4 (2026-10-12)
+
+### Feat
+
+- add traceback printing when debugging failure to launch gui
 
 ## v0.7.3 (2026-10-12)
 
 ### Feat
 
 - DEBUG_GALATEA environment variable for debugging galatea gui
-
-## v0.7.2 (2026-10-12)
 
 ### Fix
 
