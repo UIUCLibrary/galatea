@@ -1,0 +1,2 @@
+# MANIFEST.in
+include README.md pylock.gui.toml pylock.toml

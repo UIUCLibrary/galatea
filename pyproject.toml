@@ -104,7 +104,7 @@ package-dir = {"" = "src"}
     "qml/Editor/*.qml",
     "qml/Editor/*.js"
 ]
-"*" = ["pylock.toml"]
+"*" = ["pylock.toml", "pylock.gui.toml"]
 
 [tool.commitizen]
 name = "cz_conventional_commits"
