@@ -60,6 +60,9 @@ def testLinuxPackage(entry, params){
         try{
             checkout scm
             unstash 'PYTHON_PACKAGES'
+            lock("${env.NODE_NAME}"){
+                sh 'docker pull python:latest'
+            }
             def image = docker.build(UUID.randomUUID().toString(), '-f ci/docker/python/linux/jenkins/Dockerfile .')
             try{
                 image.inside(
