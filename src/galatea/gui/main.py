@@ -6,6 +6,8 @@ import argparse
 
 __all__ = []
 
+import traceback
+
 from typing import Callable, List
 
 GUI_FRONTENDS = ["speedwagon", "table"]
@@ -71,9 +73,9 @@ def main(frontend_selector_strategy=get_frontend) -> int:
     try:
         app = frontend_selector_strategy(args.frontend)
         return app(remaining)
-    except ImportError as e:
+    except ImportError:
         if os.getenv("DEBUG_GALATEA"):
-            print(e, file=sys.stderr)
+            traceback.print_exc()
         print("Error: This feature requires the 'gui' extra.")
         print("Please install it using: pip install 'galatea[gui]'")
         return 1
