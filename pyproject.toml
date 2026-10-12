@@ -94,7 +94,7 @@ packages = [
     "galatea.speedwagon_workflows"
 ]
 zip-safe = true
-package-dir = {"" = "src"}
+package-dir = {"galatea" = "src/galatea"}
 
 [tool.setuptools.package-data]
 "galatea" = [
