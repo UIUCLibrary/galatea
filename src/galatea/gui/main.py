@@ -70,7 +70,9 @@ def main(frontend_selector_strategy=get_frontend) -> int:
     try:
         app = frontend_selector_strategy(args.frontend)
         return app(remaining)
-    except ImportError:
+    except ImportError as e:
+        if "--verbose" in sys.argv:
+            print(e)
         print("Error: This feature requires the 'gui' extra.")
         print("Please install it using: pip install 'galatea[gui]'")
         return 1
