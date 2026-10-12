@@ -1,0 +1,32 @@
+{
+  "supporting": {
+    "pythonVersions": [
+      "3.11",
+      "3.12",
+      "3.13",
+      "3.14",
+      "3.14t"
+    ],
+    "os": [
+      "linux",
+      "macos",
+      "windows"
+    ],
+    "architectures": [
+      "x86_64",
+      "arm64"
+    ],
+    "exclusions": [
+      [
+        {
+          "name": "OS",
+          "values": "windows"
+        },
+        {
+          "name": "ARCHITECTURE",
+          "values": "arm64"
+        }
+      ]
+    ]
+  }
+}
