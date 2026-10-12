@@ -1,12 +1,12 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.8
+    rev: v0.17.0
     hooks:
     - id: ruff
     - id: ruff-format
       args: [ --preview ]
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v3.29.1
+    rev: v4.19.2
     hooks:
     - id: commitizen
     - id: commitizen-branch
@@ -18,5 +18,9 @@ repos:
       - id: uv-export
         name: export-pylock
         args: ["--format", "pylock.toml", "--output-file", "pylock.toml", "--no-dev"]
+        files: ^(uv\.lock|pyproject\.toml)$
 
+      - id: uv-export
+        name: export-pylock-gui
+        args: ["--format", "pylock.toml", "--output-file", "pylock.gui.toml", "--no-dev", "--extra", "gui"]
         files: ^(uv\.lock|pyproject\.toml)$
