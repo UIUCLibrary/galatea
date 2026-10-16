@@ -427,13 +427,14 @@ def call(){
                             UV_PYTHON_CACHE_DIR='/tmp/uvpython'
                             UV_CACHE_DIR='/tmp/uvcache'
                             UV_CONFIG_FILE=createUnixUvConfig()
+                            UV_PYTHON="3.14"
                         }
                         agent {
                             dockerfile {
                                 filename 'ci/docker/python/linux/jenkins/Dockerfile'
                                 additionalBuildArgs '--label=purpose=ci'
                                 label 'linux && docker && x86'
-                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.config:exec --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --tmpfs /myhome -e HOME=/myhome"
+                                args "--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-tmp-galatea,target=/tmp --tmpfs /.local/share:exec --tmpfs /.config:exec --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv --tmpfs /myhome:exec -e HOME=/myhome"
                             }
                         }
                         stages{
