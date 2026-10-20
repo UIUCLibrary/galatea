@@ -2,6 +2,7 @@
 
 import logging
 import os
+import pathlib
 import sys
 
 import argparse
@@ -9,6 +10,8 @@ import argparse
 import speedwagon.startup
 import speedwagon.config.config
 from galatea.utils import get_version
+
+__all__ = ["run_speedwagon"]
 
 # =============================================================================
 # ENVIRONMENT_VARIABLE_NAMES
@@ -32,7 +35,7 @@ DEFAULT_CONFIG_DATA = """
 starting-tab = All
 debug = False
 
-[PLUGINS.galatea.gui.speedwagon_plugin]
+[PLUGINS.galatea.speedwagon_plugin]
 galatea_workflows = True
 
 """.strip()
@@ -88,6 +91,37 @@ DEFAULT_STARTUP_TASKS = [
 ]
 
 
+def write_config_file(config_ini: str) -> None:
+    with open(config_ini, "w", encoding="utf-8") as f:
+        f.write(f"{DEFAULT_CONFIG_DATA}\n")
+
+
+def write_tabs_file(location: str):
+    with pathlib.Path(location).open("w", encoding="utf-8") as fp:
+        fp.write(f"{DEFAULT_TABS_DATA}\n")
+
+
+def ensure_required_files_exist():
+    config_file_location = speedwagon.config.get_platform_settings(
+        prefix=DEFAULT_CONFIG_DIRECTORY_NAME
+    )
+    app_directory = config_file_location.get_app_data_directory()
+    if not os.path.exists(app_directory):
+        os.makedirs(app_directory)
+
+    config_file = os.path.join(
+        app_directory, speedwagon.config.config.CONFIG_INI_FILE_NAME
+    )
+    if not os.path.exists(config_file):
+        write_config_file(config_file)
+
+    tab_file = os.path.join(
+        app_directory, speedwagon.config.config.TABS_YML_FILE_NAME
+    )
+    if not os.path.exists(tab_file):
+        write_tabs_file(tab_file)
+
+
 def run_speedwagon(
     argv=None,
     startup_tasks=None,
@@ -128,6 +162,7 @@ def run_speedwagon(
 
     bootstrap_logger.addHandler(bootstrap_log_handler)
 
+    ensure_required_files_exist()
     args = parser.parse_args(args=argv)
     if args.command is not None:
         stdout_handler = logging.StreamHandler(sys.stdout)

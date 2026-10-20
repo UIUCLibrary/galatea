@@ -90,7 +90,45 @@ function Run-Tests(){
             $global:TESTS_SKIPPED++
             Write-Warning "Skipping version comparison test. Reason: python.exe not found"
         }
+
+        Write-Host 'TEST: Galatea gui has info'
+        $global:TESTS_PERFORMED++
+        if(Test-HasInfo -Application $InstallPath\galatea\galatea-gui.exe){
+            $global:TESTS_SUCCESSFUL++
+            Write-Host 'TEST: Galatea gui has info - success'
+        }else {
+            $global:TESTS_FAILED++
+            Write-Host 'TEST: Galatea gui has info - failed'
+        }
     }
+}
+
+function Test-HasInfo(){
+    [CmdletBinding()]
+    param (
+        [Parameter(mandatory = $true)]
+        [string]$Application
+    )
+    $local:TestDirectory = Join-Path $env:TEMP ([Guid]::NewGuid().Guid)
+    $local:GalateaStdoutFile = Join-Path $local:TestDirectory "galatea_stdout.log"
+    $local:GalateaStdErrFile = Join-Path $local:TestDirectory "galatea_stderr.log"
+    try{
+        $nul = New-Item -ItemType Directory -Path $TestDirectory
+        $local:process = Start-Process -FilePath "$Application" -ArgumentList "info","--format=json" -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$local:GalateaStdoutFile" -RedirectStandardError "$local:GalateaStdErrFile"
+        if ($process.ExitCode -ne 0) {
+            $errorText = Get-Content -Path "$local:GalateaStdErrFile" -Raw
+            Write-Debug -Message $errorText
+            Write-Error "Failed to get application information. $errorText"
+            return $false
+        }
+        $output = Get-Content -Path "$local:GalateaStdoutFile" -Raw | ConvertFrom-Json
+        return $true
+    } finally {
+        if (Test-Path $local:TestDirectory) {
+            Remove-Item -Path $TestDirectory -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+    return $false
 }
 
 function Test-VersionMatchExpected(){
