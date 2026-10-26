@@ -28,5 +28,10 @@
         }
       ]
     ]
+  },
+  "distribution":{
+    "frozenStandalone": {
+      "pythonVersion": "3.14+gil"
+    }
   }
 }
