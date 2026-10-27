@@ -40,6 +40,31 @@ def getVersion(){
     }
 }
 
+def packageStandaloneWindows(wheel, pythonVersion){
+    withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
+        bat """python -m pip install --disable-pip-version-check uv
+               uv python install cpython-${pythonVersion.replace('+gil', '')}
+            """
+        retry(2){
+            tee('reports/windows_cpack.log'){
+                try{
+                    powershell(
+                        label: 'Create Windows Standalone',
+                        script: """New-ItemProperty -Path "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+                                   contrib/create_windows_distrib.ps1 -PythonVersion ${pythonVersion.replace('+gil', '')} ${wheel}
+                                """
+                    )
+                } catch (Exception e) {
+                    cleanWs(patterns: [
+                            [pattern: 'build/', type: 'INCLUDE'],
+                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                    ])
+                }
+            }
+        }
+    }
+}
+
 def deployStandalone(glob, url) {
     script{
         findFiles(glob: glob).each{
@@ -427,7 +452,7 @@ def call(){
                             UV_PYTHON_CACHE_DIR='/tmp/uvpython'
                             UV_CACHE_DIR='/tmp/uvcache'
                             UV_CONFIG_FILE=createUnixUvConfig()
-                            UV_PYTHON="3.14"
+                            UV_PYTHON='3.14'
                         }
                         agent {
                             dockerfile {
@@ -893,9 +918,9 @@ def call(){
                                                             withEnv(["UV_MANAGED_PYTHON=1"]){
                                                                 try{
                                                                     checkout scm
-                                                                    unstash "PYTHON_PACKAGES"
+                                                                    unstash 'PYTHON_PACKAGES'
                                                                     withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                                        sh "./contrib/create_mac_distrib.sh ${findFiles(glob: 'dist/*.whl')[0].path}"
+                                                                        sh "./contrib/create_mac_distrib.sh --python-version=${config['distribution']['frozenStandalone']['pythonVersion']} ${findFiles(glob: 'dist/*.whl')[0].path}"
                                                                     }
                                                                     archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                                                     stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_X86_64'
@@ -938,9 +963,9 @@ def call(){
                                                             withEnv(["UV_MANAGED_PYTHON=1"]){
                                                                 try{
                                                                     checkout scm
-                                                                    unstash "PYTHON_PACKAGES"
+                                                                    unstash 'PYTHON_PACKAGES'
                                                                     withEnv(["UV_CONFIG_FILE=${createUnixUvConfig()}"]){
-                                                                        sh "./contrib/create_mac_distrib.sh ${findFiles(glob: 'dist/*.whl')[0].path}"
+                                                                        sh "./contrib/create_mac_distrib.sh --python-version=${config['distribution']['frozenStandalone']['pythonVersion']} ${findFiles(glob: 'dist/*.whl')[0].path}"
                                                                     }
                                                                     archiveArtifacts artifacts: 'dist/*.tar.gz', fingerprint: true
                                                                     stash includes: 'dist/*.tar.gz', name: 'APPLE_APPLICATION_ARM64'
@@ -982,16 +1007,9 @@ def call(){
                                                             try{
                                                                 checkout scm
                                                                 docker.image('python').inside("--label=purpose=ci --label \"JOB_NAME=\$JOB_NAME\" --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"BUILD_NUMBER=${currentBuild.number}\""){
-                                                                    unstash "PYTHON_PACKAGES"
-                                                                    withEnv(["UV_CONFIG_FILE=${createWindowUVConfig()}"]){
-                                                                        tee('reports/windows_cpack.log'){
-                                                                            powershell(
-                                                                                label: 'Create Windows Standalone',
-                                                                                script: """New-ItemProperty -Path "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
-                                                                                           contrib/create_windows_distrib.ps1 ${findFiles(glob: 'dist/*.whl')[0].path}
-                                                                                        """
-                                                                            )
-                                                                        }
+                                                                    unstash 'PYTHON_PACKAGES'
+                                                                    findFiles(glob: 'dist/*.whl').each{
+                                                                        packageStandaloneWindows(it.path, config['distribution']['frozenStandalone']['pythonVersion'])
                                                                     }
                                                                     archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
                                                                     stash includes: 'dist/*.zip', name: 'WINDOWS_APPLICATION_X86_64'
