@@ -1,4 +1,8 @@
-## v0.7.6.dev0 (2026-10-12)
+## v0.7.6 (2026-10-29)
+
+### Fix
+
+- running speedwagon frontend ensures required files on startup
 
 ## v0.7.5 (2026-10-12)
 
