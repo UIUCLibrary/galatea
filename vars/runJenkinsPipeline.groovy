@@ -1184,7 +1184,7 @@ def call(){
                                                                """
                                                     )
                                                 }
-                                                archiveArtifacts(artifacts: 'dist/galatea.rb', allowEmptyArchive: true)
+                                                archiveArtifacts(artifacts: 'dist/homebrew/galatea.rb', allowEmptyArchive: true)
                                             } finally{
                                                 sh "${tool(name: 'Default', type: 'git')} clean -dfx"
                                             }
