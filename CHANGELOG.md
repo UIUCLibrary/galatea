@@ -1,4 +1,8 @@
-## v0.7.7.dev1 (2026-10-29)
+## v0.7.7 (2026-10-30)
+
+### Fix
+
+- fix speedwagon frontend not loading on windows
 
 ## v0.7.6 (2026-10-29)
 
