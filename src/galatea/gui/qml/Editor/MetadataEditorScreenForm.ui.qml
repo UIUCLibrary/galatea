@@ -13,6 +13,7 @@ Item {
     height: 600
     signal saveFileRequested
     signal openFileRequested
+    property alias inspector: metadataEditor.inspector
     property alias model: metadataEditor.tableModel
     property alias toolBar: toolBar
     AppMenuBar {

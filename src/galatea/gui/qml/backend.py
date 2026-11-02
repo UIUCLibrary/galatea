@@ -6,6 +6,7 @@ import csv
 import logging
 import pathlib
 import sys
+from functools import lru_cache
 from typing import (
     Type,
     Union,
@@ -63,9 +64,14 @@ def load_tsv(
         columns_headings = list(rows[0].keys())
     else:
         columns_headings = get_first_row_of_tsv(path, dialect)
-    model.load_data(columns_headings, rows)
+    try:
+        model.loading = True
+        models.load_tsv_model(model, columns_headings, _rows)
+    finally:
+        model.loading = False
 
 
+@lru_cache
 def get_tsv_dialect(
     path: pathlib.Path, detection_strategy=galatea.tsv.get_tsv_dialect
 ) -> Union[Type[csv.Dialect], csv.Dialect]:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 import importlib.resources
 import sys
-from typing import Optional, Callable, TYPE_CHECKING
+from typing import Optional, Callable, TYPE_CHECKING, List
 
 from PySide6 import QtGui, QtQml, QtCore
 from galatea.gui.qml import exceptions as qml_exceptions
@@ -68,7 +68,7 @@ class TableAppBuilder:
 
         self.entry_point: Optional[str] = kwargs.get("entry_point", None)
         self.model: Optional[models.TsvModel] = kwargs.get("model", None)
-        self.post_tasks = []
+        self.post_tasks: List[Callable[[QtCore.QObject], None]] = []
 
     def set_app_icon(self, app: QtGui.QGuiApplication) -> None:
         """Set the application icon."""
