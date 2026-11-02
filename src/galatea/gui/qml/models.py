@@ -6,12 +6,11 @@ import abc
 import copy
 import csv
 import dataclasses
+import logging
 import pathlib
 import sys
 import typing
 import warnings
-from functools import lru_cache
-from itertools import islice
 from typing import List, Any, Optional, Union, Dict, Tuple, TYPE_CHECKING
 
 
@@ -22,6 +21,8 @@ if TYPE_CHECKING:
 from PySide6 import QtCore, QtQml
 
 __all__ = ["TsvModel", "export_data", "load_tsv_model"]
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -43,10 +44,9 @@ class TsvElementData:
 class TsvModel(QtCore.QAbstractTableModel):
     """A model for displaying and editing tab-separated values."""
 
-    # modified_changed = QtCore.Signal()
     isEmpty_changed = QtCore.Signal()
 
-    SourceRole = QtCore.Qt.UserRole + 1
+    SourceRole = QtCore.Qt.ItemDataRole.UserRole + 1
     ObjectRole = SourceRole + 1
 
     def __init__(self, /, parent: QtCore.QObject | None = None) -> None:
@@ -80,21 +80,29 @@ class TsvModel(QtCore.QAbstractTableModel):
         if starting != self.isEmpty:
             self.isEmpty_changed.emit()
 
-    def _compare_are_same(self, a: Any, b: Any) -> bool:
-        if isinstance(a, TsvElementData):
-            if isinstance(b, TsvElementData):
-                res = a.data == b.data
-            elif b is None:
-                res = a.data.strip() == ""
-            else:
-                res = a.data == b
-            if not res:
-                print(f"Data elements are not the same: {a} != {b}")
-            return res
-        res = a == b
-        if not res:
-            print(f"Data elements are not the same: {a} != {b}")
-        return res
+    def _set_data(self, index, value, role):
+        data_element = self.rows[index.row()][
+            self.columns_order[index.column()]
+        ]
+        if data_element is None:
+            self.rows[index.row()][self.columns_order[index.column()]] = (
+                value
+                if role == self.ObjectRole
+                else TsvElementData(data=value)
+            )
+        else:
+            data_element.data = value
+        if not self.loading:
+            self.dataChanged.emit(
+                index,
+                index,
+                [
+                    QtCore.Qt.ItemDataRole.DisplayRole,
+                    QtCore.Qt.ItemDataRole.EditRole,
+                ]
+                + ([self.ObjectRole] if role == self.ObjectRole else []),
+            )
+        return True
 
     def setData(
         self,
@@ -106,29 +114,9 @@ class TsvModel(QtCore.QAbstractTableModel):
         """Set data in the model."""
         if not index.isValid():
             return False
-        data_element = self.rows[index.row()][
-            self.columns_order[index.column()]
-        ]
+
         if role == QtCore.Qt.ItemDataRole.EditRole or role == self.ObjectRole:
-            if data_element is None:
-                self.rows[index.row()][self.columns_order[index.column()]] = (
-                    value
-                    if role == self.ObjectRole
-                    else TsvElementData(data=value)
-                )
-            else:
-                data_element.data = value
-            if not self.loading:
-                self.dataChanged.emit(
-                    index,
-                    index,
-                    [
-                        QtCore.Qt.ItemDataRole.DisplayRole,
-                        QtCore.Qt.ItemDataRole.EditRole,
-                    ]
-                    + ([self.ObjectRole] if role == self.ObjectRole else []),
-                )
-            return True
+            return self._set_data(index, value, role)
         if role == self.SourceRole:
             if (
                 self.rows[index.row()][self.columns_order[index.column()]]
@@ -136,8 +124,11 @@ class TsvModel(QtCore.QAbstractTableModel):
             ):
                 warnings.warn("Cannot set source data for an empty cell")
                 return False
-            data_element.source = value
-            return True
+            if data_element := self.rows[index.row()][
+                self.columns_order[index.column()]
+            ]:
+                data_element.source = value
+                return True
         return super().setData(index, value, role)
 
     def columnCount(
@@ -160,7 +151,7 @@ class TsvModel(QtCore.QAbstractTableModel):
     ) -> bool:
         self.beginInsertColumns(parent, column, column + count - 1)
         for _ in range(count):
-            self.columns_order.insert(column, None)
+            self.columns_order.insert(column, "")
         self.endInsertColumns()
         return True
 
@@ -217,14 +208,15 @@ class TsvModel(QtCore.QAbstractTableModel):
                 return None
         if role == self.ObjectRole:
             return row[self.columns_order[index.column()]]
-        if role == QtCore.Qt.FontRole:
+        if role == QtCore.Qt.ItemDataRole.FontRole:
             print("role == QtCore.Qt.FontRole")
         if role == self.SourceRole:
             data = self.rows[index.row()][self.columns_order[index.column()]]
             if data is not None:
-                return self.rows[index.row()][
+                if item := self.rows[index.row()][
                     self.columns_order[index.column()]
-                ].source
+                ]:
+                    return item.source
             return None
         return None
 
@@ -272,7 +264,7 @@ class TsvModel(QtCore.QAbstractTableModel):
         starting = copy.deepcopy(self.rows)
         self.beginInsertRows(parent, row, row + count - 1)
         for i in range(count):
-            default_row: Dict[str, None] = dict.fromkeys(
+            default_row: Dict[str, Optional[TsvElementData]] = dict.fromkeys(
                 self.columns_order, None
             )
             self.rows.insert(row + i, default_row)
@@ -387,75 +379,48 @@ def load_tsv_model(
     )
 
 
-@lru_cache
-def read_data(file_path, dialect):
-    print("reading file")
-    with open(file_path, "r") as fp:
-        reader = csv.reader(fp, dialect=dialect)
-        return list(reader)
-
-
-def _get_row(file_path, row, dialect):
-    print(f"getting row {row}")
-    start_index = row - 1
-    end_index = start_index + 1
-    with file_path.open("r", newline="", encoding="utf-8") as fp:
-        csv_reader = csv.reader(fp, dialect=dialect or csv.excel_tab)
-        return next(
-            islice(
-                csv_reader,
-                start_index,
-                end_index,
-            ),
-            None,
-        )
-
-
 QML_IMPORT_NAME = "galatea"
 QML_IMPORT_MAJOR_VERSION = 1
 
 
-def load_tsv_file_to_inspector(file, private_data, inspector: TsvInspector):
-    private_data.file = file
-    print("Cache cleared")
-    private_data.tsv_rows.clear()
-    inspector.fileChanged.emit(file)
-    if not file.isValid():
-        return
-
-    file_path = pathlib.Path(file.toLocalFile())
-    if not file_path.exists():
-        return
-    print(f"Reading file: {file_path}")
-    inspector.state_object = TsvInspectorLoadingState(inspector, private_data)
-    QtCore.QCoreApplication.processEvents()
-    try:
-        with file_path.open("r", newline="", encoding="utf-8") as fp:
-            csv_reader = csv.reader(
-                fp, dialect=private_data.dialect or csv.excel_tab
-            )
-            for row_id, row in enumerate(csv_reader):
-                private_data.tsv_rows[row_id + 1] = row
-            inspector.state_object = TsvInspectorLoadedState(
-                inspector, private_data
-            )
-        inspector.dataChanged.emit()
-    except Exception as e:
-        print("unable to read file", file=sys.stderr)
-        private_data.tsv_rows.clear()
-        inspector.state_object = TsvInspectorEmptyState(
-            inspector, private_data, e
-        )
-        raise e
+def _iter_tsv(file_path, dialect):
+    with file_path.open("r", newline="", encoding="utf-8") as fp:
+        csv_reader = csv.reader(fp, dialect=dialect or csv.excel_tab)
+        for row_id, row in enumerate(csv_reader):
+            yield row_id + 1, row
 
 
-@dataclasses.dataclass
-class PrivateTsvInspectorData:
-    file: QtCore.QUrl = QtCore.QUrl()
-    dialect: typing.Optional[csv.Dialect] = None
-    tsv_rows: typing.Dict[int, typing.List[str]] = dataclasses.field(
-        default_factory=dict
-    )
+def model_is_empty(model: QtCore.QAbstractTableModel) -> bool:
+    if model.columnCount() == 0 or model.rowCount() == 0:
+        return True
+    return False
+
+
+def compare_tsv_model_to_data_rows(
+    model: TsvModel, rows: Dict[int, List[str]]
+) -> bool:
+    if model_is_empty(model):
+        print("Value is empty")
+        return False
+
+    for row_id in range(model.rowCount()):
+        index = model.index(row_id, 0)
+        model_data = model.data(index, TsvModel.ObjectRole)
+        if any([model_data is None, model_data.source is None]):
+            return True
+        tsv_row = rows.get(model_data.source.line_number)
+        if not tsv_row:
+            return True
+
+        for column_id in range(model.columnCount()):
+            index = model.index(row_id, column_id)
+            model_data = model.data(index, TsvModel.ObjectRole)
+            if any([model_data is None, model_data.source is None]):
+                return True
+            tsv_element = tsv_row[model_data.source.column - 1]
+            if tsv_element != model_data.data:
+                return True
+    return False
 
 
 @QtQml.QmlElement
@@ -464,15 +429,32 @@ class TsvInspector(QtCore.QObject):
     stateChanged = QtCore.Signal(str)
     dataChanged = QtCore.Signal()
 
+    @dataclasses.dataclass
+    class PrivateTsvInspectorData:
+        file: QtCore.QUrl = QtCore.QUrl()
+        dialect: typing.Optional[csv.Dialect] = None
+        tsv_rows: typing.Dict[int, typing.List[str]] = dataclasses.field(
+            default_factory=dict
+        )
+
     class TsvInspectorState(abc.ABC):
         def __init__(
-            self, base: TsvInspector, private_data: PrivateTsvInspectorData
+            self,
+            base: TsvInspector,
+            private_data: Optional[
+                TsvInspector.PrivateTsvInspectorData
+            ] = None,
         ):
             self.base = base
-            self.private_data = private_data
+            self.private_data = (
+                private_data or TsvInspector.PrivateTsvInspectorData()
+            )
 
         def reload_file(self):
-            pass
+            """Reload current file.
+
+            This defaults to a noop.
+            """
 
         @abc.abstractmethod
         def get_state_name(self) -> str:
@@ -486,26 +468,31 @@ class TsvInspector(QtCore.QObject):
         def set_dialect(self, dialect) -> None:
             """Set the dialect for the TSV inspector."""
 
+        def get_dialect(self):
+            return self.private_data.dialect
+
         @abc.abstractmethod
         def value_is_different(
             self, value: str, tsv_line: int, tsv_column: int
         ) -> Optional[bool]:
             """Return True if the value is different from the one in the TSV file."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, **kwargs):
         super().__init__(parent)
-        self._private_data = PrivateTsvInspectorData()
+        self._private_data = self.PrivateTsvInspectorData(**kwargs)
         self._state_object: TsvInspector.TsvInspectorState = (
             TsvInspectorEmptyState(self, self._private_data)
         )
 
     @QtCore.Slot("QVariant", result=bool)
-    def entryHasChanged(self, value: TsvElementData) -> bool:
+    def entryHasChanged(
+        self, value: TsvElementData, compare_strategy=None
+    ) -> bool:
         if value is None:
             return True
         if value.source is None:
             return True
-        res = self._state_object.value_is_different(
+        res = (compare_strategy or self._state_object.value_is_different)(
             value.data, value.source.line_number, value.source.column
         )
         return res is True or res is None
@@ -526,27 +513,29 @@ class TsvInspector(QtCore.QObject):
         self._state_object.set_dialect(dialect)
 
     def get_dialect(self):
-        return self._private_data.dialect
+        return self._state_object.get_dialect()
 
-    def set_file(self, file: QtCore.QUrl):
-        self._state_object.set_file(file)
+    def set_file(self, file: QtCore.QUrl, strategy=None):
+        (strategy or self._state_object.set_file)(file)
 
-    def get_file(self):
-        return self._private_data.file
+    def get_file(self, strategy=None):
+        return strategy(self) if strategy else self._state_object.get_file
 
     def value_is_different(
-        self, value: str, tsv_line: int, tsv_column: int
+        self, value: str, tsv_line: int, tsv_column: int, compare_strategy=None
     ) -> Optional[bool]:
-        return self._state_object.value_is_different(
+        return (compare_strategy or self._state_object.value_is_different)(
             value, tsv_line, tsv_column
         )
 
     @QtCore.Slot()
-    def reloadFile(self):
-        self._state_object.reload_file()
+    def reloadFile(self, strategy=None):
+        (strategy or self._state_object.reload_file)()
 
     @QtCore.Slot("QVariant", result=bool)
-    def dataIsDifferent(self, value):
+    def dataIsDifferent(
+        self, value: TsvModel, compare_strategy=compare_tsv_model_to_data_rows
+    ) -> bool:
         if (
             self._private_data.file is None
             or self._private_data.file.isEmpty()
@@ -556,41 +545,13 @@ class TsvInspector(QtCore.QObject):
         if not file_path.is_file():
             return False
 
-        if value.columnCount() == 0 or value.rowCount() == 0:
-            print("Value is empty")
-            return False
-
-        for row_id in range(value.rowCount()):
-            index = value.index(row_id, 0)
-            model_data = value.data(index, TsvModel.ObjectRole)
-            if model_data is None:
-                return True
-            if model_data.source is None:
-                return True
-            tsv_row = self._private_data.tsv_rows.get(
-                model_data.source.line_number
-            )
-            # tsv_row = self.tsv_rows.get(model_data.source.line_number)
-            if not tsv_row:
-                return True
-            # print(f"checking row {row_id}")
-            for column_id in range(value.columnCount()):
-                index = value.index(row_id, column_id)
-                model_data = value.data(index, TsvModel.ObjectRole)
-                if model_data is None:
-                    return True
-                if model_data.source is None:
-                    return True
-                tsv_element = tsv_row[model_data.source.column - 1]
-                if tsv_element != model_data.data:
-                    return True
-        return False
+        return compare_strategy(value, self._private_data.tsv_rows)
 
     state_name = QtCore.Property(
         str, get_current_state_name, notify=stateChanged
     )
     file = QtCore.Property(QtCore.QUrl, get_file, set_file, notify=fileChanged)
-    dialect = QtCore.Property("QVariant", get_dialect, set_dialect)
+    dialect = QtCore.Property(csv.Dialect, get_dialect, set_dialect)
 
 
 class TsvInspectorLoadingState(TsvInspector.TsvInspectorState):
@@ -598,10 +559,10 @@ class TsvInspectorLoadingState(TsvInspector.TsvInspectorState):
         return "Loading"
 
     def set_file(self, file: QtCore.QUrl) -> None:
-        print("Unable to set file while loading")
+        logger.error("Unable to set file while loading")
 
     def set_dialect(self, dialect) -> None:
-        print("Unable to set file while loading")
+        logger.error("Unable to set file while loading")
 
     def value_is_different(
         self, value: str, tsv_line: int, tsv_column: int
@@ -609,34 +570,80 @@ class TsvInspectorLoadingState(TsvInspector.TsvInspectorState):
         return None
 
 
+def load_tsv_file_to_inspector(
+    file: QtCore.QUrl,
+    private_data: TsvInspector.PrivateTsvInspectorData,
+    inspector: TsvInspector,
+    iter_tsv_data_strategy=_iter_tsv,
+) -> None:
+    private_data.file = file
+    private_data.tsv_rows.clear()
+    inspector.fileChanged.emit(file)
+    if not file.isValid():
+        return
+
+    file_path = pathlib.Path(file.toLocalFile())
+    if not file_path.exists():
+        return
+    inspector.state_object = TsvInspectorLoadingState(inspector, private_data)
+    QtCore.QCoreApplication.processEvents()
+    try:
+        for row_id, row_data in iter_tsv_data_strategy(
+            file_path, private_data.dialect
+        ):
+            private_data.tsv_rows[row_id] = row_data
+        inspector.state_object = TsvInspectorLoadedState(
+            inspector, private_data
+        )
+        inspector.dataChanged.emit()
+    except Exception as e:
+        print("unable to read file", file=sys.stderr)
+        private_data.tsv_rows.clear()
+        inspector.state_object = TsvInspectorEmptyState(
+            inspector, private_data
+        )
+        raise e
+
+
+def compare_value(expected_value, line_number: int, column: int, rows) -> bool:
+    tsv_line_index = line_number
+    tsv_column_index = column - 1
+    tsv_value = rows[tsv_line_index][tsv_column_index]
+    return tsv_value != expected_value
+
+
 class TsvInspectorLoadedState(TsvInspector.TsvInspectorState):
+    load_tsv_file_to_inspector_strategy = load_tsv_file_to_inspector
+    compare_value_strategy = compare_value
+
     def get_state_name(self) -> str:
         return "Loaded"
 
     def set_dialect(self, dialect) -> None:
-        self.base.dialect = dialect
+        self.private_data.dialect = dialect
 
     def set_file(self, file: QtCore.QUrl) -> None:
         if file != self.private_data.file:
-            load_tsv_file_to_inspector(file, self.private_data, self.base)
+            TsvInspectorLoadedState.load_tsv_file_to_inspector_strategy(
+                file, self.private_data, self.base
+            )
 
     def reload_file(self):
-        load_tsv_file_to_inspector(
+        TsvInspectorLoadedState.load_tsv_file_to_inspector_strategy(
             self.private_data.file, self.private_data, self.base
         )
 
     def value_is_different(
         self, value: str, tsv_line: int, tsv_column: int
     ) -> Optional[bool]:
-        tsv_line_index = tsv_line
-        tsv_column_index = tsv_column - 1
-        tsv_value = self.private_data.tsv_rows[tsv_line_index][
-            tsv_column_index
-        ]
-        return tsv_value != value
+        return TsvInspectorLoadedState.compare_value_strategy(
+            value, tsv_line, tsv_column, self.private_data.tsv_rows
+        )
 
 
 class TsvInspectorEmptyState(TsvInspector.TsvInspectorState):
+    load_tsv_file_strategy = load_tsv_file_to_inspector
+
     def get_state_name(self) -> str:
         return "Empty"
 
@@ -645,7 +652,9 @@ class TsvInspectorEmptyState(TsvInspector.TsvInspectorState):
 
     def set_file(self, file: QtCore.QUrl):
         if file != self.private_data.file:
-            load_tsv_file_to_inspector(file, self.private_data, self.base)
+            TsvInspectorEmptyState.load_tsv_file_strategy(
+                file, self.private_data, self.base
+            )
         self.base.state_object = TsvInspectorLoadedState(
             self.base, self.private_data
         )
