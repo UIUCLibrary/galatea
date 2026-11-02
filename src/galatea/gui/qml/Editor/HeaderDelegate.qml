@@ -25,9 +25,6 @@ Item{
             clip: true
             anchors.verticalCenter: parent.verticalCenter
             font.bold: true
-
-            // color: hoverHandler.hovered ? palette.highlightedText : palette.brightText
-
             color: root.headingTextColor // Text color
         }
         HoverHandler {

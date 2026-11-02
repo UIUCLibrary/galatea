@@ -175,7 +175,7 @@ def test_load_tsv(data, file_string_data, monkeypatch):
 
     path = create_autospec(pathlib.Path)
     dialect = csv.excel_tab
-    model = create_autospec(galatea_qml.models.TsvModel)
+    model = galatea_qml.models.TsvModel()
     read_tsv_strategy = create_autospec(
         galatea_tsv.IterTsvFileProtocol, return_value=data
     )
@@ -183,7 +183,8 @@ def test_load_tsv(data, file_string_data, monkeypatch):
     galatea_backend.load_tsv(
         path, dialect, model, read_tsv_rows_strategy=read_tsv_strategy
     )
-    model.load_data.assert_called_once()
+    assert model.columnCount() == 2
+    # model.load_data.assert_called_once()
 
 
 def test_get_first_row_of_tsv():

@@ -7,19 +7,20 @@ MetadataEditorScreenForm {
     signal openFile(url fileName)
     property url fileName: ""
     property variant dialect: null
-    toolBar.saveButton.enabled: "isModified" in form.model ? form.model.isModified: true
+    toolBar.saveButton.enabled: form.state === "modified"
     states: [
         State {
             name: "empty"
             when: form.model.count === 0
         },
         State {
+            name: "loading"
+        },
+        State {
             name: "unmodified"
-            when: !form.model.isModified
         },
         State {
             name: "modified"
-            when: "isModified" in form.model ? form.model.isModified: true
         }
     ]
     function handleSaveRequest(){
@@ -72,15 +73,6 @@ MetadataEditorScreenForm {
         target: form.toolBar
         function onFileOpenRequested() {
             form.openFileRequested()
-        }
-    }
-    Connections {
-        target: form.model
-        function onDataChanged() {
-            if (form.model.isEmpty) {
-                form.state = "empty"
-            }
-            form.state = form.model.isModified ? "modified" : "unmodified"
         }
     }
     Connections {

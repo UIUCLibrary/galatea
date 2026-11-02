@@ -10,7 +10,6 @@ from typing import Optional, List
 
 from galatea.gui.qml import backend
 from galatea.gui.qml import exceptions as qml_exceptions
-from galatea.gui.qml import models
 from galatea.gui.qml import app as qml_app
 from galatea.gui.qml import log as qml_logging
 from PySide6.QtQuickControls2 import QQuickStyle
@@ -27,7 +26,7 @@ def set_app_with_starting_file(
     root_object: QtQuick.QQuickItem, tsv_file: str
 ) -> None:
     if item := root_object.findChild(QtQuick.QQuickItem, "mainScreen"):
-        item.setProperty("fileName", tsv_file)
+        item.setProperty("fileName", QtCore.QUrl.fromLocalFile(tsv_file))
 
 
 def get_arg_parser() -> argparse.ArgumentParser:
@@ -54,8 +53,6 @@ def build_qml_app(
         )
     )
     application_builder = application_builder or qml_app.TableAppBuilder(app)
-
-    application_builder.model = model or models.TsvModel(app)
     application_builder.backend = python_backend
     application_builder.engine = engine
     application_builder.icon = qml_app.get_icon()

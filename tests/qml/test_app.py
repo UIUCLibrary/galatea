@@ -14,9 +14,7 @@ def test_qml_app():
 
 def test_configure_root_window_with_window_title(qtbot):
     component = Mock(spec_set=QtQml.QQmlComponent)
-    qml_app.configure_root_window_with_window_title(
-        component, Mock(name="Test Model"), "Test Title"
-    )
+    qml_app.configure_root_window_with_window_title(component, "Test Title")
     component.createWithInitialProperties.assert_called_once()
 
 
@@ -103,13 +101,6 @@ class TestTableAppBuilder:
         builder = qml_app.TableAppBuilder(app)
         with pytest.raises(RuntimeError):
             builder.create_component("some_entry_point")
-
-    def test_configure_root_object_without_model_raises(self, qtbot):
-        app = Mock(spec_set=QtGui.QGuiApplication)
-        builder = qml_app.TableAppBuilder(app)
-        component = Mock()
-        with pytest.raises(RuntimeError):
-            builder.configure_root_object(component)
 
     def test_build_without_entry_point_raises(self, qtbot):
         app = Mock(spec_set=QtGui.QGuiApplication)

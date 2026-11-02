@@ -5,11 +5,10 @@ from __future__ import annotations
 import functools
 import importlib.resources
 import sys
-from typing import Optional, Callable, TYPE_CHECKING
+from typing import Optional, Callable, TYPE_CHECKING, List
 
 from PySide6 import QtGui, QtQml, QtCore
 from galatea.gui.qml import exceptions as qml_exceptions
-from galatea.gui.qml import models
 
 if TYPE_CHECKING:
     from PySide6.QtQml import QQmlApplicationEngine, QQmlEngine, QQmlComponent
@@ -22,12 +21,11 @@ def get_icon() -> str:
 
 
 def configure_root_window_with_window_title(
-    component: QQmlComponent, model: models.TsvModel, window_title: str
+    component: QQmlComponent, window_title: str
 ) -> Optional[QtCore.QObject]:
     """Configure the root object of the QML component with a window title."""
     return component.createWithInitialProperties({
         "windowTitle": window_title,
-        "model": model,
     })
 
 
@@ -67,8 +65,7 @@ class TableAppBuilder:
         )
 
         self.entry_point: Optional[str] = kwargs.get("entry_point", None)
-        self.model: Optional[models.TsvModel] = kwargs.get("model", None)
-        self.post_tasks = []
+        self.post_tasks: List[Callable[[QtCore.QObject], None]] = []
 
     def set_app_icon(self, app: QtGui.QGuiApplication) -> None:
         """Set the application icon."""
@@ -102,10 +99,8 @@ class TableAppBuilder:
 
     def configure_root_object(self, component: QQmlComponent):
         """Configure the root object of the application."""
-        if not self.model:
-            raise RuntimeError("Model not initialized")
         return TableAppBuilder.configure_root_object_strategy(
-            component, self.model
+            component,
         )
 
     def build(self) -> None:
