@@ -16,6 +16,7 @@ Item {
     property color cellColorSelected: palette.highlight
     property color cellTextColor: palette.text
     property color borderColor: palette.mid
+    property var inspector: null
 
     Rectangle {
         anchors {
@@ -80,6 +81,9 @@ Item {
             id: tableCell
             cellColor: Script.chooseBackgroundColor(tableCell, row)
             padding: 2
+            onEditingChanged: {
+                indicateModified = inspector ? inspector.entryHasChanged(model.object): false
+            }
         }
         ScrollBar.horizontal: ScrollBar {
             policy: ScrollBar.AsNeeded // Options: AlwaysOn, AlwaysOff, AsNeeded
@@ -97,8 +101,8 @@ Item {
                 } else {
                     contextMenu.targetRows = tableView.selectionModel.selectedIndexes
                 }
-                console.debug("context menu is not implemented")
-                // contextMenu.popup()
+                // console.debug("context menu is not implemented")
+                contextMenu.popup()
             }
         }
         MetadataEditorContextMenu{

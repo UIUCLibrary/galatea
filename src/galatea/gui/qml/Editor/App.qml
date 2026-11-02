@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import galatea 1.0 as GalateaBackend
 
 import "App.js" as Script
 

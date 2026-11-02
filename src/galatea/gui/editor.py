@@ -27,7 +27,7 @@ def set_app_with_starting_file(
     root_object: QtQuick.QQuickItem, tsv_file: str
 ) -> None:
     if item := root_object.findChild(QtQuick.QQuickItem, "mainScreen"):
-        item.setProperty("fileName", tsv_file)
+        item.setProperty("fileName", QtCore.QUrl.fromLocalFile(tsv_file))
 
 
 def get_arg_parser() -> argparse.ArgumentParser:

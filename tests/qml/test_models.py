@@ -1,4 +1,5 @@
 import pytest
+from galatea import tsv
 
 models = pytest.importorskip("galatea.gui.qml.models")
 QtCore = pytest.importorskip("PySide6.QtCore")
@@ -25,15 +26,27 @@ def test_load_model(column_order, data, expected_size):
 @pytest.mark.parametrize(
     "input_data",
     [
-        (["Column1"], [{"Column1": "Value1"}]),
+        (
+            ["Column1"],
+            [tsv.TableRow(line_number=1, entry={"Column1": "Value1"})],
+        ),
         (["Column1"], []),
-        (["Column1", "Column2"], [{"Column1": "Value1", "Column2": "Value2"}]),
+        (
+            ["Column1", "Column2"],
+            [
+                tsv.TableRow(
+                    line_number=1,
+                    entry={"Column1": "Value1", "Column2": "Value2"},
+                )
+            ],
+        ),
     ],
 )
-def test_export_data(input_data):
+def test_export_data(input_data: tuple[list[str], list[tsv.TableRow]]):
     model = models.TsvModel()
-    model.load_data(*input_data)
-    assert models.export_data(model) == input_data
+    columns, data = input_data
+    models.load_tsv_model(model, columns, data)
+    assert models.export_data(model) == (columns, [row.entry for row in data])
 
 
 class TestTsvModel:
@@ -139,14 +152,58 @@ class TestTsvModel:
         model.setData(model.index(0, 0), "test", QtCore.Qt.EditRole)
         assert model.data(model.index(0, 0)) == "test"
 
-    def test_modified(self):
+    def test_removeRow(self):
+        model = models.TsvModel()
+        models.load_tsv_model(
+            model,
+            column_order=["name", "value"],
+            data=[
+                tsv.TableRow(
+                    line_number=1, entry={"name": "Test", "value": "test"}
+                )
+            ],
+        )
+        assert model.rowCount() == 1
+        assert model.removeRow(0) is True
+        assert model.rowCount() == 0
+
+    def test_removeColumns(self):
         model = models.TsvModel()
         model.load_data(
             column_order=["name", "value"],
             data=[{"name": "Test", "value": "test"}],
         )
-        assert model.isModified is False
-        model.setData(model.index(0, 0), "new_value")
-        assert (
-            model.isModified is True
-        ), "Model should be modified after setting data"
+        assert model.columnCount() == 2
+        assert model.removeColumn(0) is True
+        assert model.columnCount() == 1
+        assert model.headerData(0, QtCore.Qt.Horizontal) == "value"
+
+
+def test_load_tsv_model():
+    model = models.TsvModel()
+    models.load_tsv_model(
+        model,
+        column_order=["name", "value"],
+        data=[
+            tsv.TableRow(
+                line_number=1, entry={"name": "spam", "value": "bacon"}
+            )
+        ],
+    )
+    assert model.columnCount() == 2
+    assert model.rowCount() == 1
+    assert model.data(model.index(0, 0)) == "spam"
+
+
+def test_loaded_tsv_model_has_source():
+    model = models.TsvModel()
+    models.load_tsv_model(
+        model,
+        column_order=["name", "value"],
+        data=[
+            tsv.TableRow(
+                line_number=1, entry={"name": "spam", "value": "bacon"}
+            )
+        ],
+    )
+    assert model.data(model.index(0, 0), model.SourceRole) is not None
