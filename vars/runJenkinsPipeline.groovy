@@ -928,7 +928,17 @@ def call(){
                                                                         standaloneMacOSDeploymentStashes << 'APPLE_APPLICATION_X86_64'
                                                                     }
                                                                 } finally{
-                                                                    sh "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                                                    if(fileExists('.git')){
+                                                                        sh "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                                                    } else {
+                                                                        cleanWs(
+                                                                            patterns: [
+                                                                                [pattern: 'dist/', type: 'INCLUDE'],
+                                                                                [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                                            ],
+                                                                            notFailBuild: true
+                                                                        )
+                                                                    }
                                                                 }
                                                             }
                                                         }
@@ -939,12 +949,11 @@ def call(){
                                                 stage('Test'){
                                                     if(params.PACKAGE_MAC_OS_STANDALONE_X86_64){
                                                         node('mac && x86_64'){
-                                                            try{
-                                                                checkout scm
-                                                                unstash 'APPLE_APPLICATION_X86_64'
-                                                                sh "contrib/test-apple-package.sh ${findFiles(glob: 'dist/*.tar.gz')[0]}"
-                                                            } finally{
-                                                                sh "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                                            checkout scm
+                                                            def packaging = load('ci/jenkins/packaging.groovy')
+                                                            unstash 'APPLE_APPLICATION_X86_64'
+                                                            findFiles(glob: 'dist/*x86_64.tar.gz').each{
+                                                                packaging.testMacStandalonePackage(tarball: "${it.path}")
                                                             }
                                                         }
                                                     } else {
@@ -984,12 +993,11 @@ def call(){
                                                 stage('Test'){
                                                     if ( params.PACKAGE_MAC_OS_STANDALONE_ARM64){
                                                         node('mac && arm64'){
-                                                            try{
-                                                                checkout scm
-                                                                unstash 'APPLE_APPLICATION_ARM64'
-                                                                sh "contrib/test-apple-package.sh ${findFiles(glob: 'dist/*.tar.gz')[0]}"
-                                                            } finally{
-                                                                sh "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                                            checkout scm
+                                                            def packaging = load('ci/jenkins/packaging.groovy')
+                                                            unstash 'APPLE_APPLICATION_ARM64'
+                                                            findFiles(glob: 'dist/*arm64.tar.gz').each{
+                                                                packaging.testMacStandalonePackage(tarball: "${it.path}")
                                                             }
                                                         }
                                                     } else {
@@ -1031,6 +1039,14 @@ def call(){
                                                                 }
                                                                 if (fileExists('.git')){
                                                                     bat "${tool(name: 'Default', type: 'git')} clean -dfx"
+                                                                } else {
+                                                                    cleanWs(
+                                                                        patterns: [
+                                                                            [pattern: 'dist/', type: 'INCLUDE'],
+                                                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                                        ],
+                                                                        notFailBuild: true
+                                                                    )
                                                                 }
                                                             }
                                                         }
