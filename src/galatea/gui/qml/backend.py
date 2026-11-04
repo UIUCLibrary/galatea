@@ -9,7 +9,6 @@ import sys
 from functools import lru_cache
 from typing import (
     Type,
-    Union,
     List,
     Dict,
     TYPE_CHECKING,
@@ -41,7 +40,7 @@ __all__ = ["Backend"]
 
 def get_first_row_of_tsv(
     path: pathlib.Path,
-    dialect: Union[Type[csv.Dialect], csv.Dialect],
+    dialect: Type[csv.Dialect] | csv.Dialect,
     tsv_reader_strategy=csv.reader,
 ):
     with path.open(mode="r", newline="", encoding="utf-8") as f:
@@ -51,7 +50,7 @@ def get_first_row_of_tsv(
 
 def load_tsv(
     path: pathlib.Path,
-    dialect: Union[Type[csv.Dialect], csv.Dialect],
+    dialect: Type[csv.Dialect] | csv.Dialect,
     model: models.TsvModel,
     read_tsv_rows_strategy: IterTsvFileProtocol = galatea.tsv.iter_tsv_file,
 ):
@@ -74,7 +73,7 @@ def load_tsv(
 @lru_cache
 def get_tsv_dialect(
     path: pathlib.Path, detection_strategy=galatea.tsv.get_tsv_dialect
-) -> Union[Type[csv.Dialect], csv.Dialect]:
+) -> Type[csv.Dialect] | csv.Dialect:
     with path.open("r", encoding="utf-8") as fp:
         return detection_strategy(fp)
 
@@ -88,7 +87,7 @@ class Backend(QtCore.QObject):
         def __call__(
             self,
             path: pathlib.Path,
-            dialect: Union[Type[csv.Dialect], csv.Dialect],
+            dialect: Type[csv.Dialect] | csv.Dialect,
             model: models.TsvModel,
         ) -> None:
             """Load a TSV file into a model.
@@ -110,13 +109,13 @@ class Backend(QtCore.QObject):
             file_name: pathlib.Path,
             headings: List[str],
             data: List[Dict[str, str]],
-            dialect: Union[Type[csv.Dialect], csv.Dialect],
+            dialect: Type[csv.Dialect] | csv.Dialect,
             writing_strategy: Callable[
                 [
                     TextIO,
                     List[str],
                     List[Dict[str, str]],
-                    Union[Type[csv.Dialect], csv.Dialect],
+                    Type[csv.Dialect] | csv.Dialect,
                 ],
                 None,
             ],
@@ -141,7 +140,7 @@ class Backend(QtCore.QObject):
 
         def __call__(
             self, path: pathlib.Path
-        ) -> Union[Type[csv.Dialect], csv.Dialect]:
+        ) -> Type[csv.Dialect] | csv.Dialect:
             """Get the dialect to use for a file.
 
             Args:
@@ -180,7 +179,7 @@ class Backend(QtCore.QObject):
     def load_model_from_file(
         self,
         file_path: QtCore.QUrl,
-        dialect: Union[Type[csv.Dialect], csv.Dialect],
+        dialect: Type[csv.Dialect] | csv.Dialect,
         tsv_model: models.TsvModel,
     ) -> bool:
         """Load the model from the given file path using the given dialect."""
@@ -218,6 +217,6 @@ class Backend(QtCore.QObject):
     @QtCore.Slot(QtCore.QUrl, result="QVariant")
     def get_dialect(
         self, file_path: QtCore.QUrl
-    ) -> Union[Type[csv.Dialect], csv.Dialect]:
+    ) -> Type[csv.Dialect] | csv.Dialect:
         """Return the dialect of the file at the given path."""
         return Backend.get_dialect_strategy(pathlib.Path(file_path.path()))

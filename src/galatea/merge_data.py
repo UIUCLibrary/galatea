@@ -28,7 +28,6 @@ from typing import (
     Callable,
     BinaryIO,
     Type,
-    Union,
     Optional,
     Iterable,
 )
@@ -125,8 +124,8 @@ class MappingConfig:
     delimiter: str
     existing_data: str
     serialize_method: str = "verbatim"
-    experimental: Dict[str, Dict[str, Union[str, List[str]]]] = (
-        dataclasses.field(default_factory=dict)
+    experimental: Dict[str, Dict[str, str | List[str]]] = dataclasses.field(
+        default_factory=dict
     )
 
 
@@ -263,7 +262,7 @@ def get_matching_marc_data(
 MARC_REGEX = r"^(?P<datafield>\d{3})((\$?(?P<subfield>[a-zA-Z0-9]{1}))?$)"
 
 
-def get_xpath(datafield: str, subfield: Union[str, None], prefix: str) -> str:
+def get_xpath(datafield: str, subfield: str | None, prefix: str) -> str:
     if not subfield:
         return f".//{prefix}:datafield[@tag='{datafield}']"
     return f".//{prefix}:datafield[@tag='{datafield}']/{prefix}:subfield[@code='{subfield}']"  # noqa: E501
@@ -274,7 +273,7 @@ def get_xpath(datafield: str, subfield: Union[str, None], prefix: str) -> str:
 
 
 def validate_is_list_of_strings(
-    entry: Dict[str, Union[str, List[str]]], key: str
+    entry: Dict[str, str | List[str]], key: str
 ) -> Optional[str]:
     value = entry.get(key)
     if not isinstance(value, list):
@@ -290,7 +289,7 @@ def validate_is_list_of_strings(
 
 
 def validate_is_not_list(
-    entry: Dict[str, Union[str, List[str]]], key: str
+    entry: Dict[str, str | List[str]], key: str
 ) -> Optional[str]:
     value = entry.get(key)
     if isinstance(value, list):
@@ -299,7 +298,7 @@ def validate_is_not_list(
 
 
 def validate_is_string(
-    entry: Dict[str, Union[str, List[str]]], key: str
+    entry: Dict[str, str | List[str]], key: str
 ) -> Optional[str]:
     value = entry.get(key)
     if not isinstance(value, str):
@@ -308,7 +307,7 @@ def validate_is_string(
 
 
 def validate_limited_to_values(
-    entry: Dict[str, Union[str, List[str]]],
+    entry: Dict[str, str | List[str]],
     key: str,
     allowed_values: List[str],
 ) -> Optional[str]:
@@ -322,7 +321,7 @@ def validate_limited_to_values(
 
 # ===================================================================
 def matching_marc_fields(
-    entry: Dict[str, Union[str, List[str]]],
+    entry: Dict[str, str | List[str]],
 ) -> Optional[str]:
     if (
         "serialize_method" not in entry
@@ -333,7 +332,7 @@ def matching_marc_fields(
 
 
 DEFAULT_MARC_MAPPING_VALIDATIONS: List[
-    Callable[[Dict[str, Union[str, List[str]]]], Optional[str]]
+    Callable[[Dict[str, str | List[str]]], Optional[str]]
 ] = [
     functools.partial(validate_is_not_list, key="key"),
     matching_marc_fields,
@@ -348,7 +347,7 @@ DEFAULT_MARC_MAPPING_VALIDATIONS: List[
 
 def get_experimental_values(
     entry,
-) -> Dict[str, Dict[str, Union[str, List[str]]]]:
+) -> Dict[str, Dict[str, str | List[str]]]:
     if "serialize_method" in entry:
         if entry["serialize_method"] == "jinja2template":
             return {"jinja2template": {"template": entry["jinja_template"]}}
@@ -356,9 +355,9 @@ def get_experimental_values(
 
 
 def map_marc_mapping_to_mapping_config(
-    entry: Dict[str, Union[str, List[str]]],
+    entry: Dict[str, str | List[str]],
     validations: Optional[
-        List[Callable[[Dict[str, Union[str, List[str]]]], Optional[str]]]
+        List[Callable[[Dict[str, str | List[str]]], Optional[str]]]
     ] = None,
 ) -> MappingConfig:
     errors: List[str] = []
@@ -388,7 +387,7 @@ def map_marc_mapping_to_mapping_config(
 def read_mapping_toml_data(
     mapping_file_fp: BinaryIO,
     mapping_to_config_strategy: Optional[
-        Callable[[Dict[str, Union[str, List[str]]]], MappingConfig]
+        Callable[[Dict[str, str | List[str]]], MappingConfig]
     ] = None,
     _: bool = False,
 ) -> Dict[str, MappingConfig]:
@@ -667,9 +666,9 @@ def merge_data_from_getmarc(
     mapping_file_fp: BinaryIO,
     input_metadata_tsv_fp: TextIO,
     get_marc_server_strategy: Callable[[str], ET.Element],
-    dialect: Union[Type[csv.Dialect], csv.Dialect],
+    dialect: Type[csv.Dialect] | csv.Dialect,
     enable_experimental_features: bool = False,
-) -> List[Dict[str, Union[str, str]]]:
+) -> List[Dict[str, str | str]]:
     non_fatal_errors = []
     mapping = read_mapping_toml_data(
         mapping_file_fp,
@@ -681,7 +680,7 @@ def merge_data_from_getmarc(
     new_rows: List[Dict[str, str]] = []
 
     def _iter_row(
-        fp: TextIO, _dialect: Union[Type[csv.Dialect], csv.Dialect, str]
+        fp: TextIO, _dialect: Type[csv.Dialect] | csv.Dialect | str
     ) -> Iterable[TableRow[Dict[str, str]]]:
         yield from tsv.iter_tsv_fp(fp, dialect=_dialect)
 
@@ -761,7 +760,7 @@ def merge_data_from_getmarc(
 
 def write_new_rows_to_file(
     rows: List[Dict[str, str]],
-    dialect: Union[Type[csv.Dialect], csv.Dialect],
+    dialect: Type[csv.Dialect] | csv.Dialect,
     fp: TextIO,
     dict_writer: Type[csv.DictWriter] = csv.DictWriter,
 ) -> None:
@@ -790,13 +789,13 @@ def merge_from_getmarc(
             BinaryIO,
             TextIO,
             Callable[[str], ET.Element],
-            Union[Type[csv.Dialect], csv.Dialect],
+            Type[csv.Dialect] | csv.Dialect,
             bool,
         ],
         List[Dict[str, str]],
     ] = merge_data_from_getmarc,
     write_to_file_strategy: Callable[
-        [List[Dict[str, str]], Union[Type[csv.Dialect], csv.Dialect], TextIO],
+        [List[Dict[str, str]], Type[csv.Dialect] | csv.Dialect, TextIO],
         None,
     ] = write_new_rows_to_file,
     enable_experimental_features: bool = False,

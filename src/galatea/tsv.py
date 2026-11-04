@@ -13,7 +13,6 @@ from typing import (
     List,
     TextIO,
     TypeVar,
-    Union,
     Iterator,
     Iterable,
     Optional,
@@ -60,7 +59,7 @@ class TableRow(Generic[T]):
 
 
 def iter_tsv_fp(
-    fp: TextIO, dialect: Union[Type[csv.Dialect], csv.Dialect, str]
+    fp: TextIO, dialect: Type[csv.Dialect] | csv.Dialect | str
 ) -> Iterator[TableRow[T]]:
     with remembered_file_pointer_head(fp):
         reader = csv.DictReader(fp, dialect=dialect)
@@ -74,9 +73,9 @@ class IterTsvFileProtocol(Protocol):  # noqa: D101
     def __call__(
         self,
         file_name: pathlib.Path,
-        dialect: Union[Type[csv.Dialect], csv.Dialect],
+        dialect: Type[csv.Dialect] | csv.Dialect,
         strategy: Callable[
-            [TextIO, Union[Type[csv.Dialect], csv.Dialect]],
+            [TextIO, Type[csv.Dialect] | csv.Dialect],
             Iterable[TableRow[T]],
         ],
     ) -> Iterable[TableRow[T]]:
@@ -91,9 +90,9 @@ class IterTsvFileProtocol(Protocol):  # noqa: D101
 
 def iter_tsv_file(
     file_name: pathlib.Path,
-    dialect: Union[Type[csv.Dialect], csv.Dialect],
+    dialect: Type[csv.Dialect] | csv.Dialect,
     strategy: Callable[
-        [TextIO, Union[Type[csv.Dialect], csv.Dialect]],
+        [TextIO, Type[csv.Dialect] | csv.Dialect],
         Iterable[TableRow[T]],
     ] = iter_tsv_fp,
 ) -> Iterable[TableRow[T]]:
@@ -115,7 +114,7 @@ def write_tsv_fp2(
     fp: TextIO,
     headings: List[str],
     data: List[typing.Dict[str, str]],
-    dialect: Union[Type[csv.Dialect], csv.Dialect],
+    dialect: Type[csv.Dialect] | csv.Dialect,
 ) -> None:
     writer = csv.DictWriter(fp, fieldnames=headings, dialect=dialect)
     writer.writeheader()
@@ -126,7 +125,7 @@ def write_tsv_fp2(
 def write_tsv_fp(
     fp: TextIO,
     data: List[Marc_Entry],
-    dialect: Union[Type[csv.Dialect], csv.Dialect],
+    dialect: Type[csv.Dialect] | csv.Dialect,
 ) -> None:
     """Write tsv file to file pointer.
 
@@ -151,13 +150,13 @@ def write_tsv_file2(
     file_name: pathlib.Path,
     headings: List[str],
     data: List[typing.Dict[str, str]],
-    dialect: Union[Type[csv.Dialect], csv.Dialect],
+    dialect: Type[csv.Dialect] | csv.Dialect,
     writing_strategy: Callable[
         [
             TextIO,
             List[str],
             List[typing.Dict[str, str]],
-            Union[Type[csv.Dialect], csv.Dialect],
+            Type[csv.Dialect] | csv.Dialect,
         ],
         None,
     ] = write_tsv_fp2,
@@ -169,9 +168,9 @@ def write_tsv_file2(
 def write_tsv_file(
     file_name: pathlib.Path,
     data: List[Marc_Entry],
-    dialect: Union[Type[csv.Dialect], csv.Dialect],
+    dialect: Type[csv.Dialect] | csv.Dialect,
     writing_strategy: Callable[
-        [TextIO, List[Marc_Entry], Union[Type[csv.Dialect], csv.Dialect]],
+        [TextIO, List[Marc_Entry], Type[csv.Dialect] | csv.Dialect],
         None,
     ] = write_tsv_fp,
 ) -> None:
@@ -193,14 +192,14 @@ class UnknownDialect(Exception):
 
 
 class DetectionStrategy(Protocol):
-    def __call__(self, fp: TextIO) -> Union[Type[csv.Dialect], csv.Dialect]:
+    def __call__(self, fp: TextIO) -> Type[csv.Dialect] | csv.Dialect:
         """Detect the dialect of a tsv file.
 
         if unable to figure it out, the function throws a DialectDetectionError
         """
 
 
-def sniff_tsv_dialect(fp: TextIO) -> Union[Type[csv.Dialect], csv.Dialect]:
+def sniff_tsv_dialect(fp: TextIO) -> Type[csv.Dialect] | csv.Dialect:
     with remembered_file_pointer_head(fp):
         try:
             sniffer = csv.Sniffer()
@@ -219,7 +218,7 @@ def sniff_tsv_dialect(fp: TextIO) -> Union[Type[csv.Dialect], csv.Dialect]:
 
 def get_tsv_dialect(
     fp: TextIO, detection_strategy: DetectionStrategy = sniff_tsv_dialect
-) -> Union[Type[csv.Dialect], csv.Dialect]:
+) -> Type[csv.Dialect] | csv.Dialect:
     """Attempt to identify the dialect of a tsv file pointer.
 
     Args:
@@ -241,9 +240,7 @@ def get_tsv_dialect(
             return csv.get_dialect("excel-tab")  # type:ignore[return-value]
 
 
-def get_field_names_fp(
-    fp: TextIO, dialect: Union[Type[csv.Dialect], csv.Dialect]
-):
+def get_field_names_fp(fp: TextIO, dialect: Type[csv.Dialect] | csv.Dialect):
     """Get field names of tsv from a file pointer.
 
     Args:
@@ -261,9 +258,9 @@ def get_field_names_fp(
 
 def get_field_names(
     file_name: pathlib.Path,
-    dialect: Optional[Union[Type[csv.Dialect], csv.Dialect]] = None,
+    dialect: Optional[Type[csv.Dialect] | csv.Dialect] = None,
     strategy: Callable[
-        [TextIO, Union[Type[csv.Dialect], csv.Dialect]], List[str]
+        [TextIO, Type[csv.Dialect] | csv.Dialect], List[str]
     ] = get_field_names_fp,
 ) -> List[str]:
     """Get field names of tsv.
