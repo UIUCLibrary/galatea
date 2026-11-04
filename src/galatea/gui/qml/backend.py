@@ -13,8 +13,6 @@ from typing import (
     Dict,
     TYPE_CHECKING,
     Protocol,
-    TextIO,
-    Callable,
     Tuple,
 )
 import galatea.tsv
@@ -55,8 +53,9 @@ def load_tsv(
     read_tsv_rows_strategy: IterTsvFileProtocol = galatea.tsv.iter_tsv_file,
 ):
     rows: List[Dict[str, str]] = []
-    row: TableRow[Dict[str, str]]
-    _rows = list(read_tsv_rows_strategy(path, dialect=dialect))
+    _rows: List[TableRow[Dict[str, str]]] = list(
+        read_tsv_rows_strategy(path, dialect=dialect)
+    )
     for row in _rows:
         rows.append(row.entry)
     if len(rows) > 0:
@@ -110,15 +109,6 @@ class Backend(QtCore.QObject):
             headings: List[str],
             data: List[Dict[str, str]],
             dialect: Type[csv.Dialect] | csv.Dialect,
-            writing_strategy: Callable[
-                [
-                    TextIO,
-                    List[str],
-                    List[Dict[str, str]],
-                    Type[csv.Dialect] | csv.Dialect,
-                ],
-                None,
-            ],
         ):
             """Write a TSV file from a model.
 
@@ -128,7 +118,6 @@ class Backend(QtCore.QObject):
                 data: The data to write. Dictionary of that keys matches the
                     headings.
                 dialect: The tsv dialect to use.
-                writing_strategy: The strategy to use to write the data.
 
             Returns:
                 None

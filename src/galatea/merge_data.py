@@ -668,7 +668,7 @@ def merge_data_from_getmarc(
     get_marc_server_strategy: Callable[[str], ET.Element],
     dialect: Type[csv.Dialect] | csv.Dialect,
     enable_experimental_features: bool = False,
-) -> List[Dict[str, str | str]]:
+) -> List[Dict[str, str]]:
     non_fatal_errors = []
     mapping = read_mapping_toml_data(
         mapping_file_fp,

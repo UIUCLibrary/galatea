@@ -74,17 +74,12 @@ class IterTsvFileProtocol(Protocol):  # noqa: D101
         self,
         file_name: pathlib.Path,
         dialect: Type[csv.Dialect] | csv.Dialect,
-        strategy: Callable[
-            [TextIO, Type[csv.Dialect] | csv.Dialect],
-            Iterable[TableRow[T]],
-        ],
     ) -> Iterable[TableRow[T]]:
         """Iterate over entries in a given tsv file.
 
         Args:
             file_name: file path to tsv to use,
             dialect: dialect of tsv file
-            strategy: function to read tsv file pointer & produce row iterator
         """
 
 
