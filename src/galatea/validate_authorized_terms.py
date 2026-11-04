@@ -2,6 +2,7 @@
 
 import abc
 import collections.abc
+import csv
 import logging
 import pathlib
 import time
@@ -14,12 +15,22 @@ from typing import (
     Iterable,
     Tuple,
     Union,
+    TextIO,
+    Set,
+    Optional,
 )
 from urllib.parse import quote
 
 import requests
 
-from galatea.tsv import iter_tsv_file, get_tsv_dialect
+from galatea.tsv import (
+    iter_tsv_file,
+    get_tsv_dialect,
+    iter_tsv_fp,
+    sniff_tsv_dialect,
+    TableRow,
+    UnknownDialect,
+)
 
 __all__ = ["validate_authorized_terms"]
 
@@ -152,6 +163,9 @@ class IterTerms(collections.abc.Iterable):
                     yield row.line_number, field_name, cleaned_string
 
 
+COLUMNS_CHECKS = {"260$a", "264$a"}
+
+
 def get_authorized_terms_report(
     source: pathlib.Path,
 ) -> Tuple[bool, Union[str, None]]:
@@ -187,3 +201,36 @@ def validate_authorized_terms(source: pathlib.Path) -> None:
     valid, results = get_authorized_terms_report(source)
     if not valid:
         logger.info(results)
+
+
+def locate_missing_columns(row):
+    missing_values = set()
+    for value in COLUMNS_CHECKS:
+        if value not in row.entry:
+            missing_values.add(value)
+    return missing_values
+
+
+def get_issues_with_file_type_fp(fp: TextIO) -> Set[str]:
+    errors = set()
+    try:
+        dialect = sniff_tsv_dialect(fp)
+    except UnknownDialect:
+        dialect = csv.get_dialect("excel-tab")
+
+    first_row: TableRow = next(iter_tsv_fp(fp, dialect))
+    if missing_columns := locate_missing_columns(first_row):
+        errors.add(f"Missing expected columns: [{', '.join(missing_columns)}]")
+
+    return errors
+
+
+def check_tsv(source_tsv: str) -> Optional[str]:
+    with open(source_tsv, "r", encoding="utf-8") as fp:
+        if issues := get_issues_with_file_type_fp(fp):
+            report = "\n".join([f" * {issue}" for issue in issues])
+            return (
+                f"Unable to continue due to the following error(s) with "
+                f'the provided file, "{source_tsv}".\n{report}'
+            )
+        return None

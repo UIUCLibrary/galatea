@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQml
 import "MetadataEditor.js" as Script
+// import Galatea 1.0
 
 Item {
     id: root
@@ -16,6 +17,7 @@ Item {
     property color cellColorSelected: palette.highlight
     property color cellTextColor: palette.text
     property color borderColor: palette.mid
+    // property TsvInspector inspector
 
     Rectangle {
         anchors {
@@ -78,7 +80,6 @@ Item {
         Keys.onPressed: (event) => Script.handelKeyPressed(event)
         delegate: CellDelegate{
             id: tableCell
-            cellColor: Script.chooseBackgroundColor(tableCell, row)
             padding: 2
         }
         ScrollBar.horizontal: ScrollBar {
@@ -97,8 +98,8 @@ Item {
                 } else {
                     contextMenu.targetRows = tableView.selectionModel.selectedIndexes
                 }
-                console.debug("context menu is not implemented")
-                // contextMenu.popup()
+                // console.debug("context menu is not implemented")
+                contextMenu.popup()
             }
         }
         MetadataEditorContextMenu{

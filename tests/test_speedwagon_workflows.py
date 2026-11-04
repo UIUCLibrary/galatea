@@ -354,6 +354,7 @@ def test_validate_authorized_terms_task():
         sw_workflows.authorized_terms_workflows.validate_authorized_terms_task(
             source=source,
             get_authorized_terms_strategy=get_authorized_terms_strategy,
+            precheck=lambda *_: None,
         )
     )
     task.work()

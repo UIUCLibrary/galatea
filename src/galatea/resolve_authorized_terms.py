@@ -19,7 +19,6 @@ from typing import (
     Tuple,
     Iterator,
     Dict,
-    Union,
     Type,
 )
 
@@ -147,7 +146,7 @@ def create_row_diff_report(
 
 def diff_rows(
     row_a: galatea.marc.Marc_Entry, row_b: galatea.marc.Marc_Entry
-) -> Dict[str, Tuple[Union[str, None], Union[str, None]]]:
+) -> Dict[str, Tuple[str | None, str | None]]:
     """Compare two rows and return the differences."""
     diff = {}
     for key in row_a.keys():
@@ -176,7 +175,7 @@ def resolve_authorized_terms(
     input_tsv: pathlib.Path,
     transformation_file: pathlib.Path,
     output_file: pathlib.Path,
-    input_tsv_dialect: Optional[Union[Type[csv.Dialect], csv.Dialect]] = None,
+    input_tsv_dialect: Optional[Type[csv.Dialect] | csv.Dialect] = None,
     resolve_strategy: ResolveStrategyCallback = iter_resolved_terms,
 ) -> None:
     """Resolve unauthorized terms to authorized terms in found tsv file.

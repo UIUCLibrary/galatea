@@ -3,6 +3,7 @@ import io
 import os
 import pathlib
 import sys
+import warnings
 import xml
 
 from galatea.merge_data import GetMarcRetrievalError
@@ -616,21 +617,25 @@ def test_field_with_code_and_value(template_string, expected_result):
         </datafield>
     </record>
     """
-    assert (
-        merge_data.serialize_with_jinja_template(
-            marc_record=ET.fromstring(alma_record),
-            config=merge_data.MappingConfig(
-                key="Name",
-                matching_keys=["650"],
-                delimiter="||",
-                existing_data="replace",
-                serialize_method="jinja2template",
-                experimental={"jinja2template": {"template": template_string}},
-            ),
-            enable_experimental_features=True,
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        assert (
+            merge_data.serialize_with_jinja_template(
+                marc_record=ET.fromstring(alma_record),
+                config=merge_data.MappingConfig(
+                    key="Name",
+                    matching_keys=["650"],
+                    delimiter="||",
+                    existing_data="replace",
+                    serialize_method="jinja2template",
+                    experimental={
+                        "jinja2template": {"template": template_string}
+                    },
+                ),
+                enable_experimental_features=True,
+            )
+            == expected_result
         )
-        == expected_result
-    )
 
 
 def test_serialize_with_jinja_template_type_error_raise_serialization_error(
@@ -650,12 +655,14 @@ def test_serialize_with_jinja_template_type_error_raise_serialization_error(
             ),
         ),
     )
-    with pytest.raises(merge_data.SerialzationError):
-        merge_data.serialize_with_jinja_template(
-            marc_record=MagicMock(),
-            config=config,
-            enable_experimental_features=True,
-        )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        with pytest.raises(merge_data.SerialzationError):
+            merge_data.serialize_with_jinja_template(
+                marc_record=MagicMock(),
+                config=config,
+                enable_experimental_features=True,
+            )
 
 
 def test_get_matching_marc_data():

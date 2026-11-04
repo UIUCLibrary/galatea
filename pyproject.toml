@@ -153,3 +153,19 @@ speedwagon = {index = "uiuc_prescon_python"}
 
 [tool.ty.src]
 exclude = ["tests"]
+
+[tool.pyside6-project]
+files = [
+    'src/galatea/gui/editor.py',
+    'src/galatea/gui/qml/backend.py',
+    'src/galatea/gui/qml/models.py',
+    'src/galatea/gui/qml/Editor/App.qml',
+    'src/galatea/gui/qml/Editor/AppMenuBar.qml',
+    'src/galatea/gui/qml/Editor/CellDelegate.qml',
+    'src/galatea/gui/qml/Editor/HeaderDelegate.qml',
+    'src/galatea/gui/qml/Editor/MetadataEditor.qml',
+    'src/galatea/gui/qml/Editor/MetadataEditorContextMenu.qml',
+    'src/galatea/gui/qml/Editor/MetadataEditorScreen.qml',
+    'src/galatea/gui/qml/Editor/MetadataEditorScreenForm.ui.qml',
+    'src/galatea/gui/qml/Editor/StatusBar.qml',
+]

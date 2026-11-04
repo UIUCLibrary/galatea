@@ -37,6 +37,18 @@ function handleEscape(tableView){
 }
 
 function chooseBackgroundColor(delegate, row, paletteUsed=palette){
+    // if(inspector){
+    //     if(inspector.entryHasChanged(delegate.model.object)){
+    //         print(row)
+    //         return paletteUsed.accent
+    //     }
+    // } else {
+    //     print("No inspector")
+    // }
+    // if(delegate.indicateModified){
+    //     print(row)
+    //     return paletteUsed.accent
+    // }
     if( delegate.hovered){
         if (delegate.selected){
             return paletteUsed.light

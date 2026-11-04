@@ -9,7 +9,6 @@ import difflib
 from typing import (
     List,
     Callable,
-    Union,
     Optional,
     Tuple,
     TypeVar,
@@ -38,7 +37,7 @@ class RowTransformer:
     def __init__(self) -> None:
         self.transformations: List[
             Tuple[
-                Callable[[MarcEntryDataTypes], Union[MarcEntryDataTypes]],
+                Callable[[MarcEntryDataTypes], MarcEntryDataTypes],
                 Optional[Callable[[str, MarcEntryDataTypes], bool]],
             ]
         ] = []
@@ -54,9 +53,7 @@ class RowTransformer:
 
     def add_transformation(
         self,
-        transformation: Callable[
-            [MarcEntryDataTypes], Union[MarcEntryDataTypes]
-        ],
+        transformation: Callable[[MarcEntryDataTypes], MarcEntryDataTypes],
         condition: Optional[Callable[[str, MarcEntryDataTypes], bool]] = None,
     ) -> None:
         self.transformations.append((transformation, condition))

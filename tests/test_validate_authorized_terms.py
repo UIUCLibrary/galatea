@@ -1,3 +1,4 @@
+import io
 import pathlib
 from unittest.mock import Mock, patch, mock_open
 
@@ -167,3 +168,17 @@ class TestIterTerms:
             assert list(term_interator.iter_rows()) == [
                 {"264$a": "one", "264$b": "two"}
             ]
+
+
+def test_get_issues_with_file_type_fp():
+    sample_data = """
+uuid	parentId	preservationMasterPathname	preservationMasterUUID	pageNumber	subpageNumber	published	contentdmAlias	contentdmPointer	IGNORE	Title
+8104f370-b18b-013c-4bcb-02d0d7bfd6e4-5						FALSE			0	Taylorville, Christian County, Illinois, May 1931
+355adbe0-b19c-013c-4bcb-02d0d7bfd6e4-7	8104f370-b18b-013c-4bcb-02d0d7bfd6e4-5	162/2204/99162599612205899/preservation/99162599612205899-002.tif	355adbe0-b19c-013c-4bcb-02d0d7bfd6e4-7			TRUE			0	99162599612205899-002.tif
+355adbe0-b19c-013c-4bcb-02d0d7bfd6e4-7	8104f370-b18b-013c-4bcb-02d0d7bfd6e4-5	162/2204/99162599612205899/preservation/99162599612205899-002.tif	355adbe0-b19c-013c-4bcb-02d0d7bfd6e4-7			TRUE			0	99162599612205899-002.tif
+
+""".lstrip()
+    with io.StringIO(sample_data) as fp:
+        assert (
+            len(validate_authorized_terms.get_issues_with_file_type_fp(fp)) > 0
+        )

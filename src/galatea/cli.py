@@ -357,11 +357,17 @@ def clean_tsv_command(args: argparse.Namespace) -> None:
         )
 
 
-def authority_check_command(args: argparse.Namespace) -> None:
+def authority_check_command(
+    args: argparse.Namespace,
+    precheck_strategy=validate_authorized_terms.check_tsv,
+) -> None:
     with manage_module_logs(
         validate_authorized_terms.logger,
         verbosity=get_logger_level_from_args(args),
     ):
+        if error_report := precheck_strategy(args):
+            print(error_report, file=sys.stderr)
+            sys.exit(1)
         validate_authorized_terms.validate_authorized_terms(args.source_tsv)
 
 

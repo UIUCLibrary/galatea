@@ -568,7 +568,7 @@ def call(){
                                                 steps{
                                                     catchError(buildResult: 'SUCCESS', message: 'qmllint found issues', stageResult: 'UNSTABLE') {
                                                         sh(label: 'Running qmllint',
-                                                           script: 'uv run pyside6-qmllint src/galatea/gui/qml/**/*.qml --json reports/qmllint-report.json'
+                                                           script: 'uv run pyside6-qmllint -i src/galatea/gui/qml/Editor/qmldir src/galatea/gui/qml/**/*.qml --json reports/qmllint-report.json'
                                                         )
                                                     }
                                                 }

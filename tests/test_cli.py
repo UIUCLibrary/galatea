@@ -94,7 +94,9 @@ def test_authority_check_command(monkeypatch):
         "validate_authorized_terms",
         validate_authorized_terms,
     )
-    galatea.cli.authority_check_command(args)
+    galatea.cli.authority_check_command(
+        args, precheck_strategy=lambda *_: None
+    )
     validate_authorized_terms.assert_called_once_with("dummy.tsv")
 
 
