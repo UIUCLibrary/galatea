@@ -169,8 +169,11 @@ def validate_authorized_terms_task(
     source: str,
     logging_level=logging.INFO,
     get_authorized_terms_strategy=validate_authorized_terms.get_authorized_terms_report,
+    precheck=validate_authorized_terms.check_tsv,
 ) -> Dict[str, Union[bool, str, None]]:
     """Validate authorized terms."""
+    if error_report := precheck(source):
+        return {"success": False, "report": error_report}
     handler = RedirectHandler(logger, level=logging_level)
     try:
         validate_authorized_terms.logger.addHandler(handler)

@@ -61,7 +61,7 @@ class TableRow(Generic[T]):
 
 def iter_tsv_fp(
     fp: TextIO, dialect: Union[Type[csv.Dialect], csv.Dialect, str]
-) -> Iterable[TableRow[T]]:
+) -> Iterator[TableRow[T]]:
     with remembered_file_pointer_head(fp):
         reader = csv.DictReader(fp, dialect=dialect)
         for row in reader:
@@ -200,14 +200,14 @@ class DetectionStrategy(Protocol):
         """
 
 
-def _sniff_tsv_dialect(fp: TextIO) -> Union[Type[csv.Dialect], csv.Dialect]:
+def sniff_tsv_dialect(fp: TextIO) -> Union[Type[csv.Dialect], csv.Dialect]:
     with remembered_file_pointer_head(fp):
         try:
             sniffer = csv.Sniffer()
             dialect = sniffer.sniff(fp.read(1024 * 2), delimiters="\t")
             if dialect.doublequote is False:
                 logger.warning(
-                    f"dialog deterimined by {_sniff_tsv_dialect.__name__} using "
+                    f"dialog deterimined by {sniff_tsv_dialect.__name__} using "
                     f"double quotes, dispite not detected them in source tsv "
                     f"file."
                 )
@@ -218,7 +218,7 @@ def _sniff_tsv_dialect(fp: TextIO) -> Union[Type[csv.Dialect], csv.Dialect]:
 
 
 def get_tsv_dialect(
-    fp: TextIO, detection_strategy: DetectionStrategy = _sniff_tsv_dialect
+    fp: TextIO, detection_strategy: DetectionStrategy = sniff_tsv_dialect
 ) -> Union[Type[csv.Dialect], csv.Dialect]:
     """Attempt to identify the dialect of a tsv file pointer.
 
