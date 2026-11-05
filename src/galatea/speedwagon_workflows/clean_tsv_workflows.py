@@ -108,7 +108,7 @@ class CleanTsv(speedwagon.Workflow[CleanTsvUserArgs]):
         source_tsv = speedwagon.workflow.FileSelectData(
             "Source .tsv", required=True
         )
-        source_tsv.filter = "Tab-Separated Value (\\*.tsv)"
+        source_tsv.filter = r"Tab-Separated Value (*.tsv);;All Files (*)"
         job_options: List[speedwagon.workflow.AbsOutputOptionDataType] = [
             source_tsv
         ]
