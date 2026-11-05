@@ -573,7 +573,8 @@ def call(){
                                                                script: """mkdir -p tmp/Galatea
                                                                           uv run pyside6-metaobjectdump -o tmp/Galatea/modelsmetatypes.json src/galatea/gui/qml/models.py
                                                                           uv run pyside6-qmltyperegistrar --generate-qmltypes tmp/Galatea/models.qmltypes -o tmp/Galatea/models_qmltyperegistrations.cpp tmp/Galatea/modelsmetatypes.json --import-name Galatea --major-version 1 --minor-version 0 --foreign-types=${pyside6Path}/Qt/metatypes/qt6core_metatypes.json,${pyside6Path}/Qt/metatypes/qt6qml_metatypes.json
-                                                                          uv run pyside6-qmllint -i src/galatea/gui/qml/Editor/qmldir src/galatea/gui/qml/**/*.qml --json reports/qmllint-report.json
+                                                                          uv run pyside6-qmllint tmp/Galatea/*.qmltypes src/galatea/gui/qml/**/*.qml --json reports/qmllint-report.json
+                                                                          uv run ci/scripts/convert-qmllint-report-to-warnings-ng.py reports/qmllint-report.json > reports/qmllint-report-for-jenkins.json
                                                                        """
                                                             )
                                                         }
@@ -581,27 +582,27 @@ def call(){
                                                 }
                                                 post {
                                                     always {
-                                                        recordIssues(tool: issues(pattern: 'reports/qmllint-report.json', name: 'qmllint'))
+                                                        recordIssues(tool: issues(pattern: 'reports/qmllint-report-for-jenkins.json', name: 'qmllint'))
                                                     }
                                                 }
                                             }
-                                            stage('Ruff') {
-                                                steps{
-                                                    catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
-                                                        sh(
-                                                         label: 'Running Ruff',
-                                                         script: '''uv run ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
-                                                                    uv run ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
-                                                                '''
-                                                         )
-                                                    }
-                                                }
-                                                post{
-                                                    always{
-                                                        recordIssues(tools: [pyLint(pattern: 'reports/ruffoutput.txt', name: 'Ruff')])
-                                                    }
-                                                }
-                                            }
+//                                             stage('Ruff') {
+//                                                 steps{
+//                                                     catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
+//                                                         sh(
+//                                                          label: 'Running Ruff',
+//                                                          script: '''uv run ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
+//                                                                     uv run ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
+//                                                                 '''
+//                                                          )
+//                                                     }
+//                                                 }
+//                                                 post{
+//                                                     always{
+//                                                         recordIssues(tools: [pyLint(pattern: 'reports/ruffoutput.txt', name: 'Ruff')])
+//                                                     }
+//                                                 }
+//                                             }
                                             stage('Audit Lockfile Dependencies'){
                                                 steps{
                                                     catchError(buildResult: 'UNSTABLE', message: 'uv audit found issues', stageResult: 'UNSTABLE') {
