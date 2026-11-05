@@ -293,7 +293,6 @@ class TsvInspector(QObject):
         file_path = pathlib.Path(self._private_data.file.toLocalFile())
         if not file_path.is_file():
             return False
-        print("compare")
         return compare_strategy(value, self._private_data.tsv_rows)
 
     state_name = QtCore.Property(
