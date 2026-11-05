@@ -567,9 +567,16 @@ def call(){
                                             stage('qmllint'){
                                                 steps{
                                                     catchError(buildResult: 'SUCCESS', message: 'qmllint found issues', stageResult: 'UNSTABLE') {
-                                                        sh(label: 'Running qmllint',
-                                                           script: 'uv run pyside6-qmllint -i src/galatea/gui/qml/Editor/qmldir src/galatea/gui/qml/**/*.qml --json reports/qmllint-report.json'
-                                                        )
+                                                        script{
+                                                            def pyside6Path = sh(label: 'locating PySide6', returnStdout: true, script: 'uv run python -c "import PySide6; import os.path; print(os.path.dirname(PySide6.__file__))"').trim()
+                                                            sh(label: 'Running qmllint',
+                                                               script: """mkdir -p tmp/Galatea
+                                                                          uv run pyside6-metaobjectdump -o tmp/Galatea/modelsmetatypes.json src/galatea/gui/qml/models.py
+                                                                          uv run pyside6-qmltyperegistrar --generate-qmltypes tmp/Galatea/models.qmltypes -o tmp/Galatea/models_qmltyperegistrations.cpp tmp/Galatea/modelsmetatypes.json --import-name Galatea --major-version 1 --minor-version 0 --foreign-types=${pyside6Path}/Qt/metatypes/qt6core_metatypes.json,${pyside6Path}/Qt/metatypes/qt6qml_metatypes.json
+                                                                          uv run pyside6-qmllint -i src/galatea/gui/qml/Editor/qmldir src/galatea/gui/qml/**/*.qml --json reports/qmllint-report.json
+                                                                       """
+                                                            )
+                                                        }
                                                     }
                                                 }
                                                 post {
