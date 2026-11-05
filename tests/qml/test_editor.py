@@ -26,7 +26,6 @@ def test_build_qml_app(qtbot):
         engine=Mock(),
         python_backend=Mock(),
         application_builder=builder,
-        model=Mock(),
     )
     builder.build.assert_called_once()
 
@@ -40,7 +39,8 @@ def test_set_app_with_starting_file(qtbot, monkeypatch):
     )
     component = qml_app.create_component(
         str(
-            importlib.resources.files("galatea.gui.qml")
+            importlib.resources
+            .files("galatea.gui.qml")
             .joinpath("Editor")
             .joinpath("App.qml")
         ),
@@ -52,3 +52,21 @@ def test_set_app_with_starting_file(qtbot, monkeypatch):
     monkeypatch.setattr(QtQuick.QQuickItem, "setProperty", setProperty)
     editor.set_app_with_starting_file(window, "test.tsv")
     setProperty.assert_called_once()
+
+
+def test_get_entry_point_from_local():
+    assert editor.get_entry_point_from_local()
+
+
+def test_get_entry_point_from_resource():
+    assert editor.get_entry_point_from_resource()
+
+
+def test_locate_qml_entry_point_file():
+    strategy = [Mock(return_value="App.qml")]
+    assert editor.locate_qml_entry_point_file(strategy) == "App.qml"
+
+
+def test_locate_qml_entry_point_file_fails_with_none():
+    strategy = [Mock(return_value=None)]
+    assert editor.locate_qml_entry_point_file(strategy) is None

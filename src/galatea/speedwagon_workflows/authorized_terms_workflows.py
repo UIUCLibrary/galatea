@@ -33,7 +33,7 @@ __all__ = [
     "ResolveAuthorizedTerms",
 ]
 
-OPEN_FILE_PATTERN_MATCHING_TSV = r"Tab-Separated Value (*.tsv)"
+OPEN_FILE_PATTERN_MATCHING_TSV = r"Tab-Separated Value (*.tsv);;All Files (*)"
 
 # =============================================================================
 # WORKFLOW: "Authorized Terms: Check"

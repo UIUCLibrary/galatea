@@ -4,12 +4,13 @@ import argparse
 import functools
 import importlib.resources
 import logging
+import os.path
 import sys
 from importlib.metadata import version, PackageNotFoundError
-from typing import Optional, List
+from typing import Optional, List, Callable
 
 from galatea.gui.qml import backend
-from galatea.gui.qml import exceptions as qml_exceptions
+from galatea.gui.qml import error_handling
 from galatea.gui.qml import app as qml_app
 from galatea.gui.qml import log as qml_logging
 from PySide6.QtQuickControls2 import QQuickStyle
@@ -35,15 +36,58 @@ def get_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def get_entry_point_from_resource() -> Optional[str]:
+    """Find entrypoint using the package resources.
+
+    This is the ideal way to find App.qml. This might not work when the
+    application is frozen. In this case, use get_entry_point_from_local()
+    """
+    entry_point = (
+        importlib.resources
+        .files("galatea.gui.qml")
+        .joinpath("Editor")
+        .joinpath("App.qml")
+    )
+    return str(entry_point) if entry_point.exists() else None
+
+
+def get_entry_point_from_local() -> Optional[str]:
+    """Find entrypoint relative to this file.
+
+    This is useful when launching the app from a frozen version of python
+    """
+    expected = os.path.join(
+        os.path.dirname(__file__), "qml", "Editor", "App.qml"
+    )
+    return expected if os.path.exists(expected) else None
+
+
+LOCATE_ENTRYPOINT_STRATEGY_ORDER: List[Callable[[], Optional[str]]] = [
+    get_entry_point_from_resource,
+    get_entry_point_from_local,
+]
+
+
+def locate_qml_entry_point_file(
+    strategy_order: Optional[List[Callable[[], Optional[str]]]] = None,
+) -> Optional[str]:
+    for strategy in strategy_order or LOCATE_ENTRYPOINT_STRATEGY_ORDER:
+        if file := strategy():
+            return file
+    return None
+
+
 def build_qml_app(
     app: QtGui.QGuiApplication,
     args: argparse.Namespace,
     engine=None,
     python_backend=None,
     application_builder=None,
-    model=None,
 ):
     engine = engine or QtQml.QQmlApplicationEngine(parent=app)
+    entry_point = locate_qml_entry_point_file()
+    if not entry_point:
+        raise FileNotFoundError("Unable to locate QML entry point")
     python_backend = python_backend or backend.Backend(app)
     display_in_qml = qml_logging.LogSignalHandler(python_backend.logSubmitted)
     module_logger.addHandler(display_in_qml)
@@ -57,12 +101,6 @@ def build_qml_app(
     application_builder.engine = engine
     application_builder.icon = qml_app.get_icon()
 
-    entry_point = (
-        importlib.resources
-        .files("galatea.gui.qml")
-        .joinpath("Editor")
-        .joinpath("App.qml")
-    )
     application_builder.entry_point = str(entry_point)
 
     if args.tsv:
@@ -92,14 +130,16 @@ def main(
         print(e)
         print("Compiled Qt Version: Unknown")
     app = app or QtGui.QGuiApplication()
-
-    build_app_strategy(app, args)
+    try:
+        build_app_strategy(app, args)
+    except FileNotFoundError as e:
+        error_handling.exit_with_fatal_error(app, str(e))
     return app.exec()
 
 
 if __name__ == "__main__":
     try:
         main()
-    except qml_exceptions.QMLLoadingError as e:
+    except error_handling.QMLLoadingError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

@@ -8,7 +8,7 @@ import sys
 from typing import Optional, Callable, TYPE_CHECKING, List
 
 from PySide6 import QtGui, QtQml, QtCore
-from galatea.gui.qml import exceptions as qml_exceptions
+from galatea.gui.qml import error_handling as qml_exceptions
 
 if TYPE_CHECKING:
     from PySide6.QtQml import QQmlApplicationEngine, QQmlEngine, QQmlComponent
