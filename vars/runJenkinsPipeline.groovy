@@ -655,9 +655,9 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'qmllint found issues', stageResult: 'UNSTABLE') {
                                                         script{
                                                             sh(label: 'Running qmllint',
-                                                               script: """uv run ci/scripts/run-qmllint.py --json reports/qmllint-report.json
+                                                               script: '''uv run ci/scripts/run-qmllint.py --json reports/qmllint-report.json
                                                                           uv run ci/scripts/convert-qmllint-report-to-warnings-ng.py reports/qmllint-report.json --output-file=reports/qmllint-report-for-jenkins.log
-                                                                       """
+                                                                       '''
                                                             )
                                                             archiveArtifacts allowEmptyArchive: true, artifacts: 'reports/qmllint-report.json,reports/qmllint-report-for-jenkins.log'
                                                         }
@@ -669,23 +669,23 @@ def call(){
                                                     }
                                                 }
                                             }
-//                                             stage('Ruff') {
-//                                                 steps{
-//                                                     catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
-//                                                         sh(
-//                                                          label: 'Running Ruff',
-//                                                          script: '''uv run ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
-//                                                                     uv run ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
-//                                                                 '''
-//                                                          )
-//                                                     }
-//                                                 }
-//                                                 post{
-//                                                     always{
-//                                                         recordIssues(tools: [pyLint(pattern: 'reports/ruffoutput.txt', name: 'Ruff')])
-//                                                     }
-//                                                 }
-//                                             }
+                                            stage('Ruff') {
+                                                steps{
+                                                    catchError(buildResult: 'SUCCESS', message: 'Ruff found issues', stageResult: 'UNSTABLE') {
+                                                        sh(
+                                                         label: 'Running Ruff',
+                                                         script: '''uv run ruff check --config=pyproject.toml -o reports/ruffoutput.txt --output-format pylint --exit-zero
+                                                                    uv run ruff check --config=pyproject.toml -o reports/ruffoutput.json --output-format json
+                                                                '''
+                                                         )
+                                                    }
+                                                }
+                                                post{
+                                                    always{
+                                                        recordIssues(tools: [pyLint(pattern: 'reports/ruffoutput.txt', name: 'Ruff')])
+                                                    }
+                                                }
+                                            }
                                             stage('Audit Lockfile Dependencies'){
                                                 steps{
                                                     catchError(buildResult: 'UNSTABLE', message: 'uv audit found issues', stageResult: 'UNSTABLE') {
