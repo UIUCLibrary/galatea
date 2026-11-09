@@ -1,4 +1,17 @@
-## v0.7.8.dev1 (2026-10-30)
+## v0.7.9.dev1 (2026-11-09)
+
+## v0.7.8 (2026-11-09)
+
+### Feat
+
+- fatal errors in table editor provide details
+- unsaved changes in table editor highlight the cell
+
+### Fix
+
+- unable to select tsv file from the speedwagon frontend
+- stop printing out the debug message "compare" to the console
+- authorized-terms check validate tsv before running
 
 ## v0.7.7 (2026-10-30)
 
