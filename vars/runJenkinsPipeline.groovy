@@ -65,6 +65,92 @@ def packageStandaloneWindows(wheel, pythonVersion){
     }
 }
 
+def publishGithubRelease(credentialsId){
+    script {
+        def release_url
+        def sdistFile
+        stage('Generate new GitHub Release'){
+            node{
+                try{
+                    unstash 'PYTHON_PACKAGES'
+                    def releaseData = createGithubRelease(
+                        "Version ${readTOML( file: 'pyproject.toml')['project'].version}",
+                        credentialsId,
+                        'UIUCLibrary',
+                        'galatea',
+                        'dist/*'
+                        )
+                    if(!releaseData){
+                        echo 'Unable to generate a homebrew formula'
+                        return
+                    }
+                    // determine what is the sdist package file name,
+                    def releaseFiles = findFiles(glob: 'dist/galatea-*.tar.gz')
+                    if(releaseFiles.size() != 1){
+                        echo "Unable to determine sdist. Located ${releaseFiles.size()} with current glob"
+                        releaseFiles.each{
+                            echo " - ${it.name}"
+                        }
+                        return
+                    }
+                    sdistFile = releaseFiles[0]
+                    echo "sdistFile: ${sdistFile}"
+                    // Match assets to the sdist one
+                    def sdistAssetMetadata
+                    try{
+                        for (asset in readJSON(text: "${releaseData.content}").assets) {
+                            if(asset.name == sdistFile.name){
+                                sdistAssetMetadata = asset
+                                break
+                            }
+                        }
+                    } catch(e) {
+                        echo "Unable to search through release assets"
+                        echo "${releaseData}"
+                        echo "${releaseData.content}"
+                        return
+                    }
+                    if (!sdistAssetMetadata){
+                        echo "Unable to find ${sdistFile.name} in assets"
+                        return
+                    }
+                    // The url to the path in the assets is under the key browser_download_url
+                    release_url = sdistAssetMetadata['browser_download_url']
+                } finally{
+                    if(isUnix()){
+                       sh "${tool(name: 'Default', type: 'git')} clean -dfx"
+                   } else {
+                       bat "${tool(name: 'Default', type: 'git')} clean -dfx"
+                   }
+                }
+            }
+        }
+        if(sdistFile && release_url){
+            stage('Generate Homebrew Formula'){
+                node('linux && docker'){
+                    try{
+                        checkout scm
+                        unstash 'PYTHON_PACKAGES'
+                        docker.image('ghcr.io/astral-sh/uv:debian').inside('--tmpfs /.cache/uv:exec'){
+                            sh(label: 'Generate homebrew Formula',
+                               script: """mkdir -p dist/homebrew
+                                          uv export --format pylock.toml --no-dev --extra gui --output-file pylock.gui.toml
+                                          uv run contrib/create_homebrew_formula.py ${sdistFile} pylock.gui.toml ${release_url} | tee dist/homebrew/galatea.rb
+                                       """
+                            )
+                        }
+                        archiveArtifacts(artifacts: 'dist/homebrew/galatea.rb', allowEmptyArchive: true)
+                    } finally{
+                        sh "${tool(name: 'Default', type: 'git')} clean -dfx"
+                    }
+                }
+            }
+        } else {
+            echo "Unable to Generate Homebrew Formula, check variables sdistFile && release_url"
+        }
+   }
+}
+
 def deployStandalone(glob, url) {
     script{
         findFiles(glob: glob).each{
@@ -1131,90 +1217,7 @@ def call(){
                            lock("${env.JOB_NAME}")
                        }
                        steps{
-                           script {
-                                def release_url
-                                def sdistFile
-                                stage('Generate new GitHub Release'){
-                                    node{
-                                        try{
-                                            unstash 'PYTHON_PACKAGES'
-                                            def releaseData = createGithubRelease(
-                                                "Version ${readTOML( file: 'pyproject.toml')['project'].version}",
-                                                GITHUB_CREDENTIALS_ID,
-                                                'UIUCLibrary',
-                                                'galatea',
-                                                'dist/*'
-                                                )
-                                            if(!releaseData){
-                                                echo 'Unable to generate a homebrew formula'
-                                                return
-                                            }
-                                            // determine what is the sdist package file name,
-                                            def releaseFiles = findFiles(glob: 'dist/galatea-*.tar.gz')
-                                            if(releaseFiles.size() != 1){
-                                                echo "Unable to determine sdist. Located ${releaseFiles.size()} with current glob"
-                                                releaseFiles.each{
-                                                    echo " - ${it.name}"
-                                                }
-                                                return
-                                            }
-                                            sdistFile = releaseFiles[0]
-                                            echo "sdistFile: ${sdistFile}"
-                                            // Match assets to the sdist one
-                                            def sdistAssetMetadata
-                                            try{
-
-                                                for (asset in readJSON(text: "${releaseData.content}").assets) {
-                                                    if(asset.name == sdistFile.name){
-                                                        sdistAssetMetadata = asset
-                                                        break
-                                                    }
-                                                }
-                                            } catch(e) {
-                                                echo "Unable to search through release assets"
-                                                echo "${releaseData}"
-                                                echo "${releaseData.content}"
-                                                return
-                                            }
-                                            if (!sdistAssetMetadata){
-                                                echo "Unable to find ${sdistFile.name} in assets"
-                                                return
-                                            }
-                                            // The url to the path in the assets is under the key browser_download_url
-                                            release_url = sdistAssetMetadata['browser_download_url']
-                                        } finally{
-                                            if(isUnix()){
-                                               sh "${tool(name: 'Default', type: 'git')} clean -dfx"
-                                           } else {
-                                               bat "${tool(name: 'Default', type: 'git')} clean -dfx"
-                                           }
-                                        }
-                                    }
-                                }
-                                if(sdistFile && release_url){
-                                    stage('Generate Homebrew Formula'){
-                                        node('linux && docker'){
-                                            try{
-                                                checkout scm
-                                                unstash 'PYTHON_PACKAGES'
-                                                docker.image('ghcr.io/astral-sh/uv:debian').inside('--tmpfs /.cache/uv:exec'){
-                                                    sh(label: 'Generate homebrew Formula',
-                                                       script: """mkdir -p dist/homebrew
-                                                                  uv export --format pylock.toml --no-dev --extra gui --output-file pylock.gui.toml
-                                                                  uv run contrib/create_homebrew_formula.py ${sdistFile} pylock.gui.toml ${release_url} | tee dist/homebrew/galatea.rb
-                                                               """
-                                                    )
-                                                }
-                                                archiveArtifacts(artifacts: 'dist/homebrew/galatea.rb', allowEmptyArchive: true)
-                                            } finally{
-                                                sh "${tool(name: 'Default', type: 'git')} clean -dfx"
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    echo "Unable to Generate Homebrew Formula, check variables sdistFile && release_url"
-                                }
-                           }
+                           publishGithubRelease(GITHUB_CREDENTIALS_ID)
                        }
                     }
                     stage('Deploy to pypi') {
