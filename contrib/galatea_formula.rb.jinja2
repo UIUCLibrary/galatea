@@ -34,8 +34,8 @@ class Galatea < Formula
 {% else %}
 {% endif %}
   def install
-    venv = virtualenv_create(libexec, "python3.14")
-    site_packages = Language::Python.site_packages("python3.14")
+    venv = virtualenv_create(libexec, "python3.15")
+    site_packages = Language::Python.site_packages("python3.15")
 
     ohai "Linking global PySide6 into virtual environment"
     mkdir_p "#{libexec}/lib/#{site_packages}"
