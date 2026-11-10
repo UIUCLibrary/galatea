@@ -5,8 +5,14 @@ MetadataEditorScreenForm {
     id: form
     signal saveFileAs(url fileName)
     signal openFile(url fileName)
+    signal processData(var processRequest, var model)
     property url fileName: ""
     property variant dialect: null
+
+    // processButton is not visible until process commands has more than just clean
+    toolBar.processButton.visible: false
+
+    toolBar.cleanButton.enabled: form.state !== "empty"
     toolBar.saveButton.enabled: form.state === "modified"
     states: [
         State {
@@ -57,6 +63,12 @@ MetadataEditorScreenForm {
             form.saveFileAs(saveFileDialog.selectedFile);
         }
     }
+    ProcessDialog{
+        id: processDialogBox
+        onProcessRequested: (data) =>{
+            form.processData(data, form.model)
+        }
+    }
     Connections {
         target: form.toolBar
         function onFileSaveRequested() {
@@ -68,23 +80,20 @@ MetadataEditorScreenForm {
         function onSaveFileRequested() {
             form.handleSaveRequest()
         }
-    }
-    Connections {
-        target: form.toolBar
-        function onFileOpenRequested() {
-            form.openFileRequested()
-        }
-    }
-    Connections {
-        target: form
         function onFileNameChanged() {
             form.openFile(form.fileName)
         }
-    }
-    Connections {
-        target: form
         function onOpenFileRequested() {
             openFileDialog.open()
+        }
+    }
+    Connections {
+        target: form.toolBar
+        function onProcessRequested(){
+            processDialogBox.open()
+        }
+        function onFileOpenRequested() {
+            form.openFileRequested()
         }
     }
 

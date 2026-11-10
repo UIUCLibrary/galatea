@@ -87,6 +87,25 @@ ApplicationWindow {
     function log(message) {
         statusBar.text = message
     }
+    Dialog{
+        id: notification
+        title: "Job Finished"
+        modal: true
+        closePolicy: Popup.CloseOnEscape
+        implicitWidth: 300
+        implicitHeight: 200
+        anchors.centerIn: parent
+        contentItem: Rectangle {
+            color: palette.base
+            Text{
+                id: informativeText
+                anchors.centerIn: parent
+                text: "All done"
+                color: palette.text
+            }
+        }
+        standardButtons: Dialog.Ok
+    }
     MetadataEditorScreen {
         objectName: "mainScreen"
         id: mainScreen
@@ -95,6 +114,11 @@ ApplicationWindow {
             inspector: inspector
         }
         onOpenFile: fileName => openTheFile(fileName, mainScreen.dialect ? mainScreen.dialect : Script.determineDialect(fileName), mainScreen.model)
+        onProcessData: (request, model) => {
+            informativeText.text = "ok I'm done"
+            notification.open()
+
+        }
         function openTheFile(fileName, dialect, model){
             try{
                 stateItem.state = 'loading'
