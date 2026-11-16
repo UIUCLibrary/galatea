@@ -5,7 +5,7 @@ import pytest
 QtGui = pytest.importorskip("PySide6.QtGui")
 QtQml = pytest.importorskip("PySide6.QtQml")
 qml_app = pytest.importorskip("galatea.gui.qml.app")
-qml_exceptions = pytest.importorskip("galatea.gui.qml.exceptions")
+qml_exceptions = pytest.importorskip("galatea.gui.qml.error_handling")
 
 
 def test_qml_app():
