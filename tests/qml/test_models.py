@@ -1,5 +1,4 @@
 import pathlib
-import warnings
 from unittest.mock import Mock
 import csv
 import pytest
@@ -7,26 +6,6 @@ from galatea import tsv
 
 models = pytest.importorskip("galatea.gui.qml.models")
 QtCore = pytest.importorskip("PySide6.QtCore")
-
-
-@pytest.mark.parametrize(
-    "column_order, data, expected_size",
-    [
-        (["Column1"], [{"Column1": "Value1"}], 1),
-        (["Column1"], [{"Column1": "Value1"}, {"Column1": "Value2"}], 2),
-        (
-            ["Column1", "Column2"],
-            [{"Column1": "Value1", "Column2": "Value2"}],
-            1,
-        ),
-    ],
-)
-def test_load_model(column_order, data, expected_size):
-    model = models.TsvModel()
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        model.load_data(column_order, data)
-    assert model.rowCount() == expected_size
 
 
 @pytest.mark.parametrize(
@@ -173,19 +152,6 @@ class TestTsvModel:
         assert model.removeRow(0) is True
         assert model.rowCount() == 0
 
-    def test_removeColumns(self):
-        model = models.TsvModel()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            model.load_data(
-                column_order=["name", "value"],
-                data=[{"name": "Test", "value": "test"}],
-            )
-        assert model.columnCount() == 2
-        assert model.removeColumn(0) is True
-        assert model.columnCount() == 1
-        assert model.headerData(0, QtCore.Qt.Horizontal) == "value"
-
 
 def test_load_tsv_model():
     model = models.TsvModel()
@@ -248,27 +214,29 @@ def test_load_tsv_file_to_inspector_error_clears_rows(qtbot):
 
 class TestTsvInspector:
     @pytest.mark.parametrize(
-        "element,expected",
+        "element,comparison_results, expected",
         [
-            (models.TsvElementData("something"), True),
+            (models.TsvElementData("something"), False, True),
             (
                 models.TsvElementData(
                     "something", source=models.TSVReference(1, 2)
                 ),
+                False,
                 True,
             ),
             (
                 models.TsvElementData(
                     "something", source=models.TSVReference(1, 2)
                 ),
+                True,
                 False,
             ),
-            (None, True),
+            (None, True, True),
         ],
     )
-    def test_entryHasChanged(self, element, expected):
+    def test_entryHasChanged(self, element, comparison_results, expected):
         inspector = models.TsvInspector()
-        compare_strategy = Mock(return_value=expected)
+        compare_strategy = Mock(return_value=comparison_results)
         assert (
             inspector.entryHasChanged(
                 element, compare_strategy=compare_strategy
@@ -431,8 +399,25 @@ class TestTsvInspectorLoadedState:
         assert state.get_dialect() == csv.excel
 
 
-def test_compare_value():
-    assert models.compare_value("my_value", 1, 2, ["some", "my_value"])
+@pytest.mark.parametrize(
+    "given_value, line_number, column_number, tsv_rows, expected_is_the_same",
+    [
+        ("my_value", 1, 2, [["some", "my_value"]], True),
+        ("not_my_value", 1, 2, [["some", "my_value"]], False),
+        ("my_value", 1, 3, [["some", "my_value"]], False),
+        ("my_value", 2, 2, [["some", "my_value"]], False),
+        ("my_value", 2, 3, [["some", "my_value"]], False),
+    ],
+)
+def test_compare_value(
+    given_value, line_number, column_number, tsv_rows, expected_is_the_same
+):
+    assert (
+        models.compare_value(
+            given_value, line_number, column_number, tsv_rows=tsv_rows
+        )
+        is expected_is_the_same
+    )
 
 
 @pytest.fixture
@@ -451,19 +436,41 @@ def sample_model_factory():
         for row_index, row in enumerate(rows):
             for column_index, data in enumerate(row):
                 index = test_model.index(row_index, column_index)
-                test_model.setData(index, data)
+                test_model.setData(
+                    index,
+                    models.TsvElementData(
+                        data=data,
+                        source=models.TSVReference(
+                            line_number=row_index + 1,
+                            column=column_index + 1,
+                        ),
+                    ),
+                    role=models.TsvModel.ObjectRole,
+                )
+                # test_model.setData(index, data)
 
         return test_model
 
     return make_model
 
 
-def test_compare_tsv_model_to_data_rows(sample_model_factory):
+@pytest.mark.parametrize(
+    "model_column_names, model_rows, tsv_row_data,expected_has_changed",
+    [(["my_header"], [("my_data",)], [["my_header"]], True)],
+)
+def test_compare_tsv_model_to_data_rows(
+    sample_model_factory,
+    model_column_names,
+    model_rows,
+    tsv_row_data,
+    expected_has_changed,
+):
     model = sample_model_factory(
-        column_names=["my_header"], rows=[("my_data",)]
+        column_names=model_column_names, rows=model_rows
     )
     assert (
-        models.compare_tsv_model_to_data_rows(model, {1: "my_header"}) is True
+        models.compare_tsv_model_to_data_rows(model, tsv_row_data)
+        is expected_has_changed
     )
 
 

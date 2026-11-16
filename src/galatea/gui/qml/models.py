@@ -9,9 +9,8 @@ import dataclasses
 import logging
 import pathlib
 import sys
-import typing
 import warnings
-from typing import List, Any, Optional, Dict, Tuple, TYPE_CHECKING
+from typing import List, Any, Optional, Dict, Tuple, TYPE_CHECKING, Callable
 
 from csv import Dialect
 
@@ -148,18 +147,21 @@ def model_is_empty(model: QtCore.QAbstractTableModel) -> bool:
 
 
 def compare_tsv_model_to_data_rows(
-    model: TsvModel, rows: Dict[int, List[str]]
+    model: TsvModel, tsv_rows: List[List[str]]
 ) -> bool:
+    """Compare model to data rows.
+
+    Return True if there are changes else False if they are the same.
+    """
     if model_is_empty(model):
-        print("Value is empty")
         return False
 
     for row_id in range(model.rowCount()):
         index = model.index(row_id, 0)
         model_data = model.data(index, TsvModel.ObjectRole)
-        if any([model_data is None, model_data.source is None]):
+        if model_data is None or model_data.source is None:
             return True
-        tsv_row = rows.get(model_data.source.line_number)
+        tsv_row = tsv_rows[model_data.source.line_number - 1]
         if not tsv_row:
             return True
 
@@ -168,19 +170,22 @@ def compare_tsv_model_to_data_rows(
             model_data = model.data(index, TsvModel.ObjectRole)
             if any([model_data is None, model_data.source is None]):
                 return True
-            tsv_element = tsv_row[model_data.source.column - 1]
-            if tsv_element != model_data.data:
-                return True
+            try:
+                tsv_element = tsv_row[model_data.source.column - 1]
+                if tsv_element != model_data.data:
+                    return True
+            except IndexError:
+                return (
+                    model_data.data is None or model_data.data.strip() == ""
+                ) is False
     return False
 
 
 @dataclasses.dataclass
 class PrivateTsvInspectorData:
     file: QtCore.QUrl = QtCore.QUrl()
-    dialect: typing.Optional[csv.Dialect] = None
-    tsv_rows: typing.Dict[int, typing.List[str]] = dataclasses.field(
-        default_factory=dict
-    )
+    dialect: Optional[csv.Dialect] = None
+    tsv_rows: List[List[str]] = dataclasses.field(default_factory=list)
 
 
 class TsvInspectorState(abc.ABC):
@@ -217,7 +222,10 @@ class TsvInspectorState(abc.ABC):
     def value_is_different(
         self, value: str, tsv_line: int, tsv_column: int
     ) -> Optional[bool]:
-        """Return True if the value is different from the one in the TSV file."""
+        """Get if value is different.
+
+        Return True if the value is different from the one in the TSV file.
+        """
 
 
 @QmlElement
@@ -235,7 +243,11 @@ class TsvInspector(QObject):
 
     @Slot(TsvElementData, result=bool)
     def entryHasChanged(
-        self, value: TsvElementData, compare_strategy=None
+        self,
+        value: TsvElementData,
+        compare_strategy: Optional[
+            Callable[[str, int, int], bool | None]
+        ] = None,
     ) -> bool:
         if value is None:
             return True
@@ -244,7 +256,7 @@ class TsvInspector(QObject):
         res = (compare_strategy or self._state_object.value_is_different)(
             value.data, value.source.line_number, value.source.column
         )
-        return res is True or res is None
+        return res is None or res is False
 
     @property
     def state_object(self) -> TsvInspectorState:
@@ -313,7 +325,7 @@ class TsvModel(QAbstractTableModel):
     ObjectRole = SourceRole + 1
     IsModifiedRole = ObjectRole + 1
 
-    check_modified_strategy: typing.Callable[
+    check_modified_strategy: Callable[
         [
             TsvModel,
             QModelIndex | QPersistentModelIndex,
@@ -334,25 +346,6 @@ class TsvModel(QAbstractTableModel):
     def isEmpty(self) -> bool:
         """Return whether the model is empty."""
         return len(self.rows) == 0
-
-    def load_data(
-        self, column_order: List[str], data: List[dict[str, str]]
-    ) -> None:
-        """Load data into the model."""
-        warnings.warn("use load_tsv_model() instead", DeprecationWarning)
-        starting = self.isEmpty
-        self.beginResetModel()
-        self.columns_order = column_order
-        if len(data) > 0:
-            self.rows = data
-            self._original_rows = copy.deepcopy(data)
-        else:
-            self.rows.clear()
-            self._original_rows.clear()
-        self.endResetModel()
-        # self.modified_changed.emit()
-        if starting != self.isEmpty:
-            self.isEmpty_changed.emit()
 
     def _set_data(self, index, value, role):
         data_element = self.rows[index.row()][
@@ -434,7 +427,7 @@ class TsvModel(QAbstractTableModel):
         self,
         section: int,
         orientation: Qt.Orientation,
-        value: typing.Any,
+        value: Any,
         /,
         role: int = QtCore.Qt.ItemDataRole.EditRole,
     ) -> bool:
@@ -447,9 +440,6 @@ class TsvModel(QAbstractTableModel):
                 return True
 
         return False
-
-    def _is_modified(self, index: QModelIndex | QPersistentModelIndex) -> bool:
-        return True
 
     def flags(
         self, index: QModelIndex | QPersistentModelIndex, /
@@ -481,7 +471,7 @@ class TsvModel(QAbstractTableModel):
         ]:
             column_key = self.columns_order[index.column()]
             if element := row[column_key]:
-                return element.data
+                return element.data or ""
             else:
                 return None
         if role == self.ObjectRole:
@@ -636,10 +626,12 @@ def load_tsv_file_to_inspector(
     inspector.state_object = TsvInspectorLoadingState(inspector, private_data)
     QtCore.QCoreApplication.processEvents()
     try:
-        for row_id, row_data in iter_tsv_data_strategy(
-            file_path, private_data.dialect
-        ):
-            private_data.tsv_rows[row_id] = row_data
+        private_data.tsv_rows = [
+            row
+            for (_, row) in iter_tsv_data_strategy(
+                file_path, private_data.dialect
+            )
+        ]
         inspector.state_object = TsvInspectorLoadedState(
             inspector, private_data
         )
@@ -653,11 +645,54 @@ def load_tsv_file_to_inspector(
         raise e
 
 
-def compare_value(expected_value, line_number: int, column: int, rows) -> bool:
-    tsv_line_index = line_number
+def compare_value(
+    expected_value: str | None,
+    line_number: int,
+    column: int,
+    tsv_rows: List[List[str]],
+) -> bool:
+    tsv_line_index = line_number - 1
     tsv_column_index = column - 1
-    tsv_value = rows[tsv_line_index][tsv_column_index]
-    return tsv_value != expected_value
+    try:
+        if len(tsv_rows[tsv_line_index]) <= tsv_column_index:
+            warnings.warn(
+                f"Line {line_number}, has no data after column "
+                f"{len(tsv_rows[tsv_line_index])}. Proceeding with the "
+                f"assumption that the remaining data was from line "
+                f"{tsv_column_index} was trimmed and remaining values "
+                f"are unset."
+            )
+            return expected_value is None or expected_value.strip() == ""
+        tsv_value = tsv_rows[tsv_line_index][tsv_column_index]
+        res = tsv_value == expected_value
+        return res
+    except IndexError:
+        warning_message = (
+            f"Unable to accessing data for line {line_number}, "
+            f"column {tsv_column_index}."
+        )
+
+        if tsv_line_index >= len(tsv_rows):
+            warning_message = "\n".join([
+                warning_message,
+                f"Trying to access {line_number} when the number of "
+                f"rows are {len(tsv_rows)}.",
+            ])
+        else:
+            number_of_columns = len(tsv_rows[tsv_line_index])
+            warning_message = " ".join([
+                warning_message,
+                f"The number of columns in model for line {line_number} "
+                f"is {number_of_columns}. Trying to access column "
+                f"index {tsv_column_index}. Assuming that the data was "
+                f"from a line no data after column {number_of_columns} "
+                f"and line trimmed empty values.",
+            ])
+        warnings.warn(warning_message)
+
+        # If the input value is something other than empty and there is
+        # existing row data, the data has changed
+        return expected_value is None or expected_value.strip() == ""
 
 
 class TsvInspectorLoadedState(TsvInspectorState):
