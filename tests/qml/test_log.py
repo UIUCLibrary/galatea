@@ -4,8 +4,8 @@ import pytest
 import logging
 from unittest.mock import Mock
 
-QtCore = pytest.importorskip("PySide6.QtCore")
-log = pytest.importorskip("galatea.gui.qml.log")
+from PySide6 import QtCore
+from galatea.gui.qml import log
 
 
 @pytest.mark.parametrize(

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Controls
-import Galatea 1.0
 
-import "App.js" as Script
+import Galatea
+import "app.js" as Script
 
 ApplicationWindow {
     id: root
@@ -12,6 +12,9 @@ ApplicationWindow {
     width: 640
     property string windowTitle: "Metadata Editor"
     property alias model: mainScreen.model
+    property alias mainScreen: mainScreen
+    readonly property alias modelProcessor: modelProcessor
+    readonly property alias notification: notification
     visible: true
     title: windowTitle
     menuBar: MenuBar {
@@ -35,8 +38,10 @@ ApplicationWindow {
                 onTriggered: mainScreen.handleSaveRequest()
             }
             Action {
+                id: saveAsAction
+                objectName: "saveAsAction"
                 text: qsTr("Save &As...")
-                enabled: !mainScreen.model.isEmpty
+                enabled: mainScreen.model ? !mainScreen.model.isEmpty : false
                 onTriggered: mainScreen.saveAs()
             }
             MenuSeparator { }
@@ -80,6 +85,21 @@ ApplicationWindow {
                     mainScreen{
                         enabled: false
                     }
+                    statusBar{
+                        loading: true
+                    }
+                }
+            },
+            State{
+                name: "processing"
+                when: modelProcessor && modelProcessor.state === "processing"
+                PropertyChanges{
+                    mainScreen{
+                        enabled: false
+                    }
+                    statusBar{
+                        loading: true
+                    }
                 }
             }
         ]
@@ -87,37 +107,59 @@ ApplicationWindow {
     function log(message) {
         statusBar.text = message
     }
-    Dialog{
+    ReportResultsDialog{
         id: notification
-        title: "Job Finished"
-        modal: true
-        closePolicy: Popup.CloseOnEscape
-        implicitWidth: 300
-        implicitHeight: 200
-        anchors.centerIn: parent
-        contentItem: Rectangle {
-            color: palette.base
-            Text{
-                id: informativeText
-                anchors.centerIn: parent
-                text: "All done"
-                color: palette.text
-            }
+    }
+    TableModelProcessor{
+        id: modelProcessor
+        model: tsvData
+        onSuccess: ()=>{
+        // onFinished: (success)=>{
+        //     print(success)
+            notification.open()
+            notification.title = "Success"
+            notification.text = modelProcessor.report ? modelProcessor.report : "Job finished successfully"
         }
-        standardButtons: Dialog.Ok
+        onErrorOccurred: (message) =>{
+            notification.title = "Failed"
+            notification.text = "Job was unsuccessful." + message
+            notification.open()
+        }
+        onReportCreated: (message) =>{
+            notification.text = message
+        }
+        enabledActions: [
+            // As of 11/20/2026 on PySide6 6.11.2, it is not possible to generate types for ListProperty
+            CleanAction{ // qmllint disable missing-property
+                actionName: "clean"
+            }
+        ]
+        onProgressChanged: (value) => {
+            statusBar.indeterminate = false
+            statusBar.progress = value
+        }
+        onActionLogged: (message, level) => Script.logAction(message, level, Script.ERROR_LEVEL)
+    }
+    TsvModel{
+        id: tsvData
+        inspector: inspector
     }
     MetadataEditorScreen {
         objectName: "mainScreen"
         id: mainScreen
         anchors.fill: parent
-        model:  TsvModel{
-            inspector: inspector
-        }
+        model:  tsvData
         onOpenFile: fileName => openTheFile(fileName, mainScreen.dialect ? mainScreen.dialect : Script.determineDialect(fileName), mainScreen.model)
-        onProcessData: (request, model) => {
-            informativeText.text = "ok I'm done"
-            notification.open()
-
+        onProcessData: (request) => {
+            const actionName = "clean"
+            // As of 11/20/2026 on PySide6 6.11.2, it is not possible to generate types for dict types with QtCore.Property
+            const action = modelProcessor.actions[actionName] // qmllint disable unresolved-type
+            if (action){
+                request['action'] = action
+                modelProcessor.processData(request)
+            }else{
+                console.error("action not loaded: " + actionName)
+            }
         }
         function openTheFile(fileName, dialect, model){
             try{
@@ -161,9 +203,9 @@ ApplicationWindow {
             }
         }
     }
-    footer: StatusBar{
+    footer:
+        StatusBar{
         id: statusBar
-        // loading: stateItem === "loading"
     }
 }
 

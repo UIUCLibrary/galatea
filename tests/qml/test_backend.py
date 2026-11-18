@@ -2,15 +2,14 @@ import csv
 import logging
 import pathlib
 from unittest.mock import Mock, create_autospec
-
 import pytest
 
 from galatea.utils import GalateaException
 from galatea import tsv as galatea_tsv
 
-galatea_qml = pytest.importorskip("galatea.gui.qml")
-galatea_backend = pytest.importorskip("galatea.gui.qml.backend")
-QtCore = pytest.importorskip("PySide6.QtCore")
+from galatea.gui.qml import models
+from galatea.gui.qml import backend as galatea_backend
+from PySide6 import QtCore
 
 
 class TestBackend:
@@ -36,12 +35,10 @@ class TestBackend:
                 file_path=Mock(
                     name="file_path",
                     spec_set=QtCore.QUrl,
-                    path=Mock(return_value="/some/path"),
+                    toLocalFile=Mock(return_value="/some/path"),
                 ),
                 dialect=csv.excel_tab,
-                tsv_model=Mock(
-                    name="tsv_model", spec_set=galatea_qml.models.TsvModel
-                ),
+                tsv_model=Mock(name="tsv_model", spec_set=models.TsvModel),
             )
             is expect_return
         )
@@ -65,12 +62,10 @@ class TestBackend:
                     file_path=Mock(
                         name="file_path",
                         spec_set=QtCore.QUrl,
-                        path=Mock(return_value="/some/path"),
+                        toLocalFile=Mock(return_value="/some/path"),
                     ),
                     dialect=csv.excel_tab,
-                    tsv_model=Mock(
-                        name="tsv_model", spec_set=galatea_qml.models.TsvModel
-                    ),
+                    tsv_model=Mock(name="tsv_model", spec_set=models.TsvModel),
                 )
                 is False
             )
@@ -104,12 +99,12 @@ class TestBackend:
                 file_path=Mock(
                     name="file_path",
                     spec_set=QtCore.QUrl,
-                    path=Mock(return_value="/some/path"),
+                    toLocalFile=Mock(return_value="/some/path"),
                 ),
                 dialect=csv.excel_tab,
                 tsv_model=Mock(
                     name="tsv_model",
-                    spec_set=galatea_qml.models.TsvModel,
+                    spec_set=models.TsvModel,
                 ),
             )
             is True
@@ -131,7 +126,7 @@ class TestBackend:
                 file_path=Mock(
                     name="file_path",
                     spec_set=QtCore.QUrl,
-                    path=Mock(return_value="/some/path"),
+                    toLocalFile=Mock(return_value="/some/path"),
                 )
             )
             is csv.excel_tab
@@ -175,7 +170,7 @@ def test_load_tsv(data, file_string_data, monkeypatch):
 
     path = create_autospec(pathlib.Path)
     dialect = csv.excel_tab
-    model = galatea_qml.models.TsvModel()
+    model = models.TsvModel()
     read_tsv_strategy = create_autospec(
         galatea_tsv.IterTsvFileProtocol, return_value=data
     )

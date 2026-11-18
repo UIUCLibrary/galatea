@@ -55,7 +55,7 @@ TableViewDelegate{
     transitions: [
         Transition {
             to: "*"
-            ColorAnimation { target: background; duration: 200}
+            ColorAnimation { target: background; duration: 100}
         }
     ]
     contentItem: Item {

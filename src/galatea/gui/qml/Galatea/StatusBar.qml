@@ -5,6 +5,9 @@ ToolBar {
     id: statusBar
     property alias text: statusBarLabel.text
     property alias logDuration: statusHide.interval
+    property alias loading: progressBar.visible
+    property alias progress: progressBar.value
+    property alias indeterminate: progressBar.indeterminate
     Connections{
         target: statusBar
         function onTextChanged() {
@@ -13,13 +16,30 @@ ToolBar {
             }
         }
     }
-    RowLayout{
+    ProgressBar{
+        id: progressBar
         anchors.fill: parent
-        anchors.leftMargin: 10
-        anchors.rightMargin: 10
+        indeterminate: true
+        visible: false
+        anchors{
+            leftMargin: 2
+            rightMargin: 2
+            topMargin: 2
+            bottomMargin: 3
+        }
+    }
+    RowLayout{
+        anchors{
+            fill: parent
+            leftMargin: 10
+            rightMargin: 10
+            topMargin: 2
+            bottomMargin: 2
+        }
         Label {
             id: statusBarLabel
             Layout.fillWidth: true
+            clip: true
             color: palette.windowText
             font.pixelSize: 12
             Timer{

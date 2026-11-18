@@ -234,7 +234,7 @@ class TsvInspector(QObject):
     stateChanged = QtCore.Signal(str)
     dataChanged = QtCore.Signal()
 
-    def __init__(self, parent=None, **kwargs):
+    def __init__(self, parent: QObject | None = None, **kwargs) -> None:
         super().__init__(parent)
         self._private_data = PrivateTsvInspectorData(**kwargs)
         self._state_object: TsvInspectorState = TsvInspectorEmptyState(
@@ -343,7 +343,7 @@ class TsvModel(QAbstractTableModel):
         self._inspector: Optional[TsvInspector] = None
 
     # @QtCore.Property(bool, notify=isEmpty_changed)
-    def isEmpty(self) -> bool:
+    def is_empty(self) -> bool:
         """Return whether the model is empty."""
         return len(self.rows) == 0
 
@@ -590,6 +590,7 @@ class TsvModel(QAbstractTableModel):
     inspector = QtCore.Property(
         TsvInspector, _get_inspector, _set_inspector, notify=inspectorChanged
     )
+    isEmpty = QtCore.Property(bool, is_empty, notify=isEmpty_changed)
 
 
 class TsvInspectorLoadingState(TsvInspectorState):

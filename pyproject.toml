@@ -100,8 +100,10 @@ package-dir = {"galatea" = "src/galatea"}
     "py.typed"
 ]
 "galatea.gui" = [
-    "qml/Editor/*.qml",
-    "qml/Editor/*.js"
+    "qml/Galatea/*.qml",
+    "qml/Galatea/*.js",
+    "qml/main.qml",
+    "qml/app.js",
 ]
 "*" = ["pylock.toml", "pylock.gui.toml"]
 
@@ -117,6 +119,11 @@ changelog_start_rev = "v0.0.1"
 pre_bump_hooks = [
     "uv lock"
 ]
+
+[tool.coverage.run]
+parallel = true
+patch = ["subprocess"]
+source = ["src"]
 
 [tool.mypy]
 mypy_path = "src"
@@ -159,13 +166,18 @@ files = [
     'src/galatea/gui/editor.py',
     'src/galatea/gui/qml/backend.py',
     'src/galatea/gui/qml/models.py',
-    'src/galatea/gui/qml/Editor/App.qml',
-    'src/galatea/gui/qml/Editor/AppMenuBar.qml',
-    'src/galatea/gui/qml/Editor/CellDelegate.qml',
-    'src/galatea/gui/qml/Editor/HeaderDelegate.qml',
-    'src/galatea/gui/qml/Editor/MetadataEditor.qml',
-    'src/galatea/gui/qml/Editor/MetadataEditorContextMenu.qml',
-    'src/galatea/gui/qml/Editor/MetadataEditorScreen.qml',
-    'src/galatea/gui/qml/Editor/MetadataEditorScreenForm.ui.qml',
-    'src/galatea/gui/qml/Editor/StatusBar.qml',
+    'src/galatea/gui/qml/process.py',
+    'src/galatea/gui/qml/process_actions.py',
+    'src/galatea/gui/qml/__init__.py',
+    'src/galatea/gui/qml/Galatea/qmldir',
+    "src/galatea/gui/qml/main.qml",
+    'src/galatea/gui/qml/Galatea/AppMenuBar.qml',
+    'src/galatea/gui/qml/Galatea/CellDelegate.qml',
+    'src/galatea/gui/qml/Galatea/HeaderDelegate.qml',
+    'src/galatea/gui/qml/Galatea/MetadataEditor.qml',
+    'src/galatea/gui/qml/Galatea/MetadataEditorContextMenu.qml',
+    'src/galatea/gui/qml/Galatea/MetadataEditorScreen.qml',
+    'src/galatea/gui/qml/Galatea/MetadataEditorScreenForm.ui.qml',
+    'src/galatea/gui/qml/Galatea/ReportResultsDialog.qml',
+    'src/galatea/gui/qml/Galatea/StatusBar.qml',
 ]

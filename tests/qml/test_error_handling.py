@@ -1,11 +1,7 @@
 from unittest.mock import Mock
 
-import pytest
-
-error_handling = pytest.importorskip("galatea.gui.qml.error_handling")
-QtQml = pytest.importorskip("PySide6.QtQml")
-QtGui = pytest.importorskip("PySide6.QtGui")
-QtCore = pytest.importorskip("PySide6.QtCore")
+from PySide6 import QtQml, QtCore
+from galatea.gui.qml import error_handling
 
 
 class TestQMLLoadingError:

@@ -5,6 +5,7 @@ import functools
 import importlib.resources
 import logging
 import os.path
+import pathlib
 import sys
 from importlib.metadata import version, PackageNotFoundError
 from typing import Optional, List, Callable
@@ -39,16 +40,15 @@ def get_arg_parser() -> argparse.ArgumentParser:
 def get_entry_point_from_resource() -> Optional[str]:
     """Find entrypoint using the package resources.
 
-    This is the ideal way to find App.qml. This might not work when the
+    This is the ideal way to find main.qml. This might not work when the
     application is frozen. In this case, use get_entry_point_from_local()
     """
-    entry_point = (
-        importlib.resources
-        .files("galatea.gui.qml")
-        .joinpath("Editor")
-        .joinpath("App.qml")
+    entry_point = importlib.resources.files("galatea.gui.qml").joinpath(
+        "main.qml"
     )
-    return str(entry_point) if entry_point.exists() else None
+    return (
+        str(entry_point) if pathlib.Path(str(entry_point)).exists() else None
+    )
 
 
 def get_entry_point_from_local() -> Optional[str]:
@@ -56,9 +56,7 @@ def get_entry_point_from_local() -> Optional[str]:
 
     This is useful when launching the app from a frozen version of python
     """
-    expected = os.path.join(
-        os.path.dirname(__file__), "qml", "Editor", "App.qml"
-    )
+    expected = os.path.join(os.path.dirname(__file__), "qml", "main.qml")
     return expected if os.path.exists(expected) else None
 
 
@@ -122,6 +120,7 @@ def main(
         argv if argv is not None else sys.argv[1:]
     )
     qt_style = qml_app.get_qt_style()
+    print(f"using {qt_style} style")
 
     QQuickStyle.setStyle(qt_style)
     try:

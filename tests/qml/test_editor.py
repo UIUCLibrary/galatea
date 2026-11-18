@@ -1,14 +1,10 @@
 import importlib.resources
 from unittest.mock import Mock
 
-import pytest
-
-QtQuick = pytest.importorskip("PySide6.QtQuick")
-QtGui = pytest.importorskip("PySide6.QtGui")
-QtQml = pytest.importorskip("PySide6.QtQml")
-editor = pytest.importorskip("galatea.gui.editor")
-backend = pytest.importorskip("galatea.gui.qml.backend")
-qml_app = pytest.importorskip("galatea.gui.qml.app")
+from PySide6 import QtQml, QtGui, QtQuick
+from galatea.gui import editor
+from galatea.gui.qml import backend
+from galatea.gui.qml import app as qml_app
 
 
 def test_main_calls_exec(qtbot):
@@ -38,12 +34,7 @@ def test_set_app_with_starting_file(qtbot, monkeypatch):
         None,
     )
     component = qml_app.create_component(
-        str(
-            importlib.resources
-            .files("galatea.gui.qml")
-            .joinpath("Editor")
-            .joinpath("App.qml")
-        ),
+        str(importlib.resources.files("galatea.gui.qml").joinpath("main.qml")),
         engine,
     )
     assert not component.errors()
@@ -63,8 +54,8 @@ def test_get_entry_point_from_resource():
 
 
 def test_locate_qml_entry_point_file():
-    strategy = [Mock(return_value="App.qml")]
-    assert editor.locate_qml_entry_point_file(strategy) == "App.qml"
+    strategy = [Mock(return_value="main.qml")]
+    assert editor.locate_qml_entry_point_file(strategy) == "main.qml"
 
 
 def test_locate_qml_entry_point_file_fails_with_none():

@@ -1,11 +1,12 @@
 import pathlib
 from unittest.mock import Mock
 import csv
-import pytest
-from galatea import tsv
 
-models = pytest.importorskip("galatea.gui.qml.models")
-QtCore = pytest.importorskip("PySide6.QtCore")
+import pytest
+from PySide6 import QtCore
+
+from galatea import tsv
+from galatea.gui.qml import models
 
 
 @pytest.mark.parametrize(
@@ -409,6 +410,7 @@ class TestTsvInspectorLoadedState:
         ("my_value", 2, 3, [["some", "my_value"]], False),
     ],
 )
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_compare_value(
     given_value, line_number, column_number, tsv_rows, expected_is_the_same
 ):

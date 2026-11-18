@@ -17,7 +17,6 @@ Item {
     property color cellColorSelected: palette.highlight
     property color cellTextColor: palette.text
     property color borderColor: palette.mid
-    // property TsvInspector inspector
 
     Rectangle {
         anchors {

@@ -12,17 +12,18 @@ ToolBar {
     property alias saveButton: saveButton
     property alias processButton: processButton
     property alias cleanButton: cleanButton
+    property alias openButton: openButton
     RowLayout {
         id: rowLayout
         anchors.fill: parent
 
         ToolButton {
-            id: toolButton
+            id: openButton
             text: qsTr("Open")
             icon.name: "document-open"
 
             Connections {
-                target: toolButton
+                target: openButton
                 function onClicked() {
                     toolBar.fileOpenRequested()
                 }
@@ -58,4 +59,4 @@ ToolBar {
         }
         ToolSeparator {}
     }
-    }
+}
