@@ -3,13 +3,22 @@
 import argparse
 import json
 import os
+import pathlib
+import shutil
 import subprocess
 import sys
 import glob
 from pathlib import Path
-from PySide6.scripts import metaobjectdump
+import tomllib
 
 import PySide6
+from PySide6.scripts import metaobjectdump
+
+PYPROJECT_TOML_FILE = os.path.join(
+    os.path.dirname(__file__), "..", "..", "pyproject.toml"
+)
+assert os.path.exists(PYPROJECT_TOML_FILE)
+
 
 __all__ = []
 
@@ -31,17 +40,15 @@ def qt_tool_wrapper(qt_tool, args, libexec=False):
     # sys.exit(returncode)
 
 
-def create_qmldir(location):
-    with open(os.path.join(location, "qmldir"), "w", encoding="utf-8") as f:
-        f.write("""module Galatea
-typeinfo models.qmltypes
-""")
+def add_typeinfo_to_qmldir(location, qmltypes):
+    with open(os.path.join(location, "qmldir"), "a", encoding="utf-8") as f:
+        f.write("\n")
+        f.write("\n".join([f"typeinfo {qmltype}" for qmltype in qmltypes]))
 
 
 def run_metaobjectdump(files, output_file):
     arg_parser = metaobjectdump.create_arg_parser(metaobjectdump.DESCRIPTION)
     args = arg_parser.parse_args([*files, "-o", output_file])
-
     context = metaobjectdump.VisitorContext()
     json_list = []
     for file_name in args.files:
@@ -85,40 +92,115 @@ def get_arg_parser():
     return parser
 
 
+def get_pyproject_toml_data():
+    with open(PYPROJECT_TOML_FILE, "rb") as f:
+        return tomllib.load(f)
+
+
+def get_pyside6_project_files():
+    pyproject = get_pyproject_toml_data()
+    tools = pyproject.get("tool")
+    try:
+        if not tools:
+            raise KeyError("tool not found")
+        pyside_project = tools.get("pyside6-project")
+        if not pyside_project:
+            raise KeyError("tool.pyside_project not found")
+        pyside_files = pyside_project.get("files")
+        if not pyside_files:
+            raise KeyError("tool.pyside6-project.files not found")
+        return pyside_files
+    except KeyError:
+        print(
+            "unable to locate 'tools.pyside6-project.file in pyproject.toml",
+            file=sys.stderr,
+        )
+        return []
+
+
+def get_qml_files():
+    pyside_files = get_pyside6_project_files()
+    return [file for file in pyside_files if file.endswith(".qml")]
+
+
+def python_file_contains_qml_import(file: str) -> bool:
+    if not file.endswith(".py"):
+        return False
+    with open(file, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("QML_IMPORT_NAME"):
+                return True
+        return False
+
+
+def get_qml_python_files_with_qml_registered():
+    pyside_files = get_pyside6_project_files()
+    return [
+        pathlib.Path(file)
+        for file in pyside_files
+        if python_file_contains_qml_import(file)
+    ]
+
+
 def main():
     args = get_arg_parser().parse_args()
     report = args.json
     tmp_dir = args.tmp_dir
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
-    create_qmldir(tmp_dir)
-    run_metaobjectdump(
-        ["src/galatea/gui/qml/models.py"],
-        os.path.join(tmp_dir, "modelsmetatypes.json"),
-    )
+    elements = {}
+    for file in get_qml_python_files_with_qml_registered():
+        name = os.path.splitext(file.name)[0]
+        elements[str(file)] = {
+            "name": name,
+            "python_file": str(file),
+            "metatypes_json": f"{name}metatypes.json",
+            "qmltyperegistrations": f"{name}_qmltyperegistrations.cpp",
+            "qmltypes": f"{name}.qmltypes",
+        }
+    for name, metadata in elements.items():
+        json_file = os.path.join(tmp_dir, metadata["metatypes_json"])
+        run_metaobjectdump(
+            [metadata["python_file"]],
+            json_file,
+        )
+    qml_types = [item["qmltypes"] for item in elements.values()]
+    #
+    # if not os.path.exists(os.path.join(tmp_dir, "Galatea")):
+    #     os.makedirs(os.path.join(tmp_dir, "Galatea"))
 
+    shutil.copy(
+        "src/galatea/gui/qml/Galatea/qmldir", os.path.join(tmp_dir, "qmldir")
+    )
+    add_typeinfo_to_qmldir(tmp_dir, qml_types)
     pyside6_path = os.path.dirname(PySide6.__file__)
     print("registering")
-    qt_tool_wrapper(
-        "qmltyperegistrar",
-        [
-            "--generate-qmltypes",
-            os.path.join(tmp_dir, "models.qmltypes"),
-            "-o",
-            os.path.join(tmp_dir, "models_qmltyperegistrations.cpp"),
-            os.path.join(tmp_dir, "modelsmetatypes.json"),
-            "--import-name",
-            "Galatea",
-            "--major-version",
-            "1",
-            "--minor-version",
-            "0",
-            f"--foreign-types={pyside6_path}/Qt/metatypes/qt6core_metatypes.json,{pyside6_path}/Qt/metatypes/qt6qml_metatypes.json",
-        ],
-        True,
-    )
+    for name, metadata in elements.items():
+        qt_tool_wrapper(
+            "qmltyperegistrar",
+            [
+                "--generate-qmltypes",
+                os.path.join(tmp_dir, metadata["qmltypes"]),
+                "-o",
+                os.path.join(tmp_dir, metadata["qmltyperegistrations"]),
+                os.path.join(tmp_dir, metadata["metatypes_json"]),
+                "--import-name",
+                "Galatea",
+                "--major-version",
+                "1",
+                "--minor-version",
+                "0",
+                f"--foreign-types={pyside6_path}/Qt/metatypes/qt6core_metatypes.json,{pyside6_path}/Qt/metatypes/qt6qml_metatypes.json",
+            ],
+            True,
+        )
+    qml_files = get_qml_files()
+    for qml_file in qml_files:
+        shutil.copyfile(
+            qml_file, os.path.join(tmp_dir, os.path.basename(qml_file))
+        )
+
     print("linting", file=sys.stderr)
-    qml_files = glob.glob("src/galatea/gui/qml/**/*.qml")
     qmltypes = glob.glob(f"{tmp_dir}/*.qmltypes")
 
     qmllint_args = (

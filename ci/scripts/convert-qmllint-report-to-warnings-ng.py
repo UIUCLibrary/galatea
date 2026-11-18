@@ -39,15 +39,21 @@ def create_jenkins_report(input_file):
                     results = {
                         "fileName": file_item["filename"],
                         "message": warning["message"],
-                        "lineStart": warning["line"],
-                        "lineEnd": warning["line"] + 1,
                         "category": warning["id"],
-                        "columnStart": warning["column"],
-                        "columnEnd": warning["column"] + warning["length"],
                         "severity": QMLLINT_TO_JENKINS_SEVERITY_MAP[
                             warning["type"]
                         ],
                     }
+                    if "line" in warning:
+                        results["lineStart"] = warning["line"]
+                        results["lineEnd"] = warning["line"] + 1
+                    if "columnStart" in warning:
+                        results["columnStart"] = warning["column"]
+                        if "length" in warning:
+                            results["columnEnd"] = (
+                                warning["column"] + warning["length"]
+                            )
+
                     if suggestions := warning.get("suggestions", []):
                         results["description"] = "\n".join([
                             suggestion["message"] for suggestion in suggestions
