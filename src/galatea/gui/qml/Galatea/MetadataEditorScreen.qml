@@ -9,6 +9,7 @@ MetadataEditorScreenForm {
     property url fileName: ""
     property variant dialect: null
     property alias tools: form.toolBar
+    property alias processConfigure: processConfigure
 
     toolBar{
         // processButton is not visible until process commands has more than just clean
@@ -65,11 +66,19 @@ MetadataEditorScreenForm {
             form.saveFileAs(saveFileDialog.selectedFile);
         }
     }
-    ProcessDialog{
-        id: processDialogBox
-        onProcessRequested: (data) =>{
+    // ProcessDialog{
+    //     id: processDialogBox
+    //     onProcessRequested: (data) =>{
+    //         // form.processData(data)
+    //     }
+    // }
+    ConfigureClean{
+        id: processConfigure
+        objectName: "processConfigure"
+        onAccepted: (data) => {
             form.processData(data)
         }
+        visible: false
     }
     Connections {
         target: form.toolBar
@@ -77,7 +86,7 @@ MetadataEditorScreenForm {
             form.saveFileRequested()
         }
         function onCleanRequested(){
-            form.processData({"action": "clean"})
+            processConfigure.show()
         }
     }
     Connections {
@@ -92,10 +101,12 @@ MetadataEditorScreenForm {
             openFileDialog.open()
         }
     }
+
     Connections {
         target: form.toolBar
         function onProcessRequested(){
-            processDialogBox.open()
+            // processConfigure.open()
+            // processDialogBox.open()
         }
         function onFileOpenRequested() {
             form.openFileRequested()

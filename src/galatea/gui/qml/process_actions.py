@@ -42,6 +42,7 @@ class ProcessingAction(QObject):
         self._model: TsvModel = TsvModel()
         self._action_name: str | None = None
         self._report = ""
+        self.settings = {}
 
     def _get_model(self) -> TsvModel | None:
         return self._model
@@ -88,27 +89,44 @@ def use_header_data_to_get_headers(model: TsvModel) -> List[str]:
     ]
 
 
-def get_row_modifier(action: ProcessingAction) -> clean_tsv.RowTransformer:
+def get_row_modifier(
+    action: ProcessingAction, **settings
+) -> clean_tsv.RowTransformer:
+    characters_to_remove = settings.get("charactersToRemove", "")
     transformer = clean_tsv.RowTransformer()
     column_names = []
     for col_index, header_value in enumerate(
         CleanAction.get_tsv_headers_strategy(cast(TsvModel, action.model))
     ):
         column_names.append(header_value)
+    functions = []
 
+    if settings.get("removeDoubleDashPostfix", False):
+        functions.append(modifiers.remove_double_dash_postfix)
+
+    if settings.get("removeTrailingPeriods", False):
+        functions.append(modifiers.remove_trailing_periods)
+
+    if settings.get("addCommaAfterSpace", False):
+        functions.append(modifiers.add_comma_after_space)
+
+    for character in characters_to_remove:
+        functions.append(
+            functools.partial(modifiers.remove_character, character=character)
+        )
+    if settings.get("removeTrailingPunctuation", False):
+        functions.append(modifiers.remove_trailing_punctuation)
     transformer.add_transformation(
         condition=lambda k, v: k in column_names,
         transformation=lambda entry: modifiers.split_and_modify(
             entry,
-            funcs=[
-                functools.partial(modifiers.remove_character, character="?"),
-                functools.partial(modifiers.remove_character, character="["),
-                functools.partial(modifiers.remove_character, character="]"),
-                modifiers.remove_trailing_punctuation,
-            ],
+            funcs=functions,
         ),
     )
-    transformer.add_transformation(modifiers.remove_duplicates)
+
+    if settings.get("removeDupValues", False):
+        transformer.add_transformation(modifiers.remove_duplicates)
+
     return transformer
 
 
@@ -193,14 +211,16 @@ class CleanAction(ProcessingAction):
         model = cast(TsvModel, self.model)
         total_rows = model.rowCount()
         rows_affected: Dict[int, List[str]] = defaultdict(list)
-
+        modifier = self.get_row_modifier_strategy(**self.settings)
+        # modifier = self.get_row_modifier_strategy()
         headings = self.get_affected_columns()
         for row, row_data in self.iter_row(model):
             for index, updated_value in self.iter_new_row_data(
                 model,
                 row,
                 row_data,
-                modifier=self.get_row_modifier_strategy(),
+                modifier=modifier,
+                # modifier=self.get_row_modifier_strategy(),
             ):
                 model.setData(index, str(updated_value))
                 heading = headings[index.column()]

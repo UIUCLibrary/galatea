@@ -151,7 +151,7 @@ ApplicationWindow {
         model:  tsvData
         onOpenFile: fileName => openTheFile(fileName, mainScreen.dialect ? mainScreen.dialect : Script.determineDialect(fileName), mainScreen.model)
         onProcessData: (request) => {
-            const actionName = "clean"
+            const actionName = request.action
             // As of 11/20/2026 on PySide6 6.11.2, it is not possible to generate types for dict types with QtCore.Property
             const action = modelProcessor.actions[actionName] // qmllint disable unresolved-type
             if (action){
@@ -188,6 +188,14 @@ ApplicationWindow {
             }
 
         )
+    }
+    Component.onCompleted: {
+        mainScreen.processConfigure.settingsModel.append({"label": "Characters to remove",        "value": "?[]", "variableName": "charactersToRemove",           "delegate": "textEditDelegate"    })
+        mainScreen.processConfigure.settingsModel.append({"label": "Remove double dash postfix",  "value": true,  "variableName": "removeDoubleDashPostfix",      "delegate": "booleanDelegate"     })
+        mainScreen.processConfigure.settingsModel.append({"label": "Remove trailing periods",     "value": true,  "variableName": "removeTrailingPeriods",        "delegate": "booleanDelegate"     })
+        mainScreen.processConfigure.settingsModel.append({"label": "Add comma after space",       "value": true,  "variableName": "addCommaAfterSpace",           "delegate": "booleanDelegate"     })
+        mainScreen.processConfigure.settingsModel.append({"label": "Remove trailing punctuation", "value": true,  "variableName": "removeTrailingPunctuation",    "delegate": "booleanDelegate"     })
+        mainScreen.processConfigure.settingsModel.append({"label": "Remove duplicate values",     "value": true,  "variableName": "removeDupValues",              "delegate": "booleanDelegate"     })
     }
     Connections {
         target: backend

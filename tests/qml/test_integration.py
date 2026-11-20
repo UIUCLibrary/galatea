@@ -94,10 +94,19 @@ class TestApp:
         assert toolbar
         modelProcessor = QtQml.QQmlProperty.read(window, "modelProcessor")
         assert modelProcessor
-        with qtbot.wait_signal(modelProcessor.finished):
+
+        processConfigure = window.findChild(QtCore.QObject, "processConfigure")
+        assert processConfigure
+
+        with qtbot.wait_signal(processConfigure.visibleChanged):
             clean_button = QtQml.QQmlProperty.read(toolbar, "cleanButton")
             assert clean_button
             clean_button.click()
+        button_box = processConfigure.findChild(QtCore.QObject, "buttonBox")
+        assert button_box
+        with qtbot.wait_signal(modelProcessor.finished):
+            button_box.accepted.emit()
+
         main_screen.saveFileAs.emit(QtCore.QUrl.fromLocalFile(str(out_file)))
         assert out_file.exists()
         with open(str(out_file), mode="r", encoding="utf-8") as file:

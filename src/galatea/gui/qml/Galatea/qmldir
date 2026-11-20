@@ -3,3 +3,4 @@ StatusBar StatusBar.qml
 MetadataEditorScreen MetadataEditorScreen.qml
 MetadataEditorScreenForm MetadataEditorScreenForm.ui.qml
 ReportResultsDialog ReportResultsDialog.qml
+ConfigureClean ConfigureClean.qml

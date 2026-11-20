@@ -38,6 +38,7 @@ class TestJSProcessAction:
 class TestCleanAction:
     def test_success(self, qtbot, model):
         process = process_actions.CleanAction()
+        process.settings["removeTrailingPeriods"] = True
         # process.process_data = Mock()
         process.model = model
         with qtbot.waitSignal(model.dataChanged) as blocker:

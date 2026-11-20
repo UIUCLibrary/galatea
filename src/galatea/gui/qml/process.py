@@ -205,6 +205,7 @@ class BackgroundWorker(QtCore.QRunnable):
     def run(self) -> None:
         """Run the background worker and notify success and failure."""
         try:
+            self.action.settings = self._kwargs.get("data", {})
             self.action.run()
             self._notify_success()
         except Exception as e:
