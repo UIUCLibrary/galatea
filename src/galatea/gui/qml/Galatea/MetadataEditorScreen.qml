@@ -5,13 +5,21 @@ MetadataEditorScreenForm {
     id: form
     signal saveFileAs(url fileName)
     signal openFile(url fileName)
+    signal processData(var processRequest)
     property url fileName: ""
     property variant dialect: null
-    toolBar.saveButton.enabled: form.state === "modified"
+    property alias tools: form.toolBar
+
+    toolBar{
+        // processButton is not visible until process commands has more than just clean
+        processButton.visible: false
+        cleanButton.enabled: form.state !== "empty"
+        saveButton.enabled: form.state === "modified"
+    }
     states: [
         State {
             name: "empty"
-            when: form.model.count === 0
+            when: form.model ? form.model.count === 0 : true
         },
         State {
             name: "loading"
@@ -57,10 +65,19 @@ MetadataEditorScreenForm {
             form.saveFileAs(saveFileDialog.selectedFile);
         }
     }
+    ProcessDialog{
+        id: processDialogBox
+        onProcessRequested: (data) =>{
+            form.processData(data)
+        }
+    }
     Connections {
         target: form.toolBar
         function onFileSaveRequested() {
             form.saveFileRequested()
+        }
+        function onCleanRequested(){
+            form.processData({"action": "clean"})
         }
     }
     Connections {
@@ -68,23 +85,20 @@ MetadataEditorScreenForm {
         function onSaveFileRequested() {
             form.handleSaveRequest()
         }
-    }
-    Connections {
-        target: form.toolBar
-        function onFileOpenRequested() {
-            form.openFileRequested()
-        }
-    }
-    Connections {
-        target: form
         function onFileNameChanged() {
             form.openFile(form.fileName)
         }
-    }
-    Connections {
-        target: form
         function onOpenFileRequested() {
             openFileDialog.open()
+        }
+    }
+    Connections {
+        target: form.toolBar
+        function onProcessRequested(){
+            processDialogBox.open()
+        }
+        function onFileOpenRequested() {
+            form.openFileRequested()
         }
     }
 

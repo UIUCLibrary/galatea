@@ -1,11 +1,10 @@
 from unittest.mock import Mock
 
 import pytest
+from PySide6 import QtQml, QtGui
 
-QtGui = pytest.importorskip("PySide6.QtGui")
-QtQml = pytest.importorskip("PySide6.QtQml")
-qml_app = pytest.importorskip("galatea.gui.qml.app")
-qml_exceptions = pytest.importorskip("galatea.gui.qml.exceptions")
+from galatea.gui.qml import app as qml_app
+from galatea.gui.qml import error_handling as qml_exceptions
 
 
 def test_qml_app():

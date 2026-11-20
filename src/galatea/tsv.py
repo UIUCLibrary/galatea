@@ -156,7 +156,7 @@ def write_tsv_file2(
         None,
     ] = write_tsv_fp2,
 ) -> None:
-    with open(file_name, "w", newline="", encoding="utf8") as tsv_file:
+    with open(file_name, "w", newline="", encoding="utf-8") as tsv_file:
         writing_strategy(tsv_file, headings, data, dialect)
 
 

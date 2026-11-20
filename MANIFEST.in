@@ -1,2 +1,3 @@
 # MANIFEST.in
-include README.md pylock.gui.toml pylock.toml
+include README.md pylock.gui.toml pylock.toml src/galatea/gui/qml/Galatea/qmldir src/galatea/gui/qml/Galatea/*.qml src/galatea/gui/qml/Galatea/*.js src/galatea/gui/qml/app.js src/galatea/gui/qml/main.qml
+include tests/qml/*.qml

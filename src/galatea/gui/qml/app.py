@@ -31,6 +31,7 @@ def configure_root_window_with_window_title(
 
 def create_component(file: str, engine: QQmlEngine):
     """Create a QML component from a file."""
+    engine.addImportPath(str(importlib.resources.files("galatea.gui.qml")))
     component = QtQml.QQmlComponent(engine, QtCore.QUrl.fromLocalFile(file))
     if component.isError():
         raise qml_exceptions.QMLLoadingError(
@@ -89,6 +90,12 @@ class TableAppBuilder:
         self.engine.rootContext().setContextProperty(
             "backend",
             self.backend,
+        )
+        # prevent the issue with python object being removed too soon when exiting
+        self.app.aboutToQuit.connect(self.engine.deleteLater)
+
+        self.app.aboutToQuit.connect(
+            lambda: QtCore.QThreadPool.globalInstance().waitForDone()
         )
 
     def create_component(self, file: str) -> QQmlComponent:

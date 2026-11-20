@@ -2,10 +2,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from galatea.gui import main
+from galatea.gui import main, editor
 import galatea.gui.bootstrap_speedwagon
-
-editor = pytest.importorskip("galatea.gui.editor")
 
 
 def test_run_table_frontend_main(monkeypatch):

@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import Editor
+import Galatea
 Item{
     MetadataEditorScreen{
         id: editorScreen

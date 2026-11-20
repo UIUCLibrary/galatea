@@ -5,7 +5,7 @@ from typing import Optional, List
 from PySide6 import QtQml, QtQuick, QtCore, QtGui
 from galatea.utils import GalateaException
 
-__all__ = ["QMLLoadingError"]
+__all__ = ["QMLLoadingError", "ProcessingActionError"]
 
 FATAL_ERROR_QML = """
 import QtQuick
@@ -115,3 +115,7 @@ class QMLLoadingError(QMLException):
             )
         details = "\n".join(errors)
         return f"Error loading QML file {self.file}: {details}"
+
+
+class ProcessingActionError(QMLException):
+    """Exception raised when there is an error running a ProcessingAction."""

@@ -174,7 +174,7 @@ class Backend(QtCore.QObject):
         """Load the model from the given file path using the given dialect."""
         try:
             Backend.load_tsv_strategy(
-                pathlib.Path(file_path.path()),
+                pathlib.Path(file_path.toLocalFile()),
                 dialect,
                 tsv_model,
             )
@@ -196,7 +196,7 @@ class Backend(QtCore.QObject):
         module_logger.info(f"Running saveModelToFile {file_path.path()}")
         headers, data = Backend.export_model_data_strategy(tsv_model)
         Backend.save_tsv_strategy(
-            pathlib.Path(file_path.path()),
+            pathlib.Path(file_path.toLocalFile()),
             headings=headers,
             data=data,
             dialect=dialect,
@@ -208,4 +208,6 @@ class Backend(QtCore.QObject):
         self, file_path: QtCore.QUrl
     ) -> Type[csv.Dialect] | csv.Dialect:
         """Return the dialect of the file at the given path."""
-        return Backend.get_dialect_strategy(pathlib.Path(file_path.path()))
+        return Backend.get_dialect_strategy(
+            pathlib.Path(file_path.toLocalFile())
+        )
